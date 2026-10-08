@@ -91,5 +91,12 @@ export const PLANOS: Plano[] = [
   },
 ];
 
+export const planoPorId = (id: string | null | undefined) => PLANOS.find((p) => p.id === id);
+
+/** Preço do crédito avulso (fora do plano). */
+export const PRECO_CREDITO_AVULSO = 50;
+
+export const PACOTES_AVULSOS = [10, 25, 50];
+
 export const formatarReais = (valor: number) =>
   valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });

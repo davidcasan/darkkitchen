@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, Figtree } from "next/font/google";
 import "./globals.css";
+import "./ui.css";
 
 const display = Bricolage_Grotesque({
   variable: "--font-display",

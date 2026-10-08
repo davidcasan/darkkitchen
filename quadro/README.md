@@ -1,36 +1,55 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Quadro
 
-## Getting Started
+Plataforma de motion graphics sob demanda: o cliente assina um plano, recebe créditos e troca por peças pedidas por um briefing guiado. A equipe (designers, gerente de projetos, diretor de arte) produz, revisa e entrega pela própria plataforma.
 
-First, run the development server:
+## Rodar no computador
+
+Requisitos: Node.js 24 ou mais novo.
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abra http://localhost:3000. No celular, na mesma rede Wi-Fi, use o endereço "Network" que aparece no terminal.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Na primeira vez, o banco é criado com dados de teste. Todas as contas usam a senha `quadro123`:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| E-mail | Papel |
+|---|---|
+| cliente@teste.com | Cliente (plano Crescimento, com pedidos de exemplo) |
+| designer@teste.com | Designer |
+| senior@teste.com | Designer sênior |
+| gerente@teste.com | Gerente de projetos |
+| diretor@teste.com | Diretor de arte |
+| admin@teste.com | Administrador (faz tudo) |
 
-## Learn More
+Para recomeçar do zero: pare o servidor, rode `npm run db:reset` e inicie de novo.
 
-To learn more about Next.js, take a look at the following resources:
+## Fluxo de um pedido
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. **Cliente** preenche o briefing (8 etapas) e os créditos são debitados.
+2. **Gerente** faz a triagem e atribui um designer.
+3. **Designer** envia a versão (vídeo + arquivos de entrega).
+4. **Diretor de arte** aprova ou reprova com diagnóstico (tipo de erro, cena, minutagem). Depois de 2 reprovações, o gerente é avisado para escalar.
+5. **Cliente** comenta no segundo exato do vídeo e aprova, pede ajuste (rodadas extras custam créditos, com aviso antes) ou rejeita (volta para a triagem).
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Modo de teste
 
-## Deploy on Vercel
+Pagamentos são **simulados**: toda cobrança é aprovada na hora, sem dinheiro real. Avisos aparecem como notificações dentro da plataforma (sem e-mail).
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Comandos
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `npm run dev` — servidor de desenvolvimento
+- `npm run build` e `npm start` — versão de produção
+- `npm run lint` — verificação de código
+- `npm run db:reset` — apaga o banco e os arquivos enviados
+
+## API
+
+A API REST em `/api/v1` é a mesma base que o futuro app mobile vai usar. Login: `POST /api/v1/auth/login` com `{ "email", "senha" }` devolve um token; envie-o como `Authorization: Bearer <token>`.
+
+- `GET /api/v1/me` — usuário, saldo e assinatura
+- `GET /api/v1/pedidos` · `POST /api/v1/pedidos` (briefing em JSON) · `GET /api/v1/pedidos/:id`
+- `GET /api/v1/creditos` — saldo e extrato
+- `POST /api/v1/arquivos` (multipart: `arquivo`, `categoria`) · `GET /api/v1/arquivos/:id`

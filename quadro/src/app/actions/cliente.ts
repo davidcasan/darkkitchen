@@ -1,0 +1,120 @@
+"use server";
+
+import { type Estado, campo, campoNumero, rodar, rodarEIr } from "@/server/acao";
+import { exigirUsuario } from "@/server/auth";
+import { ErroNegocio, executar } from "@/server/db";
+import { removerArquivoDaMarca } from "@/server/services/arquivos";
+import { assinar, cancelarAssinatura, comprarCreditos, trocarPlano } from "@/server/services/assinaturas";
+import { adicionarMetodo, definirPadrao, removerMetodo } from "@/server/services/pagamentos";
+import {
+  cancelarPedido,
+  clienteAprovar,
+  clientePedirAjuste,
+  clienteRejeitar,
+  criarPedido,
+} from "@/server/services/pedidos";
+
+const cliente = () => exigirUsuario(["cliente"]);
+
+/** Chamado pelo formulário de briefing com o briefing completo. */
+export async function criarPedidoAction(briefing: unknown): Promise<Estado> {
+  const u = await cliente();
+  return rodar(() => criarPedido(u, briefing).id);
+}
+
+const paginaPedido = (fd: FormData) => `/cliente/pedidos/${campoNumero(fd, "pedido")}`;
+
+export async function aprovarAction(_: Estado, fd: FormData): Promise<Estado> {
+  const u = await cliente();
+  return rodarEIr(() => clienteAprovar(u, campoNumero(fd, "pedido")), paginaPedido(fd), "aprovado");
+}
+
+export async function ajusteAction(_: Estado, fd: FormData): Promise<Estado> {
+  const u = await cliente();
+  return rodarEIr(
+    () =>
+      clientePedirAjuste(u, campoNumero(fd, "pedido"), {
+        texto: campo(fd, "texto"),
+        aceitaCobranca: campo(fd, "aceita") === "1",
+      }),
+    paginaPedido(fd),
+    "ajuste",
+  );
+}
+
+export async function rejeitarAction(_: Estado, fd: FormData): Promise<Estado> {
+  const u = await cliente();
+  return rodarEIr(
+    () => clienteRejeitar(u, campoNumero(fd, "pedido"), { motivo: campo(fd, "motivo"), texto: campo(fd, "texto") }),
+    paginaPedido(fd),
+    "rejeitado",
+  );
+}
+
+export async function cancelarPedidoAction(_: Estado, fd: FormData): Promise<Estado> {
+  const u = await cliente();
+  return rodarEIr(() => cancelarPedido(u, campoNumero(fd, "pedido")), paginaPedido(fd), "cancelado");
+}
+
+export async function comprarCreditosAction(_: Estado, fd: FormData): Promise<Estado> {
+  const u = await cliente();
+  const qtd = campoNumero(fd, "quantidade");
+  return rodar(() => comprarCreditos(u.id, qtd, campoNumero(fd, "metodo") || undefined), `${qtd} créditos adicionados.`);
+}
+
+export async function trocarPlanoAction(_: Estado, fd: FormData): Promise<Estado> {
+  const u = await cliente();
+  return rodar(() => trocarPlano(u.id, campo(fd, "plano")), "Plano atualizado.");
+}
+
+export async function cancelarAssinaturaAction(): Promise<Estado> {
+  const u = await cliente();
+  return rodar(() => cancelarAssinatura(u.id), "Assinatura cancelada. Seus créditos continuam valendo.");
+}
+
+export async function reativarAssinaturaAction(_: Estado, fd: FormData): Promise<Estado> {
+  const u = await cliente();
+  return rodar(() => assinar(u.id, campo(fd, "plano")), "Assinatura reativada.");
+}
+
+export async function adicionarMetodoAction(_: Estado, fd: FormData): Promise<Estado> {
+  const u = await cliente();
+  return rodar(() => {
+    const tipo = campo(fd, "tipo") === "pix" ? "pix" : "cartao";
+    if (tipo === "cartao" && !/^\d{4}$/.test(campo(fd, "final")))
+      throw new ErroNegocio("Informe os 4 últimos dígitos do cartão.");
+    adicionarMetodo(u.id, tipo, campo(fd, "final"));
+  }, "Forma de pagamento adicionada.");
+}
+
+export async function metodoPadraoAction(_: Estado, fd: FormData): Promise<Estado> {
+  const u = await cliente();
+  return rodar(() => definirPadrao(u.id, campoNumero(fd, "metodo")));
+}
+
+export async function removerMetodoAction(_: Estado, fd: FormData): Promise<Estado> {
+  const u = await cliente();
+  return rodar(() => removerMetodo(u.id, campoNumero(fd, "metodo")));
+}
+
+export async function salvarMarcaAction(_: Estado, fd: FormData): Promise<Estado> {
+  const u = await cliente();
+  return rodar(() => {
+    const cores = fd
+      .getAll("cor")
+      .filter((c): c is string => typeof c === "string" && /^#[0-9a-f]{6}$/i.test(c))
+      .slice(0, 5);
+    executar(
+      `INSERT INTO marcas (usuario_id, cores, observacoes) VALUES (?, ?, ?)
+       ON CONFLICT(usuario_id) DO UPDATE SET cores = excluded.cores, observacoes = excluded.observacoes, atualizado_em = datetime('now')`,
+      u.id,
+      JSON.stringify(cores),
+      campo(fd, "observacoes").slice(0, 2000),
+    );
+  }, "Perfil da marca salvo.");
+}
+
+export async function removerArquivoMarcaAction(_: Estado, fd: FormData): Promise<Estado> {
+  const u = await cliente();
+  return rodar(() => removerArquivoDaMarca(u, campoNumero(fd, "arquivo")));
+}

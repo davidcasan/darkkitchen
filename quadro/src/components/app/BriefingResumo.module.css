@@ -1,0 +1,43 @@
+.wrap {
+  display: grid;
+  gap: 4px;
+}
+
+.secao {
+  padding: 14px 0;
+  border-top: 1px solid var(--line);
+}
+
+.secao:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.secao h3 {
+  font-size: 15px;
+  margin-bottom: 10px;
+  color: var(--accent-ink);
+}
+
+.cenas {
+  margin: 0 0 4px;
+  padding-left: 20px;
+}
+
+.cenas li + li {
+  margin-top: 2px;
+}
+
+.alerta {
+  color: var(--danger);
+}
+
+.refs {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.refs a {
+  color: var(--accent-ink);
+  overflow-wrap: anywhere;
+}

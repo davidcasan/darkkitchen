@@ -30,14 +30,20 @@ Sistema web rodando em servidor, com três áreas:
 - Ordem de construção: começar pelo que tem menor risco.
 
 ## Código
-App em `quadro/` — Next.js 16 (App Router, TypeScript), CSS Modules + tokens em `src/app/globals.css` (mesmas cores/fontes do protótipo, modo claro/escuro). O Next 16 tem APIs novas: consultar `quadro/node_modules/next/dist/docs/` antes de usar algo.
-- `src/domain/` — regras e dados do negócio (catálogo de peças, planos), sem dependência de interface. A futura API e o app mobile reutilizam daqui.
-- `src/app/(site)/` — site público: home, `/entrar`, `/cadastro` (formulários ainda só visuais).
-- Comandos (dentro de `quadro/`): `npm run dev` (desenvolvimento, http://localhost:3000), `npm run build`, `npm run lint`.
+App em `quadro/` — Next.js 16 (App Router, TypeScript), CSS Modules + tokens em `src/app/globals.css` e componentes visuais em `src/app/ui.css`. O Next 16 tem APIs novas: consultar `quadro/node_modules/next/dist/docs/` antes de usar algo. `cacheComponents` está desligado de propósito (áreas logadas são dinâmicas).
+- `src/domain/` — regras puras, sem banco nem tela: catálogo/planos, briefing (cálculo de créditos, validação por etapa), máquina de estados do pedido (`ACOES`, `podeExecutar`). Usado no navegador, no servidor e pelo futuro app.
+- `src/server/` — `db.ts` (SQLite nativo `node:sqlite`, arquivo `data/quadro.db`; só esta camada muda para ir a PostgreSQL), `auth.ts` (sessão por token: cookie httpOnly no navegador, `Bearer` na API), `services/*` (toda regra de negócio), `seed.ts` (dados de teste criados ao subir com banco vazio, via `src/instrumentation.ts`).
+- `src/app/(site)/` site público · `src/app/cliente/` área do cliente · `src/app/equipe/` área da equipe · `src/app/actions/` Server Actions · `src/app/api/v1/` API REST (login, me, pedidos, créditos, upload/download de arquivos com Range).
+- Pagamento: `services/pagamentos.ts` tem a interface `Gateway`; hoje é simulado (aprova na hora). Para cobrar de verdade, implementar Asaas/Pagar.me e trocar a constante `GATEWAY`.
+- Arquivos enviados ficam em `quadro/data/arquivos` (fora do git). Renovação de assinatura é verificada ao acessar a área do cliente (não há tarefa agendada).
+- Comandos (em `quadro/`): `npm run dev` (http://localhost:3000), `npm run build`, `npm run lint`, `npm run db:reset` (apaga o banco; recriado com dados de teste ao subir).
+- Contas de teste (senha `quadro123`): cliente@, designer@, senior@, gerente@, diretor@, admin@teste.com.
 
-**Princípios para o futuro app mobile:** lógica no servidor exposta como API (`/api/v1/...`), login por token, layout mobile-first, uploads direto para armazenamento de arquivos, créditos como extrato de transações, status do pedido como máquina de estados.
+**Princípios para o futuro app mobile:** lógica no servidor exposta como API (`/api/v1/...`), login por token, layout mobile-first, uploads pela API, créditos como extrato de transações, status do pedido como máquina de estados, avisos centralizados em `services/notificacoes.ts`.
 
-**Fases:** 1) site público ✅ · 2) login, perfis e banco de dados · 3) briefing salvo + área do cliente · 4) área da equipe (fila, versões, comentários) · 5) pagamento e assinatura.
+**Fases:** 1) site público ✅ · 2) login, perfis e banco ✅ · 3) briefing + área do cliente ✅ · 4) área da equipe ✅ · 5) assinatura e pagamento ✅ (simulado; falta ligar gateway real).
+
+**Pendências conhecidas:** gateway de pagamento real; envio de e-mail (hoje só notificação interna); tarefa agendada de renovação; armazenamento de arquivos em nuvem e upload em partes para vídeos grandes; recuperação de senha; cadastro de membros da equipe por tela (hoje só via seed/banco); regra de expiração de créditos.
 
 ## Formulário de briefing (8 etapas)
 Existe um protótipo clicável em HTML (`briefing-motion.html`, publicado como artifact no claude.ai).

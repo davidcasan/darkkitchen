@@ -11,7 +11,7 @@ const LINKS = [
   { href: "/#duvidas", label: "Dúvidas" },
 ];
 
-export function Header() {
+export function Header({ area }: { area: string | null }) {
   const [aberto, setAberto] = useState(false);
 
   useEffect(() => {
@@ -40,12 +40,20 @@ export function Header() {
             ))}
           </ul>
           <div className={styles.acoes}>
-            <Link href="/entrar" className="btn" onClick={() => setAberto(false)}>
-              Entrar
-            </Link>
-            <Link href="/cadastro" className="btn btn-primary" onClick={() => setAberto(false)}>
-              Começar agora
-            </Link>
+            {area ? (
+              <Link href={area} className="btn btn-primary" onClick={() => setAberto(false)}>
+                Minha área
+              </Link>
+            ) : (
+              <>
+                <Link href="/entrar" className="btn" onClick={() => setAberto(false)}>
+                  Entrar
+                </Link>
+                <Link href="/cadastro" className="btn btn-primary" onClick={() => setAberto(false)}>
+                  Começar agora
+                </Link>
+              </>
+            )}
           </div>
         </nav>
 
