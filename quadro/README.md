@@ -33,6 +33,7 @@ Para recomeçar do zero: pare o servidor, rode `npm run db:reset` e inicie de no
 3. **Designer** envia a versão (vídeo + arquivos de entrega).
 4. **Diretor de arte** aprova ou reprova com diagnóstico (tipo de erro, cena, minutagem). Depois de 2 reprovações, o gerente é avisado para escalar.
 5. **Cliente** comenta no segundo exato do vídeo e aprova, pede ajuste (rodadas extras custam créditos, com aviso antes) ou rejeita (volta para a triagem).
+6. Se o cliente não responder em 5 dias úteis, a peça é **aprovada automaticamente** (com lembrete 1 dia antes). O **gerente** também pode concluir o pedido a qualquer momento nessa etapa, informando o motivo.
 
 ## Modo de teste
 

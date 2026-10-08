@@ -54,6 +54,7 @@ export type Acao =
   | "cliente_aprovar"
   | "cliente_ajuste"
   | "cliente_rejeitar"
+  | "concluir"
   | "cancelar";
 
 interface RegraAcao {
@@ -70,6 +71,7 @@ export const ACOES: Record<Acao, RegraAcao> = {
   cliente_aprovar: { de: ["revisao_cliente"], para: "aprovado", papeis: ["cliente"] },
   cliente_ajuste: { de: ["revisao_cliente"], para: "ajustes", papeis: ["cliente"] },
   cliente_rejeitar: { de: ["revisao_cliente"], para: "triagem", papeis: ["cliente"] },
+  concluir: { de: ["revisao_cliente"], para: "aprovado", papeis: ["gerente", "admin"] },
   cancelar: { de: ["triagem"], para: "cancelado", papeis: ["cliente", "gerente", "admin"] },
 };
 
@@ -78,6 +80,9 @@ export const podeExecutar = (acao: Acao, status: StatusPedido, papel: Papel) =>
 
 /** Depois de quantas reprovações internas o pedido deve ir para um designer mais sênior. */
 export const LIMITE_TENTATIVAS = 2;
+
+/** Dias úteis que o cliente tem para revisar uma versão antes da aprovação automática. */
+export const DIAS_APROVACAO_AUTOMATICA = 5;
 
 export const TIPOS_ERRO = [
   "Fora do briefing",

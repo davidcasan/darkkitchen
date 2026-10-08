@@ -14,6 +14,7 @@ import {
   type Acao,
   type StatusPedido,
   ACOES,
+  DIAS_APROVACAO_AUTOMATICA,
   LIMITE_TENTATIVAS,
   STATUS,
   ehEquipe,
@@ -22,7 +23,7 @@ import {
 } from "@/domain/pedido";
 import { ErroNegocio, executar, transacao, um, varios } from "../db";
 import type { Usuario } from "../auth";
-import { adicionarDiasUteis, agoraSql, paraSql } from "../datas";
+import { adicionarDiasUteis, agoraSql, deSql, paraSql } from "../datas";
 import { lancar, saldo } from "./creditos";
 import { notificar, notificarPapel } from "./notificacoes";
 import type { Arquivo } from "./arquivos";
@@ -431,19 +432,95 @@ export function reprovarQualidade(usuario: Usuario, pedidoId: number, d: Diagnos
   });
 }
 
+/** Fecha o pedido com a última versão como final. Usado pelas três formas de conclusão. */
+function aprovarVersaoFinal(p: PedidoResumo, autorId: number | null, tipoEvento: string, detalhe: Record<string, unknown>) {
+  const v = ultimaVersao(p.id)!;
+  executar("UPDATE versoes SET status = 'aprovada' WHERE id = ?", v.id);
+  mudarStatus(p, "aprovado");
+  registrarEvento(p.id, autorId, tipoEvento, p.status, "aprovado", { versao: v.numero, ...detalhe });
+}
+
 export function clienteAprovar(usuario: Usuario, pedidoId: number) {
   const p = carregarParaAcao(pedidoId, usuario, "cliente_aprovar");
-  const v = ultimaVersao(p.id)!;
   transacao(() => {
-    executar("UPDATE versoes SET status = 'aprovada' WHERE id = ?", v.id);
-    mudarStatus(p, "aprovado");
-    registrarEvento(p.id, usuario.id, "cliente_aprovou", p.status, "aprovado", {
-      versao: v.numero,
+    aprovarVersaoFinal(p, usuario.id, "cliente_aprovou", {
       primeira: p.revisoes_usadas === 0 && p.tentativas_internas === 0,
     });
     if (p.designer_id) notificar(p.designer_id, `O cliente aprovou o pedido ${p.codigo}.`, linkEquipe(p.id));
     notificarPapel(["gerente"], `Pedido ${p.codigo} aprovado pelo cliente.`, linkEquipe(p.id));
   });
+}
+
+/** Conclusão manual pelo gerente (ex.: cliente aprovou por outro canal ou não responde). */
+export function concluirPorGerente(usuario: Usuario, pedidoId: number, motivo: string) {
+  const p = carregarParaAcao(pedidoId, usuario, "concluir");
+  if (motivo.trim().length < 5) throw new ErroNegocio("Explique por que o pedido está sendo concluído.");
+  transacao(() => {
+    aprovarVersaoFinal(p, usuario.id, "concluido_gerente", { motivo: motivo.trim().slice(0, 1000) });
+    notificar(
+      p.cliente_id,
+      `O pedido ${p.codigo} foi concluído pela equipe. Os arquivos finais estão liberados.`,
+      linkCliente(p.id),
+    );
+    if (p.designer_id) notificar(p.designer_id, `O pedido ${p.codigo} foi concluído por ${usuario.nome}.`, linkEquipe(p.id));
+  });
+}
+
+/** Quando a versão atual com o cliente será aprovada automaticamente (null se não está com o cliente). */
+export function prazoAprovacaoAutomatica(pedidoId: number): Date | null {
+  const e = um<{ criado_em: string }>(
+    `SELECT e.criado_em FROM eventos e JOIN pedidos p ON p.id = e.pedido_id
+     WHERE e.pedido_id = ? AND e.tipo = 'qualidade_aprovada' AND p.status = 'revisao_cliente'
+     ORDER BY e.id DESC LIMIT 1`,
+    pedidoId,
+  );
+  return e ? adicionarDiasUteis(deSql(e.criado_em), DIAS_APROVACAO_AUTOMATICA) : null;
+}
+
+/**
+ * Aprovação automática: versões com o cliente há mais de DIAS_APROVACAO_AUTOMATICA dias
+ * úteis são aprovadas; um dia útil antes, o cliente recebe um lembrete. Roda a cada hora
+ * (instrumentation.ts) e também quando alguém abre as áreas logadas.
+ */
+export function processarAprovacoesAutomaticas(): number {
+  const agora = new Date();
+  const pendentes = varios<PedidoResumo & { liberado_em: string; lembrado: number }>(
+    `${SELECT_RESUMO.replace(
+      "SELECT",
+      `SELECT (SELECT MAX(e.criado_em) FROM eventos e WHERE e.pedido_id = p.id AND e.tipo = 'qualidade_aprovada') liberado_em,
+              (SELECT COUNT(*) FROM eventos e WHERE e.pedido_id = p.id AND e.tipo = 'lembrete_aprovacao'
+                 AND e.criado_em >= (SELECT MAX(e2.criado_em) FROM eventos e2 WHERE e2.pedido_id = p.id AND e2.tipo = 'qualidade_aprovada')) lembrado,`,
+    )} WHERE p.status = 'revisao_cliente'`,
+  );
+  let aprovados = 0;
+  for (const p of pendentes) {
+    if (!p.liberado_em) continue;
+    const liberado = deSql(p.liberado_em);
+    if (adicionarDiasUteis(liberado, DIAS_APROVACAO_AUTOMATICA) <= agora) {
+      transacao(() => {
+        if (resumo(p.id)?.status !== "revisao_cliente") return; // alguém agiu nesse meio-tempo
+        aprovarVersaoFinal(p, null, "aprovacao_automatica", { dias: DIAS_APROVACAO_AUTOMATICA });
+        notificar(
+          p.cliente_id,
+          `O pedido ${p.codigo} foi aprovado automaticamente: não recebemos sua revisão em ${DIAS_APROVACAO_AUTOMATICA} dias úteis. Os arquivos finais estão liberados.`,
+          linkCliente(p.id),
+        );
+        if (p.designer_id) notificar(p.designer_id, `O pedido ${p.codigo} foi aprovado automaticamente.`, linkEquipe(p.id));
+        notificarPapel(["gerente"], `Pedido ${p.codigo} aprovado automaticamente por falta de resposta do cliente.`, linkEquipe(p.id));
+        aprovados++;
+      });
+    } else if (!p.lembrado && adicionarDiasUteis(liberado, DIAS_APROVACAO_AUTOMATICA - 1) <= agora) {
+      transacao(() => {
+        registrarEvento(p.id, null, "lembrete_aprovacao", null, null);
+        notificar(
+          p.cliente_id,
+          `Falta 1 dia útil para revisar o pedido ${p.codigo}. Depois disso, a peça é aprovada automaticamente.`,
+          linkCliente(p.id),
+        );
+      });
+    }
+  }
+  return aprovados;
 }
 
 /** Custo da próxima rodada de ajuste para este pedido (0 se ainda há revisões incluídas). */
@@ -588,7 +665,9 @@ export function comentar(
 export function metricas() {
   const aprovados = um<{ total: number; primeira: number }>(
     `SELECT COUNT(*) total, COALESCE(SUM(CASE WHEN revisoes_usadas = 0 AND tentativas_internas = 0 THEN 1 ELSE 0 END), 0) primeira
-     FROM pedidos WHERE status = 'aprovado'`,
+     FROM pedidos p WHERE status = 'aprovado'
+       -- só aprovações reais do cliente; conclusão automática ou pelo gerente não contam
+       AND EXISTS (SELECT 1 FROM eventos e WHERE e.pedido_id = p.id AND e.tipo = 'cliente_aprovou')`,
   )!;
   const motivos = varios<{ origem: string; motivo: string; n: number }>(
     `SELECT CASE tipo WHEN 'qualidade_reprovada' THEN 'Interna' ELSE 'Cliente' END origem,

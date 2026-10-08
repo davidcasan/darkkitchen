@@ -3,6 +3,7 @@ import type { ItemNav } from "@/components/app/NavArea";
 import { PAPEIS } from "@/domain/pedido";
 import { exigirUsuario } from "@/server/auth";
 import { contarNaoLidas } from "@/server/services/notificacoes";
+import { processarAprovacoesAutomaticas } from "@/server/services/pedidos";
 
 const ITENS: ItemNav[] = [
   { href: "/equipe", rotulo: "Painel", icone: "inicio", movel: true },
@@ -12,6 +13,7 @@ const ITENS: ItemNav[] = [
 
 export default async function EquipeLayout({ children }: LayoutProps<"/equipe">) {
   const usuario = await exigirUsuario(["designer", "gerente", "diretor", "admin"]);
+  processarAprovacoesAutomaticas();
   return (
     <AppShell
       usuario={usuario}

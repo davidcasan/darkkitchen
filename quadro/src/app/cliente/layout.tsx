@@ -4,6 +4,7 @@ import { exigirUsuario } from "@/server/auth";
 import { renovarSeVencida } from "@/server/services/assinaturas";
 import { saldo } from "@/server/services/creditos";
 import { contarNaoLidas } from "@/server/services/notificacoes";
+import { processarAprovacoesAutomaticas } from "@/server/services/pedidos";
 
 const ITENS: ItemNav[] = [
   { href: "/cliente", rotulo: "Início", icone: "inicio", movel: true },
@@ -16,6 +17,7 @@ const ITENS: ItemNav[] = [
 
 export default async function ClienteLayout({ children }: LayoutProps<"/cliente">) {
   const usuario = await exigirUsuario(["cliente"]);
+  processarAprovacoesAutomaticas();
   renovarSeVencida(usuario.id);
   const creditos = saldo(usuario.id);
   return (

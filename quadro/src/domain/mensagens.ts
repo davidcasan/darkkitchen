@@ -10,6 +10,7 @@ export const MENSAGENS = {
   ajuste: "Ajuste enviado para a equipe.",
   rejeitado: "Recebemos. Um gerente de projetos vai falar com você para recomeçar.",
   cancelado: "Pedido cancelado e créditos devolvidos.",
+  concluido: "Pedido concluído. O cliente foi avisado e os arquivos finais estão liberados.",
 } as const;
 
 export type CodigoMensagem = keyof typeof MENSAGENS;

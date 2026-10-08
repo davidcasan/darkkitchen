@@ -11,10 +11,10 @@ import { formatarTamanho, urlArquivo } from "@/components/app/upload";
 import { mensagemDe } from "@/domain/mensagens";
 import { LINHA_CLIENTE, MOTIVOS_REJEICAO } from "@/domain/pedido";
 import { exigirUsuario } from "@/server/auth";
-import { formatarData, formatarDataHora } from "@/server/datas";
+import { formatarData, formatarDataHora, paraSql } from "@/server/datas";
 import { ErroNegocio } from "@/server/db";
 import { arquivosPorIds } from "@/server/services/arquivos";
-import { custoProximoAjuste, pedidoParaUsuario, type PedidoDetalhe } from "@/server/services/pedidos";
+import { custoProximoAjuste, pedidoParaUsuario, prazoAprovacaoAutomatica, type PedidoDetalhe } from "@/server/services/pedidos";
 import styles from "./pedido.module.css";
 
 export const metadata: Metadata = { title: "Pedido" };
@@ -27,6 +27,8 @@ const HISTORICO_CLIENTE: Record<string, string> = {
   cliente_ajuste: "Você pediu ajustes",
   cliente_rejeitou: "Você rejeitou a versão; o pedido voltou para a triagem",
   cancelado: "Pedido cancelado",
+  concluido_gerente: "Pedido concluído pela equipe",
+  aprovacao_automatica: "Peça aprovada automaticamente (sem resposta no prazo)",
 };
 
 export default async function PedidoCliente({ params, searchParams }: PageProps<"/cliente/pedidos/[id]">) {
@@ -45,6 +47,7 @@ export default async function PedidoCliente({ params, searchParams }: PageProps<
   const b = p.briefing;
   const arquivos = arquivosPorIds([...b.arquivos.logo, ...b.arquivos.manual, ...b.arquivos.fotos]);
   const custoAjuste = custoProximoAjuste(p, b.duracao);
+  const prazoRevisao = prazoAprovacaoAutomatica(p.id);
   const etapaAtual = LINHA_CLIENTE.findIndex((e) => e.status.includes(p.status));
   const aprovada = p.versoes.find((v) => v.status === "aprovada");
   const historico = p.eventos.filter((e) => HISTORICO_CLIENTE[e.tipo] && !(e.tipo === "atribuido" && e.de !== "triagem"));
@@ -110,6 +113,11 @@ export default async function PedidoCliente({ params, searchParams }: PageProps<
               <p className="muted small" style={{ marginBottom: 14 }}>
                 Assista à versão abaixo. Comente direto no vídeo, no segundo exato, e depois aprove ou peça ajustes.
               </p>
+              {prazoRevisao && (
+                <p className="alerta alerta-aviso small" style={{ marginBottom: 14 }}>
+                  Revise até <b>{formatarData(paraSql(prazoRevisao))}</b>. Sem resposta até lá, a peça é aprovada automaticamente.
+                </p>
+              )}
               <div className={styles.acoes}>
                 <FormAcao action={aprovarAction} confirmar="Aprovar a peça? Depois de aprovada, os arquivos finais ficam liberados.">
                   <input type="hidden" name="pedido" value={p.id} />

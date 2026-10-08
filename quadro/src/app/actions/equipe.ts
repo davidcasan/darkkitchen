@@ -6,6 +6,7 @@ import {
   aprovarQualidade,
   atribuirDesigner,
   cancelarPedido,
+  concluirPorGerente,
   enviarVersao,
   reprovarQualidade,
 } from "@/server/services/pedidos";
@@ -51,4 +52,9 @@ export async function cancelarEquipeAction(_: Estado, fd: FormData): Promise<Est
     paginaPedido(fd),
     "cancelado",
   );
+}
+
+export async function concluirAction(_: Estado, fd: FormData): Promise<Estado> {
+  const u = await equipe();
+  return rodarEIr(() => concluirPorGerente(u, campoNumero(fd, "pedido"), campo(fd, "motivo")), paginaPedido(fd), "concluido");
 }

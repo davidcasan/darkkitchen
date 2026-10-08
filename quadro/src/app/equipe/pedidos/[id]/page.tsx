@@ -5,6 +5,7 @@ import {
   aprovarQualidadeAction,
   atribuirAction,
   cancelarEquipeAction,
+  concluirAction,
   reprovarQualidadeAction,
 } from "@/app/actions/equipe";
 import { BriefingResumo } from "@/components/app/BriefingResumo";
@@ -16,10 +17,10 @@ import { VersaoPlayer } from "@/components/app/VersaoPlayer";
 import { mensagemDe } from "@/domain/mensagens";
 import { LIMITE_TENTATIVAS, STATUS, TIPOS_ERRO, type StatusPedido, podeExecutar } from "@/domain/pedido";
 import { exigirUsuario } from "@/server/auth";
-import { formatarData, formatarDataHora } from "@/server/datas";
+import { formatarData, formatarDataHora, paraSql } from "@/server/datas";
 import { ErroNegocio, um } from "@/server/db";
 import { arquivosPorIds } from "@/server/services/arquivos";
-import { type Evento, type PedidoDetalhe, pedidoParaUsuario } from "@/server/services/pedidos";
+import { type Evento, type PedidoDetalhe, pedidoParaUsuario, prazoAprovacaoAutomatica } from "@/server/services/pedidos";
 import { listarDesigners } from "@/server/services/usuarios";
 import styles from "@/app/cliente/pedidos/[id]/pedido.module.css";
 
@@ -48,6 +49,12 @@ function descreverEvento(e: Evento): string {
       return `Rejeição total da versão ${d.versao} (${d.motivo}): ${d.texto}`;
     case "cancelado":
       return `Pedido cancelado; ${d.devolvido} créditos devolvidos${d.integral ? "" : " (parcial)"}`;
+    case "concluido_gerente":
+      return `Concluído pela equipe com a versão ${d.versao}: ${d.motivo}`;
+    case "aprovacao_automatica":
+      return `Versão ${d.versao} aprovada automaticamente (cliente sem resposta em ${d.dias} dias úteis)`;
+    case "lembrete_aprovacao":
+      return "Cliente lembrado: falta 1 dia útil para a aprovação automática";
     default:
       return e.tipo;
   }
@@ -194,6 +201,38 @@ export default async function PedidoEquipe({ params, searchParams }: PageProps<"
         </div>
       </section>,
     );
+
+  if (pode("concluir")) {
+    const prazo = prazoAprovacaoAutomatica(p.id);
+    acoes.push(
+      <section className="card" key="concluir">
+        <h2>Concluir pedido</h2>
+        <p className="muted small" style={{ marginBottom: 12 }}>
+          A versão {ultima?.numero} está com o cliente
+          {prazo ? ` e será aprovada automaticamente em ${formatarData(paraSql(prazo))} se não houver resposta` : ""}. Conclua
+          agora se o cliente aprovou por outro canal ou se a conversa já foi encerrada.
+        </p>
+        <FormAcao action={concluirAction} confirmar="Concluir o pedido com a versão atual como final?">
+          <input type="hidden" name="pedido" value={p.id} />
+          <div className="field">
+            <label className="label" htmlFor="motivo-concluir">
+              Motivo
+            </label>
+            <textarea
+              id="motivo-concluir"
+              name="motivo"
+              className="txt"
+              required
+              minLength={5}
+              placeholder="Ex.: cliente aprovou por WhatsApp em 10/10."
+            />
+            <span className="hint">Fica no histórico do pedido. Conclusões pela equipe não contam como aprovação de primeira.</span>
+          </div>
+          <Enviar>Concluir pedido</Enviar>
+        </FormAcao>
+      </section>,
+    );
+  }
 
   if (pode("cancelar"))
     acoes.push(

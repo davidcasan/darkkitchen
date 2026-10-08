@@ -93,7 +93,7 @@ export default async function PainelEquipe() {
               {m.taxaPrimeira === null ? "—" : `${m.taxaPrimeira}%`}
             </p>
             <p className="muted small">
-              Peças aprovadas sem nenhum ajuste nem reprovação interna, entre {m.aprovados} aprovadas. É a métrica principal da
+              Peças aprovadas pelo cliente sem nenhum ajuste nem reprovação interna, entre {m.aprovados} aprovadas pelo cliente. É a métrica principal da
               operação.
             </p>
             {m.motivos.length > 0 && (
