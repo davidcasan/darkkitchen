@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { PAPEIS } from "@/domain/pedido";
 import type { Usuario } from "@/server/auth";
+import { voltarAoAdminAction } from "@/app/actions/admin";
 import { sairAction } from "@/app/actions/conta";
 import { Icone } from "./Icone";
 import { type ItemNav, NavInferior, NavLateral } from "./NavArea";
@@ -15,6 +16,7 @@ export function AppShell({
   raiz,
   naoLidas,
   resumo,
+  comoAdmin,
   children,
 }: {
   usuario: Usuario;
@@ -22,10 +24,24 @@ export function AppShell({
   raiz: string;
   naoLidas: number;
   resumo?: React.ReactNode;
+  comoAdmin?: string | null; // nome do admin, quando ele está acessando esta conta
   children: React.ReactNode;
 }) {
   return (
-    <div className={styles.shell}>
+    <div className={styles.shell} data-como-admin={Boolean(comoAdmin)}>
+      {comoAdmin && (
+        <div className={styles.faixaAdmin} role="status">
+          <span>
+            {comoAdmin}, você está acessando como <b>{usuario.nome}</b> ({PAPEIS[usuario.papel]}). Tudo o que fizer fica em nome
+            desta conta.
+          </span>
+          <form action={voltarAoAdminAction}>
+            <button type="submit" className="btn btn-sm">
+              Voltar ao admin
+            </button>
+          </form>
+        </div>
+      )}
       <aside className={styles.lateral}>
         <Link href={raiz} className={styles.brand}>
           <i aria-hidden="true" />

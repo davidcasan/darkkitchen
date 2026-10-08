@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ListaPedidos } from "@/components/app/ListaPedidos";
-import { STATUS, type StatusPedido } from "@/domain/pedido";
+import { EQUIPE, STATUS, type StatusPedido } from "@/domain/pedido";
 import { exigirUsuario } from "@/server/auth";
 import { listarPedidosEquipe } from "@/server/services/pedidos";
 
@@ -10,7 +10,7 @@ export const metadata: Metadata = { title: "Pedidos" };
 const ORDEM: StatusPedido[] = ["triagem", "producao", "qualidade", "revisao_cliente", "ajustes", "aprovado", "cancelado"];
 
 export default async function PedidosEquipe({ searchParams }: PageProps<"/equipe/pedidos">) {
-  const u = await exigirUsuario(["designer", "gerente", "diretor", "admin"]);
+  const u = await exigirUsuario(EQUIPE);
   const sp = await searchParams;
   const status = ORDEM.includes(sp.status as StatusPedido) ? (sp.status as StatusPedido) : null;
   const meus = sp.meus === "1" && u.papel === "designer";

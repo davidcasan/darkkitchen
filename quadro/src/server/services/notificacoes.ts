@@ -19,7 +19,7 @@ export function notificar(usuarioId: number, texto: string, link?: string) {
 
 export function notificarPapel(papeis: Papel[], texto: string, link?: string) {
   const ids = varios<{ id: number }>(
-    `SELECT id FROM usuarios WHERE papel IN (${papeis.map(() => "?").join(",")})`,
+    `SELECT id FROM usuarios WHERE ativo = 1 AND papel IN (${papeis.map(() => "?").join(",")})`,
     ...papeis,
   );
   for (const { id } of ids) notificar(id, texto, link);

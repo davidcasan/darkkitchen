@@ -1,6 +1,6 @@
 import { AppShell } from "@/components/app/AppShell";
 import type { ItemNav } from "@/components/app/NavArea";
-import { exigirUsuario } from "@/server/auth";
+import { adminOriginal, exigirUsuario } from "@/server/auth";
 import { renovarSeVencida } from "@/server/services/assinaturas";
 import { saldo } from "@/server/services/creditos";
 import { contarNaoLidas } from "@/server/services/notificacoes";
@@ -26,6 +26,7 @@ export default async function ClienteLayout({ children }: LayoutProps<"/cliente"
       itens={ITENS}
       raiz="/cliente"
       naoLidas={contarNaoLidas(usuario.id)}
+      comoAdmin={(await adminOriginal())?.nome}
       resumo={
         <span>
           Saldo <b className="tnum">{creditos}</b> créditos

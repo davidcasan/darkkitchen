@@ -79,7 +79,7 @@ export function VersaoPlayer({
               <video
                 key={versao.id}
                 ref={video}
-                src={urlArquivo(versao.arquivo_id)}
+                src={urlArquivo(versao.arquivo_id, false, versao.arquivo_token)}
                 controls
                 playsInline
                 preload="metadata"

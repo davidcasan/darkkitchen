@@ -17,7 +17,14 @@ export async function enviarArquivo(arquivo: File, categoria: string): Promise<A
   return json.dados;
 }
 
-export const urlArquivo = (id: number, baixar = false) => `/api/v1/arquivos/${id}${baixar ? "?baixar=1" : ""}`;
+/** Endereço do arquivo. "token" (identidade do conteúdo) garante que o navegador nunca mostre uma cópia antiga. */
+export function urlArquivo(id: number, baixar = false, token?: string) {
+  const q = new URLSearchParams();
+  if (baixar) q.set("baixar", "1");
+  if (token) q.set("v", token);
+  const s = q.toString();
+  return `/api/v1/arquivos/${id}${s ? `?${s}` : ""}`;
+}
 
 export const formatarTamanho = (bytes: number) =>
   bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`;

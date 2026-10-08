@@ -39,7 +39,7 @@ export function usuarioPorToken(token: string | undefined | null): Usuario | nul
     um<Usuario>(
       `SELECT u.id, u.papel, u.nome, u.email, u.empresa, u.senior FROM sessoes s
        JOIN usuarios u ON u.id = s.usuario_id
-       WHERE s.token_hash = ? AND s.expira_em > ?`,
+       WHERE s.token_hash = ? AND s.expira_em > ? AND u.ativo = 1`,
       hashToken(token),
       agoraSql(),
     ) ?? null
@@ -79,17 +79,54 @@ export async function exigirUsuario(papeis?: Papel[]): Promise<Usuario> {
 export async function iniciarSessaoWeb(usuarioId: number) {
   const { token, expira } = criarSessao(usuarioId);
   const jar = await cookies();
-  jar.set(COOKIE_SESSAO, token, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production" && process.env.COOKIE_INSEGURO !== "1",
-    path: "/",
-    expires: expira,
-  });
+  jar.set(COOKIE_SESSAO, token, opcoesCookie(expira));
 }
 
 export async function encerrarSessaoWeb() {
   const jar = await cookies();
   encerrarSessao(jar.get(COOKIE_SESSAO)?.value);
+  encerrarSessao(jar.get(COOKIE_ADMIN)?.value);
   jar.delete(COOKIE_SESSAO);
+  jar.delete(COOKIE_ADMIN);
+}
+
+// ---- "Acessar como": o admin entra na conta de outro usuário ----
+// A sessão do admin fica guardada num segundo cookie e é restaurada em "Voltar ao admin".
+
+const COOKIE_ADMIN = "quadro_admin";
+
+const opcoesCookie = (expira: Date) => ({
+  httpOnly: true,
+  sameSite: "lax" as const,
+  secure: process.env.NODE_ENV === "production" && process.env.COOKIE_INSEGURO !== "1",
+  path: "/",
+  expires: expira,
+});
+
+/** Admin que está acessando a conta atual (null se é um login normal). */
+export const adminOriginal = cache(async (): Promise<Usuario | null> => {
+  const jar = await cookies();
+  const admin = usuarioPorToken(jar.get(COOKIE_ADMIN)?.value);
+  return admin?.papel === "admin" ? admin : null;
+});
+
+export async function acessarComo(admin: Usuario, alvo: Usuario) {
+  const jar = await cookies();
+  const tokenAdmin = jar.get(COOKIE_SESSAO)?.value;
+  if (!tokenAdmin || admin.papel !== "admin") return;
+  const { token, expira } = criarSessao(alvo.id);
+  jar.set(COOKIE_ADMIN, tokenAdmin, opcoesCookie(expira));
+  jar.set(COOKIE_SESSAO, token, opcoesCookie(expira));
+}
+
+/** Encerra a sessão "como outro usuário" e devolve o admin à própria conta. */
+export async function voltarAoAdmin(): Promise<boolean> {
+  const jar = await cookies();
+  const tokenAdmin = jar.get(COOKIE_ADMIN)?.value;
+  const admin = usuarioPorToken(tokenAdmin);
+  if (!tokenAdmin || admin?.papel !== "admin") return false;
+  encerrarSessao(jar.get(COOKIE_SESSAO)?.value);
+  jar.set(COOKIE_SESSAO, tokenAdmin, opcoesCookie(new Date(Date.now() + DIAS_SESSAO * 86400_000)));
+  jar.delete(COOKIE_ADMIN);
+  return true;
 }

@@ -8,7 +8,7 @@ export const MENSAGENS = {
   qa_reprovada: "Versão devolvida ao designer com o diagnóstico.",
   aprovado: "Peça aprovada. Os arquivos finais estão liberados.",
   ajuste: "Ajuste enviado para a equipe.",
-  rejeitado: "Recebemos. Um gerente de projetos vai falar com você para recomeçar.",
+  rejeitado: "Recebemos. O diretor de arte vai falar com você para recomeçar.",
   cancelado: "Pedido cancelado e créditos devolvidos.",
   concluido: "Pedido concluído. O cliente foi avisado e os arquivos finais estão liberados.",
 } as const;

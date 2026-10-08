@@ -10,7 +10,7 @@ const CAMPOS = "id, papel, nome, email, empresa, senior";
 
 export function autenticar(email: string, senha: string): Usuario {
   const u = um<Usuario & { senha_hash: string }>(
-    `SELECT ${CAMPOS}, senha_hash FROM usuarios WHERE email = ?`,
+    `SELECT ${CAMPOS}, senha_hash FROM usuarios WHERE email = ? AND ativo = 1`,
     email.trim(),
   );
   if (!u || !verificarSenha(senha, u.senha_hash)) throw new ErroNegocio("E-mail ou senha incorretos.", 401);
@@ -57,7 +57,7 @@ export const listarDesigners = () =>
   varios<Usuario & { ativos: number }>(
     `SELECT u.id, u.papel, u.nome, u.email, u.empresa, u.senior,
       (SELECT COUNT(*) FROM pedidos p WHERE p.designer_id = u.id AND p.status NOT IN ('aprovado','cancelado')) ativos
-     FROM usuarios u WHERE u.papel = 'designer' ORDER BY u.senior DESC, u.nome`,
+     FROM usuarios u WHERE u.papel = 'designer' AND u.ativo = 1 ORDER BY u.senior DESC, u.nome`,
   );
 
 export function alterarSenha(usuarioId: number, atual: string, nova: string) {

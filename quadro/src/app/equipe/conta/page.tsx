@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import { alterarSenhaAction, sairAction } from "@/app/actions/conta";
 import { Enviar, FormAcao } from "@/components/app/FormAcao";
-import { PAPEIS } from "@/domain/pedido";
+import { EQUIPE, PAPEIS } from "@/domain/pedido";
 import { exigirUsuario } from "@/server/auth";
 
 export const metadata: Metadata = { title: "Conta" };
 
 export default async function ContaEquipe() {
-  const u = await exigirUsuario(["designer", "gerente", "diretor", "admin"]);
+  const u = await exigirUsuario(EQUIPE);
   return (
     <>
       <div className="page-head">

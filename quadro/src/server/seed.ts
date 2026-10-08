@@ -27,8 +27,8 @@ export const CONTAS_TESTE = [
   { email: "cliente@teste.com", papel: "Cliente", nome: "Marina Alves" },
   { email: "designer@teste.com", papel: "Designer", nome: "Rafa Lima" },
   { email: "senior@teste.com", papel: "Designer sênior", nome: "Bruno Costa" },
-  { email: "gerente@teste.com", papel: "Gerente de projetos", nome: "Paula Nunes" },
   { email: "diretor@teste.com", papel: "Diretor de arte", nome: "Caio Mendes" },
+  { email: "admin@teste.com", papel: "Administrador", nome: "Admin Quadro" },
 ];
 
 const PASTA_SEED = path.join(process.cwd(), "seed");
@@ -59,7 +59,6 @@ export async function popularSeVazio() {
 
   const rafa = equipe("designer", "Rafa Lima", "designer@teste.com");
   equipe("designer", "Bruno Costa", "senior@teste.com", 1);
-  const paula = equipe("gerente", "Paula Nunes", "gerente@teste.com");
   const caio = equipe("diretor", "Caio Mendes", "diretor@teste.com");
   equipe("admin", "Admin Quadro", "admin@teste.com");
 
@@ -102,7 +101,7 @@ export async function popularSeVazio() {
       refs: [{ url: "https://www.instagram.com/reel/exemplo", gosta: "O ritmo rápido das transições" }],
     }),
   );
-  atribuirDesigner(paula, promo.id, rafa.id);
+  atribuirDesigner(caio, promo.id, rafa.id);
   const v1 = await salvarArquivo(rafa, arquivoLocal("video-curto.mp4", "video/mp4"), "versao");
   enviarVersao(rafa, promo.id, { arquivoId: v1.id, extras: [], nota: "Primeira versão com a trilha provisória." });
   aprovarQualidade(caio, promo.id, "Ritmo ok, cores da marca ok.");
@@ -123,7 +122,7 @@ export async function popularSeVazio() {
       tom: "Sofisticado",
     }),
   );
-  atribuirDesigner(paula, vinheta.id, rafa.id);
+  atribuirDesigner(caio, vinheta.id, rafa.id);
   const v2 = await salvarArquivo(rafa, arquivoLocal("logo.mp4", "video/mp4"), "versao");
   enviarVersao(rafa, vinheta.id, { arquivoId: v2.id, extras: [], nota: "" });
   aprovarQualidade(caio, vinheta.id, "");
@@ -149,7 +148,7 @@ export async function popularSeVazio() {
       tom: "Divertido",
     }),
   );
-  atribuirDesigner(paula, post.id, rafa.id);
+  atribuirDesigner(caio, post.id, rafa.id);
   const v3 = await salvarArquivo(rafa, arquivoLocal("post.mp4", "video/mp4"), "versao");
   enviarVersao(rafa, post.id, { arquivoId: v3.id, extras: [], nota: "Versão quadrada; a 4:5 sai depois da aprovação." });
 
@@ -174,7 +173,7 @@ export async function popularSeVazio() {
       tom: "Divertido",
     }),
   );
-  atribuirDesigner(paula, explicativo.id, rafa.id);
+  atribuirDesigner(caio, explicativo.id, rafa.id);
 
   // 5) Novo pedido aguardando triagem
   criarPedido(

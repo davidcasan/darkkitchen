@@ -1,6 +1,6 @@
 # Quadro
 
-Plataforma de motion graphics sob demanda: o cliente assina um plano, recebe créditos e troca por peças pedidas por um briefing guiado. A equipe (designers, gerente de projetos, diretor de arte) produz, revisa e entrega pela própria plataforma.
+Plataforma de motion graphics sob demanda: o cliente assina um plano, recebe créditos e troca por peças pedidas por um briefing guiado. A equipe (designers e diretor de arte) produz, revisa e entrega pela própria plataforma.
 
 ## Rodar no computador
 
@@ -20,20 +20,19 @@ Na primeira vez, o banco é criado com dados de teste. Todas as contas usam a se
 | cliente@teste.com | Cliente (plano Crescimento, com pedidos de exemplo) |
 | designer@teste.com | Designer |
 | senior@teste.com | Designer sênior |
-| gerente@teste.com | Gerente de projetos |
 | diretor@teste.com | Diretor de arte |
-| admin@teste.com | Administrador (faz tudo) |
+| admin@teste.com | Administrador: faz qualquer ação, gerencia contas e acessa como qualquer usuário |
 
 Para recomeçar do zero: pare o servidor, rode `npm run db:reset` e inicie de novo.
 
 ## Fluxo de um pedido
 
 1. **Cliente** preenche o briefing (8 etapas) e os créditos são debitados.
-2. **Gerente** faz a triagem e atribui um designer.
+2. **Diretor de arte** faz a triagem e atribui um designer.
 3. **Designer** envia a versão (vídeo + arquivos de entrega).
-4. **Diretor de arte** aprova ou reprova com diagnóstico (tipo de erro, cena, minutagem). Depois de 2 reprovações, o gerente é avisado para escalar.
+4. **Diretor de arte** aprova ou reprova com diagnóstico (tipo de erro, cena, minutagem). Depois de 2 reprovações, o pedido é sinalizado para ir a um designer sênior.
 5. **Cliente** comenta no segundo exato do vídeo e aprova, pede ajuste (rodadas extras custam créditos, com aviso antes) ou rejeita (volta para a triagem).
-6. Se o cliente não responder em 5 dias úteis, a peça é **aprovada automaticamente** (com lembrete 1 dia antes). O **gerente** também pode concluir o pedido a qualquer momento nessa etapa, informando o motivo.
+6. Se o cliente não responder em 5 dias úteis, a peça é **aprovada automaticamente** (com lembrete 1 dia antes). O **diretor** também pode concluir o pedido a qualquer momento nessa etapa, informando o motivo.
 
 ## Modo de teste
 

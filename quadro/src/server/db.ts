@@ -13,12 +13,13 @@ export const PASTA_ARQUIVOS = path.join(PASTA_DADOS, "arquivos");
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS usuarios (
   id INTEGER PRIMARY KEY,
-  papel TEXT NOT NULL CHECK (papel IN ('cliente','designer','gerente','diretor','admin')),
+  papel TEXT NOT NULL CHECK (papel IN ('cliente','designer','gerente','diretor','admin')), -- 'gerente' só por compatibilidade: virou 'diretor'
   nome TEXT NOT NULL,
   email TEXT NOT NULL UNIQUE COLLATE NOCASE,
   senha_hash TEXT NOT NULL,
   empresa TEXT,
   senior INTEGER NOT NULL DEFAULT 0,
+  ativo INTEGER NOT NULL DEFAULT 1,
   criado_em TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -169,6 +170,7 @@ function abrir(): DatabaseSync {
   const db = new DatabaseSync(path.join(PASTA_DADOS, "quadro.db"));
   db.exec("PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;");
   db.exec(SCHEMA);
+  migrar(db);
   return db;
 }
 
@@ -224,4 +226,12 @@ export class ErroNegocio extends Error {
   ) {
     super(mensagem);
   }
+}
+
+/** Ajustes em bancos criados por versões anteriores. Cada passo pode rodar mais de uma vez. */
+function migrar(d: DatabaseSync) {
+  const colunas = (d.prepare("PRAGMA table_info(usuarios)").all() as { name: string }[]).map((c) => c.name);
+  if (!colunas.includes("ativo")) d.exec("ALTER TABLE usuarios ADD COLUMN ativo INTEGER NOT NULL DEFAULT 1");
+  // Gerente de projetos foi fundido ao diretor de arte (out/2026).
+  d.exec("UPDATE usuarios SET papel = 'diretor' WHERE papel = 'gerente'");
 }

@@ -57,6 +57,7 @@ export interface Versao {
   arquivo_id: number;
   arquivo_nome: string;
   arquivo_mime: string;
+  arquivo_token: string; // identidade do conteúdo, para o endereço do vídeo nunca reaproveitar cópia antiga
   autor_nome: string;
   nota: string;
   status: "qualidade" | "reprovada" | "com_cliente" | "ajuste" | "aprovada" | "rejeitada";
@@ -228,7 +229,7 @@ export function criarPedido(cliente: Usuario, raw: unknown): PedidoResumo {
     );
     lancar(cliente.id, -total, "pedido", `Pedido ${codigo} · ${peca.nome}`, { pedidoId: id });
     registrarEvento(id, cliente.id, "criado", null, "triagem", { creditos: total });
-    notificarPapel(["gerente", "admin"], `Novo pedido ${codigo} aguardando triagem.`, `/equipe/pedidos/${id}`);
+    notificarPapel(["diretor", "admin"], `Novo pedido ${codigo} aguardando triagem.`, `/equipe/pedidos/${id}`);
     return resumo(id)!;
   });
 }
@@ -271,14 +272,16 @@ export function pedidoParaUsuario(id: number, usuario: Usuario): PedidoDetalhe {
   const equipe = ehEquipe(usuario.papel);
   if (!p || (!equipe && p.cliente_id !== usuario.id)) throw new ErroNegocio("Pedido não encontrado.", 404);
 
-  const versoes = varios<Omit<Versao, "extras">>(
-    `SELECT v.id, v.numero, v.arquivo_id, a.nome arquivo_nome, a.mime arquivo_mime, u.nome autor_nome, v.nota, v.status, v.criado_em
+  const versoes = varios<Omit<Versao, "extras" | "arquivo_token"> & { arquivo_caminho: string }>(
+    `SELECT v.id, v.numero, v.arquivo_id, a.nome arquivo_nome, a.mime arquivo_mime, a.caminho arquivo_caminho, u.nome autor_nome, v.nota, v.status, v.criado_em
      FROM versoes v JOIN arquivos a ON a.id = v.arquivo_id JOIN usuarios u ON u.id = v.autor_id
      WHERE v.pedido_id = ? ${equipe ? "" : "AND v.status IN ('com_cliente','ajuste','aprovada','rejeitada')"}
      ORDER BY v.numero DESC`,
     id,
-  ).map((v) => ({
+  ).map(({ arquivo_caminho, ...v }) => ({
     ...v,
+    // Trecho do nome único em disco (UUID): muda sempre que o arquivo é outro.
+    arquivo_token: arquivo_caminho.replace(/^.*[\\/]/, "").replace(/\..*$/, "").slice(0, 12),
     extras: varios<Pick<Arquivo, "id" | "nome" | "tamanho">>(
       "SELECT id, nome, tamanho FROM arquivos WHERE versao_id = ? AND categoria = 'entrega' ORDER BY id",
       v.id,
@@ -424,7 +427,7 @@ export function reprovarQualidade(usuario: Usuario, pedidoId: number, d: Diagnos
     if (tentativas >= LIMITE_TENTATIVAS) {
       registrarEvento(p.id, null, "escalar", null, null, { tentativas });
       notificarPapel(
-        ["gerente", "admin"],
+        ["diretor", "admin"],
         `O pedido ${p.codigo} foi reprovado ${tentativas} vezes no controle de qualidade. Considere um designer mais sênior.`,
         linkEquipe(p.id),
       );
@@ -447,16 +450,16 @@ export function clienteAprovar(usuario: Usuario, pedidoId: number) {
       primeira: p.revisoes_usadas === 0 && p.tentativas_internas === 0,
     });
     if (p.designer_id) notificar(p.designer_id, `O cliente aprovou o pedido ${p.codigo}.`, linkEquipe(p.id));
-    notificarPapel(["gerente"], `Pedido ${p.codigo} aprovado pelo cliente.`, linkEquipe(p.id));
+    notificarPapel(["diretor"], `Pedido ${p.codigo} aprovado pelo cliente.`, linkEquipe(p.id));
   });
 }
 
-/** Conclusão manual pelo gerente (ex.: cliente aprovou por outro canal ou não responde). */
-export function concluirPorGerente(usuario: Usuario, pedidoId: number, motivo: string) {
+/** Conclusão manual pelo diretor de arte (ex.: cliente aprovou por outro canal ou não responde). */
+export function concluirPorDiretor(usuario: Usuario, pedidoId: number, motivo: string) {
   const p = carregarParaAcao(pedidoId, usuario, "concluir");
   if (motivo.trim().length < 5) throw new ErroNegocio("Explique por que o pedido está sendo concluído.");
   transacao(() => {
-    aprovarVersaoFinal(p, usuario.id, "concluido_gerente", { motivo: motivo.trim().slice(0, 1000) });
+    aprovarVersaoFinal(p, usuario.id, "concluido_equipe", { motivo: motivo.trim().slice(0, 1000) });
     notificar(
       p.cliente_id,
       `O pedido ${p.codigo} foi concluído pela equipe. Os arquivos finais estão liberados.`,
@@ -506,7 +509,7 @@ export function processarAprovacoesAutomaticas(): number {
           linkCliente(p.id),
         );
         if (p.designer_id) notificar(p.designer_id, `O pedido ${p.codigo} foi aprovado automaticamente.`, linkEquipe(p.id));
-        notificarPapel(["gerente"], `Pedido ${p.codigo} aprovado automaticamente por falta de resposta do cliente.`, linkEquipe(p.id));
+        notificarPapel(["diretor"], `Pedido ${p.codigo} aprovado automaticamente por falta de resposta do cliente.`, linkEquipe(p.id));
         aprovados++;
       });
     } else if (!p.lembrado && adicionarDiasUteis(liberado, DIAS_APROVACAO_AUTOMATICA - 1) <= agora) {
@@ -538,7 +541,7 @@ export function clientePedirAjuste(
     "SELECT COUNT(*) n FROM comentarios WHERE pedido_id = ? AND versao_id = ? AND interno = 0 AND autor_id = ?",
     p.id,
     ultimaVersao(p.id)!.id,
-    usuario.id,
+    p.cliente_id,
   )!.n;
   if (dados.texto.trim().length < 5 && comentados === 0)
     throw new ErroNegocio("Diga o que precisa mudar, aqui ou em comentários no vídeo.");
@@ -550,9 +553,9 @@ export function clientePedirAjuste(
 
   transacao(() => {
     if (custo > 0) {
-      const disponivel = saldo(usuario.id);
+      const disponivel = saldo(p.cliente_id);
       if (disponivel < custo) throw new ErroNegocio(`Saldo insuficiente: a revisão extra custa ${custo} créditos.`, 402);
-      lancar(usuario.id, -custo, "revisao_extra", `Revisão extra · ${p.codigo}`, { pedidoId: p.id });
+      lancar(p.cliente_id, -custo, "revisao_extra", `Revisão extra · ${p.codigo}`, { pedidoId: p.id });
     }
     executar("UPDATE versoes SET status = 'ajuste' WHERE id = ?", v.id);
     mudarStatus(p, "ajustes", { revisoes_usadas: p.revisoes_usadas + 1 });
@@ -571,7 +574,7 @@ export function clientePedirAjuste(
     });
     const alvo = p.designer_id;
     if (alvo) notificar(alvo, `O cliente pediu ajustes na versão ${v.numero} do ${p.codigo}.`, linkEquipe(p.id));
-    else notificarPapel(["gerente"], `Ajustes pedidos no ${p.codigo}, sem designer atribuído.`, linkEquipe(p.id));
+    else notificarPapel(["diretor"], `Ajustes pedidos no ${p.codigo}, sem designer atribuído.`, linkEquipe(p.id));
   });
 }
 
@@ -596,7 +599,7 @@ export function clienteRejeitar(usuario: Usuario, pedidoId: number, dados: { mot
       `Rejeição total (${dados.motivo}): ${dados.texto.trim()}`,
     );
     notificarPapel(
-      ["gerente", "admin"],
+      ["diretor", "admin"],
       `Rejeição total no ${p.codigo}. Converse com o cliente e ajuste o briefing antes de reatribuir.`,
       linkEquipe(p.id),
     );
@@ -607,7 +610,7 @@ export function clienteRejeitar(usuario: Usuario, pedidoId: number, dados: { mot
 /**
  * Cancelamento (só na triagem). Sem versão produzida: devolve tudo.
  * Com versão já produzida (ex.: após rejeição): cobrança parcial, devolve metade,
- * a menos que o gerente marque como erro da plataforma (devolução integral).
+ * a menos que o diretor marque como erro da plataforma (devolução integral).
  */
 export function cancelarPedido(usuario: Usuario, pedidoId: number, erroPlataforma = false) {
   const p = carregarParaAcao(pedidoId, usuario, "cancelar");
@@ -620,7 +623,7 @@ export function cancelarPedido(usuario: Usuario, pedidoId: number, erroPlataform
     registrarEvento(p.id, usuario.id, "cancelado", p.status, "cancelado", { devolvido: devolver, integral });
     if (usuario.id !== p.cliente_id)
       notificar(p.cliente_id, `O pedido ${p.codigo} foi cancelado e ${devolver} créditos voltaram para você.`, linkCliente(p.id));
-    else notificarPapel(["gerente"], `O cliente cancelou o pedido ${p.codigo}.`, linkEquipe(p.id));
+    else notificarPapel(["diretor"], `O cliente cancelou o pedido ${p.codigo}.`, linkEquipe(p.id));
   });
   return devolver;
 }
@@ -654,7 +657,7 @@ export function comentar(
   const marca = tempo !== null ? ` em ${formatarTempo(tempo)}` : "";
   if (!equipe) {
     if (p.designer_id) notificar(p.designer_id, `Novo comentário do cliente${marca} no ${p.codigo}.`, linkEquipe(p.id));
-    else notificarPapel(["gerente"], `Novo comentário do cliente no ${p.codigo}.`, linkEquipe(p.id));
+    else notificarPapel(["diretor"], `Novo comentário do cliente no ${p.codigo}.`, linkEquipe(p.id));
   } else if (!interno) {
     notificar(p.cliente_id, `A equipe respondeu no pedido ${p.codigo}.`, linkCliente(p.id));
   }
@@ -666,7 +669,7 @@ export function metricas() {
   const aprovados = um<{ total: number; primeira: number }>(
     `SELECT COUNT(*) total, COALESCE(SUM(CASE WHEN revisoes_usadas = 0 AND tentativas_internas = 0 THEN 1 ELSE 0 END), 0) primeira
      FROM pedidos p WHERE status = 'aprovado'
-       -- só aprovações reais do cliente; conclusão automática ou pelo gerente não contam
+       -- só aprovações reais do cliente; conclusão automática ou pela equipe não contam
        AND EXISTS (SELECT 1 FROM eventos e WHERE e.pedido_id = p.id AND e.tipo = 'cliente_aprovou')`,
   )!;
   const motivos = varios<{ origem: string; motivo: string; n: number }>(

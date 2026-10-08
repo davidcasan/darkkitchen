@@ -27,7 +27,8 @@ const HISTORICO_CLIENTE: Record<string, string> = {
   cliente_ajuste: "Você pediu ajustes",
   cliente_rejeitou: "Você rejeitou a versão; o pedido voltou para a triagem",
   cancelado: "Pedido cancelado",
-  concluido_gerente: "Pedido concluído pela equipe",
+  concluido_equipe: "Pedido concluído pela equipe",
+  concluido_gerente: "Pedido concluído pela equipe", // nome antigo do evento
   aprovacao_automatica: "Peça aprovada automaticamente (sem resposta no prazo)",
 };
 
@@ -72,7 +73,7 @@ export default async function PedidoCliente({ params, searchParams }: PageProps<
 
       {novo && (
         <p className="alerta alerta-ok" style={{ marginBottom: 16 }}>
-          Pedido enviado! {p.creditos} créditos foram debitados. Um gerente de projetos confere o briefing e pode mandar alguma
+          Pedido enviado! {p.creditos} créditos foram debitados. O diretor de arte confere o briefing e pode mandar alguma
           pergunta em até 12 horas.
         </p>
       )}
@@ -165,7 +166,7 @@ export default async function PedidoCliente({ params, searchParams }: PageProps<
                   <FormAcao action={rejeitarAction}>
                     <input type="hidden" name="pedido" value={p.id} />
                     <p className="small muted" style={{ marginBottom: 12 }}>
-                      Use quando a versão está longe do que você precisa. O pedido sai da fila, um gerente de projetos conversa com
+                      Use quando a versão está longe do que você precisa. O pedido sai da fila, o diretor de arte conversa com
                       você, ajusta o briefing e a produção recomeça.
                     </p>
                     <div className="field">

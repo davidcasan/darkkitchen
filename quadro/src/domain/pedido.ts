@@ -1,17 +1,19 @@
 // Status do pedido e papéis. A máquina de estados fica aqui para que tela,
 // API, notificações e o futuro app sigam exatamente as mesmas regras.
 
-export type Papel = "cliente" | "designer" | "gerente" | "diretor" | "admin";
+export type Papel = "cliente" | "designer" | "diretor" | "admin";
 
 export const PAPEIS: Record<Papel, string> = {
   cliente: "Cliente",
   designer: "Designer",
-  gerente: "Gerente de projetos",
   diretor: "Diretor de arte",
   admin: "Administrador",
 };
 
 export const ehEquipe = (p: Papel) => p !== "cliente";
+
+/** Papéis com acesso à área da equipe. */
+export const EQUIPE: Papel[] = ["designer", "diretor", "admin"];
 
 export type StatusPedido =
   | "triagem"
@@ -64,19 +66,20 @@ interface RegraAcao {
 }
 
 export const ACOES: Record<Acao, RegraAcao> = {
-  atribuir: { de: ["triagem", "producao", "ajustes"], para: null, papeis: ["gerente", "admin"] },
+  atribuir: { de: ["triagem", "producao", "ajustes"], para: null, papeis: ["diretor", "admin"] },
   enviar_versao: { de: ["producao", "ajustes"], para: "qualidade", papeis: ["designer", "admin"] },
   aprovar_qualidade: { de: ["qualidade"], para: "revisao_cliente", papeis: ["diretor", "admin"] },
   reprovar_qualidade: { de: ["qualidade"], para: "producao", papeis: ["diretor", "admin"] },
-  cliente_aprovar: { de: ["revisao_cliente"], para: "aprovado", papeis: ["cliente"] },
-  cliente_ajuste: { de: ["revisao_cliente"], para: "ajustes", papeis: ["cliente"] },
-  cliente_rejeitar: { de: ["revisao_cliente"], para: "triagem", papeis: ["cliente"] },
-  concluir: { de: ["revisao_cliente"], para: "aprovado", papeis: ["gerente", "admin"] },
-  cancelar: { de: ["triagem"], para: "cancelado", papeis: ["cliente", "gerente", "admin"] },
+  cliente_aprovar: { de: ["revisao_cliente"], para: "aprovado", papeis: ["cliente", "admin"] },
+  cliente_ajuste: { de: ["revisao_cliente"], para: "ajustes", papeis: ["cliente", "admin"] },
+  cliente_rejeitar: { de: ["revisao_cliente"], para: "triagem", papeis: ["cliente", "admin"] },
+  concluir: { de: ["revisao_cliente"], para: "aprovado", papeis: ["diretor", "admin"] },
+  cancelar: { de: ["triagem"], para: "cancelado", papeis: ["cliente", "diretor", "admin"] },
 };
 
+/** O admin pode executar qualquer ação; os demais, só as do seu papel. O status sempre precisa permitir. */
 export const podeExecutar = (acao: Acao, status: StatusPedido, papel: Papel) =>
-  ACOES[acao].de.includes(status) && ACOES[acao].papeis.includes(papel);
+  ACOES[acao].de.includes(status) && (papel === "admin" || ACOES[acao].papeis.includes(papel));
 
 /** Depois de quantas reprovações internas o pedido deve ir para um designer mais sênior. */
 export const LIMITE_TENTATIVAS = 2;

@@ -15,7 +15,7 @@ import { Enviar, FormAcao } from "@/components/app/FormAcao";
 import { StatusBadge } from "@/components/app/Status";
 import { VersaoPlayer } from "@/components/app/VersaoPlayer";
 import { mensagemDe } from "@/domain/mensagens";
-import { LIMITE_TENTATIVAS, STATUS, TIPOS_ERRO, type StatusPedido, podeExecutar } from "@/domain/pedido";
+import { EQUIPE, LIMITE_TENTATIVAS, STATUS, TIPOS_ERRO, type StatusPedido, podeExecutar } from "@/domain/pedido";
 import { exigirUsuario } from "@/server/auth";
 import { formatarData, formatarDataHora, paraSql } from "@/server/datas";
 import { ErroNegocio, um } from "@/server/db";
@@ -49,7 +49,8 @@ function descreverEvento(e: Evento): string {
       return `Rejeição total da versão ${d.versao} (${d.motivo}): ${d.texto}`;
     case "cancelado":
       return `Pedido cancelado; ${d.devolvido} créditos devolvidos${d.integral ? "" : " (parcial)"}`;
-    case "concluido_gerente":
+    case "concluido_equipe":
+    case "concluido_gerente": // nome antigo do evento
       return `Concluído pela equipe com a versão ${d.versao}: ${d.motivo}`;
     case "aprovacao_automatica":
       return `Versão ${d.versao} aprovada automaticamente (cliente sem resposta em ${d.dias} dias úteis)`;
@@ -61,7 +62,7 @@ function descreverEvento(e: Evento): string {
 }
 
 export default async function PedidoEquipe({ params, searchParams }: PageProps<"/equipe/pedidos/[id]">) {
-  const u = await exigirUsuario(["designer", "gerente", "diretor", "admin"]);
+  const u = await exigirUsuario(EQUIPE);
   const { id } = await params;
   const confirmacao = mensagemDe((await searchParams).ok);
   let p: PedidoDetalhe;
@@ -134,6 +135,14 @@ export default async function PedidoEquipe({ params, searchParams }: PageProps<"
         )}
         <EnviarVersao pedidoId={p.id} numero={(p.versoes.length || 0) + 1} />
       </section>,
+    );
+
+  if (pode("enviar_versao") && !ehResponsavel)
+    acoes.push(
+      <p className="alerta" key="outro-designer">
+        Este pedido está com <b>{p.designer_nome}</b>. Só o designer responsável envia versões; para assumir, peça ao diretor de
+        arte que reatribua o pedido.
+      </p>,
     );
 
   if (pode("aprovar_qualidade"))

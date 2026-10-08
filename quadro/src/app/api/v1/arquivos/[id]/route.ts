@@ -15,13 +15,19 @@ export const GET = comUsuario<RouteContext<"/api/v1/arquivos/[id]">>(async (req,
   const baixar = new URL(req.url).searchParams.has("baixar");
   // SVG pode conter script: nunca exibe inline, sempre baixa.
   const inline = !baixar && a.mime !== "image/svg+xml";
+  // O nome em disco é único (UUID) e nunca muda: serve de identidade do conteúdo.
+  // "no-cache" faz o navegador sempre confirmar com o servidor antes de reusar a cópia,
+  // então o mesmo endereço nunca mostra um arquivo antigo.
+  const etag = `"${a.caminho.replace(/[^a-zA-Z0-9-]/g, "")}"`;
   const headers: Record<string, string> = {
     "Content-Type": a.mime,
     "Accept-Ranges": "bytes",
-    "Cache-Control": "private, max-age=3600",
+    "Cache-Control": "private, no-cache",
+    ETag: etag,
     "X-Content-Type-Options": "nosniff",
     "Content-Disposition": `${inline ? "inline" : "attachment"}; filename*=UTF-8''${encodeURIComponent(a.nome)}`,
   };
+  if (req.headers.get("if-none-match") === etag) return new Response(null, { status: 304, headers });
 
   const range = req.headers.get("range")?.match(/^bytes=(\d*)-(\d*)$/);
   if (range && (range[1] || range[2])) {

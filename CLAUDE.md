@@ -11,7 +11,7 @@ Plataforma online brasileira onde empresas pedem peças de motion graphics por u
 - O cliente compra **entregas**, não horas. Escopo já embalado por tipo de peça (duração, prazo, nº de revisões).
 - Cobrança por **créditos** (planos mensais) ou avulso.
 - Fontes de margem: diferença entre preço do crédito e custo de produção; créditos não usados; reaproveitamento de templates e arquivos da marca; receita recorrente; upsell (créditos extras, adicionais); adaptações de formato baratas de produzir.
-- Fluxo: briefing estruturado → triagem (gerente de projetos) → designer da rede (núcleo fixo + freelancers) → controle de qualidade (diretor de arte) → entrega e revisões → arquivos salvos no perfil da marca.
+- Fluxo: briefing estruturado → triagem (diretor de arte) → designer da rede (núcleo fixo + freelancers) → controle de qualidade (diretor de arte) → entrega e revisões → arquivos salvos no perfil da marca.
 
 ## Escopo da plataforma (definido out/2026)
 Sistema web rodando em servidor, com três áreas:
@@ -36,15 +36,16 @@ App em `quadro/` — Next.js 16 (App Router, TypeScript), CSS Modules + tokens e
 - `src/app/(site)/` site público · `src/app/cliente/` área do cliente · `src/app/equipe/` área da equipe · `src/app/actions/` Server Actions · `src/app/api/v1/` API REST (login, me, pedidos, créditos, upload/download de arquivos com Range).
 - Pagamento: `services/pagamentos.ts` tem a interface `Gateway`; hoje é simulado (aprova na hora). Para cobrar de verdade, implementar Asaas/Pagar.me e trocar a constante `GATEWAY`.
 - Arquivos enviados ficam em `quadro/data/arquivos` (fora do git). Renovação de assinatura é verificada ao acessar a área do cliente.
-- Conclusão do pedido: pelo cliente ("Aprovar peça"), pelo gerente (com motivo, ação `concluir`) ou automática após `DIAS_APROVACAO_AUTOMATICA` (5) dias úteis com o cliente, com lembrete 1 dia útil antes. A automática roda a cada hora (`instrumentation.ts`) e ao abrir as áreas logadas. A métrica de aprovação de primeira só conta aprovações do próprio cliente.
+- Conclusão do pedido: pelo cliente ("Aprovar peça"), pelo diretor (com motivo, ação `concluir`) ou automática após `DIAS_APROVACAO_AUTOMATICA` (5) dias úteis com o cliente, com lembrete 1 dia útil antes. A automática roda a cada hora (`instrumentation.ts`) e ao abrir as áreas logadas. A métrica de aprovação de primeira só conta aprovações do próprio cliente.
 - Comandos (em `quadro/`): `npm run dev` (http://localhost:3000), `npm run build`, `npm run lint`, `npm run db:reset` (apaga o banco; recriado com dados de teste ao subir).
-- Contas de teste (senha `quadro123`): cliente@, designer@, senior@, gerente@, diretor@, admin@teste.com.
+- Contas de teste (senha `quadro123`): cliente@, designer@, senior@, diretor@, admin@teste.com.
+- Papéis (out/2026): cliente, designer, diretor de arte (triagem, atribuição, controle de qualidade, conclusão, cancelamento; o antigo "gerente de projetos" foi fundido aqui — `migrar()` em db.ts converte contas antigas) e admin. O admin pode tudo (`podeExecutar`), gerencia contas em `/equipe/contas` (criar, editar, senha temporária, remover/desativar, ajustar créditos) e usa "Acessar como" para agir na conta de qualquer usuário (sessão original guardada no cookie `quadro_admin`). Contas com histórico nunca são apagadas, só desativadas (`usuarios.ativo`).
 
 **Princípios para o futuro app mobile:** lógica no servidor exposta como API (`/api/v1/...`), login por token, layout mobile-first, uploads pela API, créditos como extrato de transações, status do pedido como máquina de estados, avisos centralizados em `services/notificacoes.ts`.
 
 **Fases:** 1) site público ✅ · 2) login, perfis e banco ✅ · 3) briefing + área do cliente ✅ · 4) área da equipe ✅ · 5) assinatura e pagamento ✅ (simulado; falta ligar gateway real).
 
-**Pendências conhecidas:** gateway de pagamento real; envio de e-mail (hoje só notificação interna); renovação de assinatura agendada (hoje só ao acessar); armazenamento de arquivos em nuvem e upload em partes para vídeos grandes; recuperação de senha; cadastro de membros da equipe por tela (hoje só via seed/banco); regra de expiração de créditos.
+**Pendências conhecidas:** gateway de pagamento real; envio de e-mail (hoje só notificação interna); renovação de assinatura agendada (hoje só ao acessar); armazenamento de arquivos em nuvem e upload em partes para vídeos grandes; recuperação de senha; regra de expiração de créditos.
 
 ## Formulário de briefing (8 etapas)
 Existe um protótipo clicável em HTML (`briefing-motion.html`, publicado como artifact no claude.ai).

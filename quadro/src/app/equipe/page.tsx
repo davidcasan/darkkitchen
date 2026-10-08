@@ -2,43 +2,50 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ListaPedidos } from "@/components/app/ListaPedidos";
 import { Notificacoes } from "@/components/app/Notificacoes";
-import { LIMITE_TENTATIVAS, PAPEIS, STATUS, type StatusPedido } from "@/domain/pedido";
+import { EQUIPE, LIMITE_TENTATIVAS, PAPEIS, STATUS, type StatusPedido } from "@/domain/pedido";
 import { exigirUsuario, type Usuario } from "@/server/auth";
 import { listarNotificacoes } from "@/server/services/notificacoes";
 import { contarPorStatus, listarPedidosEquipe, metricas, type PedidoResumo } from "@/server/services/pedidos";
 
 export const metadata: Metadata = { title: "Painel da equipe" };
 
-/** A fila principal muda conforme o papel: cada um vê primeiro o que depende dele. */
-function filaDo(u: Usuario): { titulo: string; pedidos: PedidoResumo[]; vazio: string } {
-  switch (u.papel) {
-    case "designer":
-      return {
+interface Fila {
+  titulo: string;
+  pedidos: PedidoResumo[];
+  vazio: string;
+}
+
+/** As filas mudam conforme o papel: cada um vê primeiro o que depende dele. */
+function filasDo(u: Usuario): Fila[] {
+  if (u.papel === "designer")
+    return [
+      {
         titulo: "Sua fila de produção",
         pedidos: listarPedidosEquipe({ designerId: u.id, status: ["producao", "ajustes"] }),
         vazio: "Nada para produzir agora.",
-      };
-    case "diretor":
-      return {
-        titulo: "Aguardando controle de qualidade",
-        pedidos: listarPedidosEquipe({ status: ["qualidade"] }),
-        vazio: "Nenhuma versão aguardando revisão.",
-      };
-    default:
-      return {
-        titulo: "Triagem",
-        pedidos: listarPedidosEquipe({ status: ["triagem"] }),
-        vazio: "Nenhum pedido aguardando triagem.",
-      };
-  }
+      },
+    ];
+  // Diretor de arte (e admin): triagem/atribuição e controle de qualidade.
+  return [
+    {
+      titulo: "Aguardando controle de qualidade",
+      pedidos: listarPedidosEquipe({ status: ["qualidade"] }),
+      vazio: "Nenhuma versão aguardando revisão.",
+    },
+    {
+      titulo: "Triagem",
+      pedidos: listarPedidosEquipe({ status: ["triagem"] }),
+      vazio: "Nenhum pedido aguardando triagem.",
+    },
+  ];
 }
 
 export default async function PainelEquipe() {
-  const u = await exigirUsuario(["designer", "gerente", "diretor", "admin"]);
-  const fila = filaDo(u);
+  const u = await exigirUsuario(EQUIPE);
+  const filas = filasDo(u);
   const contagem = contarPorStatus();
   const m = metricas();
-  const escalar = ["gerente", "admin"].includes(u.papel)
+  const escalar = u.papel !== "designer"
     ? listarPedidosEquipe({ status: ["producao", "ajustes", "qualidade"] }).filter((p) => p.tentativas_internas >= LIMITE_TENTATIVAS)
     : [];
   const meusEmAndamento =
@@ -75,10 +82,12 @@ export default async function PainelEquipe() {
               <ListaPedidos pedidos={escalar} visao="equipe" />
             </section>
           )}
-          <section className="card">
-            <h2 className="card-title">{fila.titulo}</h2>
-            <ListaPedidos pedidos={fila.pedidos} visao="equipe" vazio={fila.vazio} />
-          </section>
+          {filas.map((fila) => (
+            <section className="card" key={fila.titulo}>
+              <h2 className="card-title">{fila.titulo}</h2>
+              <ListaPedidos pedidos={fila.pedidos} visao="equipe" vazio={fila.vazio} />
+            </section>
+          ))}
           {meusEmAndamento.length > 0 && (
             <section className="card">
               <h2 className="card-title">Suas peças em revisão</h2>

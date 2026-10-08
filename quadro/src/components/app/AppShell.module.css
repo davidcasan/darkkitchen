@@ -256,3 +256,40 @@
   color: var(--danger);
   border-color: var(--danger);
 }
+
+/* Faixa exibida quando o admin está acessando a conta de outra pessoa */
+.faixaAdmin {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  padding: calc(8px + env(safe-area-inset-top, 0px)) var(--gutter) 8px;
+  background: var(--key);
+  color: var(--key-ink);
+  font-size: 14px;
+}
+
+.faixaAdmin :global(.btn) {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.shell[data-como-admin="true"] .topo {
+  top: 50px;
+}
+
+@media (min-width: 960px) {
+  .shell[data-como-admin="true"] {
+    grid-template-rows: auto 1fr;
+  }
+
+  .shell[data-como-admin="true"] .lateral {
+    top: 50px;
+    height: calc(100dvh - 50px);
+  }
+}

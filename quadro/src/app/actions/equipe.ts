@@ -1,17 +1,18 @@
 "use server";
 
 import { type Estado, campo, campoNumero, rodar, rodarEIr } from "@/server/acao";
+import { EQUIPE } from "@/domain/pedido";
 import { exigirUsuario } from "@/server/auth";
 import {
   aprovarQualidade,
   atribuirDesigner,
   cancelarPedido,
-  concluirPorGerente,
+  concluirPorDiretor,
   enviarVersao,
   reprovarQualidade,
 } from "@/server/services/pedidos";
 
-const equipe = () => exigirUsuario(["designer", "gerente", "diretor", "admin"]);
+const equipe = () => exigirUsuario(EQUIPE);
 const paginaPedido = (fd: FormData) => `/equipe/pedidos/${campoNumero(fd, "pedido")}`;
 
 export async function atribuirAction(_: Estado, fd: FormData): Promise<Estado> {
@@ -56,5 +57,5 @@ export async function cancelarEquipeAction(_: Estado, fd: FormData): Promise<Est
 
 export async function concluirAction(_: Estado, fd: FormData): Promise<Estado> {
   const u = await equipe();
-  return rodarEIr(() => concluirPorGerente(u, campoNumero(fd, "pedido"), campo(fd, "motivo")), paginaPedido(fd), "concluido");
+  return rodarEIr(() => concluirPorDiretor(u, campoNumero(fd, "pedido"), campo(fd, "motivo")), paginaPedido(fd), "concluido");
 }
