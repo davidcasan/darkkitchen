@@ -1,0 +1,180 @@
+.stage {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+  box-shadow: 0 30px 60px -30px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.frame {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  border-radius: 14px;
+  overflow: hidden;
+  background: linear-gradient(140deg, var(--accent) 0%, color-mix(in srgb, var(--accent) 55%, #000) 100%);
+}
+
+.label {
+  position: absolute;
+  top: 12px;
+  left: 14px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: rgb(255 255 255 / 0.7);
+  font-variant-numeric: tabular-nums;
+}
+
+.shapes em {
+  position: absolute;
+  display: block;
+}
+
+.diamond {
+  width: 22%;
+  aspect-ratio: 1;
+  top: 22%;
+  left: 12%;
+  background: var(--key);
+  border-radius: 10%;
+  animation: spin 6s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+
+.bar1,
+.bar2 {
+  height: 7%;
+  border-radius: 99px;
+  background: rgb(255 255 255 / 0.9);
+  left: 44%;
+  transform-origin: left center;
+  animation: grow 3s cubic-bezier(0.22, 1, 0.36, 1) infinite alternate;
+}
+
+.bar1 {
+  top: 28%;
+  width: 40%;
+}
+
+.bar2 {
+  top: 40%;
+  width: 26%;
+  opacity: 0.6;
+  animation-delay: 0.3s;
+}
+
+.dot {
+  width: 9%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 3px solid var(--key);
+  right: 10%;
+  bottom: 14%;
+  animation: bounce 2.4s ease-in-out infinite;
+}
+
+.caption {
+  position: absolute;
+  left: 12%;
+  bottom: 12%;
+  color: #fff;
+  display: grid;
+  line-height: 1.1;
+  animation: rise 6s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+
+.caption b {
+  font-family: var(--font-display), sans-serif;
+  font-size: clamp(20px, 4vw, 30px);
+}
+
+.caption span {
+  font-size: clamp(13px, 2.2vw, 16px);
+  opacity: 0.85;
+  margin-top: 4px;
+}
+
+.timeline {
+  padding: 16px 4px 0;
+}
+
+.track {
+  position: relative;
+  height: 22px;
+}
+
+.track::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 10px;
+  height: 2px;
+  background: var(--line);
+}
+
+.track i {
+  position: absolute;
+  top: 5px;
+  width: 12px;
+  height: 12px;
+  margin-left: -6px;
+  background: var(--accent);
+  border-radius: 2px;
+  transform: rotate(45deg);
+}
+
+.head {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  width: 2px;
+  background: var(--key);
+  border-radius: 2px;
+  animation: play 6s linear infinite;
+}
+
+.head::before {
+  content: "";
+  position: absolute;
+  top: -4px;
+  left: -5px;
+  width: 12px;
+  height: 8px;
+  background: var(--key);
+  border-radius: 2px;
+}
+
+.tc {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+@keyframes spin {
+  0%, 15% { transform: rotate(45deg) scale(1); }
+  45%, 60% { transform: rotate(225deg) scale(0.8); }
+  90%, 100% { transform: rotate(405deg) scale(1); }
+}
+
+@keyframes grow {
+  from { transform: scaleX(0.2); }
+  to { transform: scaleX(1); }
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-40%); }
+}
+
+@keyframes rise {
+  0%, 8% { opacity: 0; transform: translateY(14px); }
+  20%, 85% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-6px); }
+}
+
+@keyframes play {
+  from { left: 0; }
+  to { left: 100%; }
+}

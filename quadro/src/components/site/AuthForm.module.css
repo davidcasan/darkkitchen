@@ -1,0 +1,86 @@
+.wrap {
+  display: grid;
+  justify-items: center;
+  padding-top: 40px;
+  padding-bottom: 40px;
+}
+
+.card {
+  width: 100%;
+  max-width: 440px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 28px 20px;
+}
+
+.card h1 {
+  font-size: 28px;
+}
+
+.card > p {
+  color: var(--muted);
+  margin-top: 8px;
+}
+
+.form {
+  display: grid;
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+  font-weight: 600;
+}
+
+.txt {
+  width: 100%;
+  min-height: 46px;
+  padding: 11px 13px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  font-weight: 400;
+  font-size: 16px; /* 16px evita o zoom automático do iOS no foco */
+}
+
+.txt:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.form :global(.btn) {
+  margin-top: 6px;
+}
+
+.aviso {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  font-size: 14.5px;
+}
+
+.troca {
+  text-align: center;
+  font-size: 14.5px;
+  color: var(--muted);
+}
+
+.troca a {
+  color: var(--accent-ink);
+  font-weight: 600;
+}
+
+@media (min-width: 720px) {
+  .wrap {
+    padding-top: 72px;
+  }
+
+  .card {
+    padding: 36px;
+  }
+}
