@@ -74,7 +74,7 @@ export default async function PedidoEquipe({ params, searchParams }: PageProps<"
   }
   const b = p.briefing;
   const arquivos = arquivosPorIds([...b.arquivos.logo, ...b.arquivos.manual, ...b.arquivos.fotos]);
-  const marca = um<{ observacoes: string }>("SELECT observacoes FROM marcas WHERE usuario_id = ?", p.cliente_id);
+  const marca = p.marca_id ? um<{ observacoes: string }>("SELECT observacoes FROM marcas WHERE id = ?", p.marca_id) : undefined;
   const pode = (a: Parameters<typeof podeExecutar>[0]) => podeExecutar(a, p.status as StatusPedido, u.papel);
   const ehResponsavel = u.papel === "admin" || p.designer_id === u.id;
   const ultima = p.versoes[0];
@@ -293,6 +293,8 @@ export default async function PedidoEquipe({ params, searchParams }: PageProps<"
             {p.cliente_nome}
             {p.empresa ? ` · ${p.empresa}` : ""}
           </dd>
+          <dt>Marca</dt>
+          <dd>{p.marca_nome ?? "—"}</dd>
           <dt>Designer</dt>
           <dd>{p.designer_nome ?? "Ninguém ainda"}</dd>
           <dt>Entrega prevista</dt>
@@ -326,7 +328,7 @@ export default async function PedidoEquipe({ params, searchParams }: PageProps<"
         <div className="stack">
           <section className="card">
             <h2>Briefing</h2>
-            <BriefingResumo b={b} arquivos={arquivos} mostrarCreditos />
+            <BriefingResumo b={b} arquivos={arquivos} marcaNome={p.marca_nome} mostrarCreditos />
             {marca?.observacoes && (
               <p className="alerta" style={{ marginTop: 12 }}>
                 <b>Observação da marca:</b> {marca.observacoes}

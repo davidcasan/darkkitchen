@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { criarPedidoAction } from "@/app/actions/cliente";
+import { criarMarcaNoBriefingAction, criarPedidoAction } from "@/app/actions/cliente";
 import { PECAS } from "@/domain/catalogo";
 import {
   type Briefing,
@@ -175,41 +175,54 @@ const PLACEHOLDER_CENAS = [
   "Logo e link na bio",
 ];
 
+export interface MarcaWizard {
+  id: number;
+  nome: string;
+  cores: string[];
+  arquivos: ArquivoMarca[];
+}
+
+/** Aplica a marca ao briefing: logo mais recente selecionado e cores da marca. */
+function comMarca(b: Briefing, m: MarcaWizard): Briefing {
+  const logos = m.arquivos.filter((a) => a.categoria === "logo");
+  return {
+    ...b,
+    marcaId: m.id,
+    arquivos: { ...b.arquivos, logo: logos.length ? [logos[0].id] : [], manual: [] },
+    cores: m.cores.length ? m.cores : briefingVazio().cores,
+    visual: b.visual ?? (logos.length ? "padrao" : null),
+  };
+}
+
 export function Wizard({
   saldo,
-  arquivosMarca,
-  coresMarca,
+  marcas: marcasIniciais,
   aprovador,
   email,
 }: {
   saldo: number;
-  arquivosMarca: ArquivoMarca[];
-  coresMarca: string[];
+  marcas: MarcaWizard[];
   aprovador: string;
   email: string;
 }) {
   const router = useRouter();
   const inicial = useMemo<Briefing>(() => {
-    const b = briefingVazio();
-    const logos = arquivosMarca.filter((a) => a.categoria === "logo");
-    return {
-      ...b,
-      aprovador,
-      email,
-      cores: coresMarca.length ? coresMarca : b.cores,
-      arquivos: { ...b.arquivos, logo: logos.length ? [logos[0].id] : [] },
-      visual: logos.length ? "padrao" : null,
-    };
-  }, [arquivosMarca, coresMarca, aprovador, email]);
+    const b = { ...briefingVazio(), aprovador, email };
+    // Com uma só marca, ela já vem escolhida (o cliente ainda pode trocar ou criar outra).
+    return marcasIniciais.length === 1 ? comMarca(b, marcasIniciais[0]) : b;
+  }, [marcasIniciais, aprovador, email]);
 
   const [b, setB] = useState<Briefing>(inicial);
   const [etapa, setEtapa] = useState(0);
   const [max, setMax] = useState(0);
   const [erros, setErros] = useState<string[]>([]);
   const [nomes, setNomes] = useState<Record<number, string>>(() =>
-    Object.fromEntries(arquivosMarca.map((a) => [a.id, a.nome])),
+    Object.fromEntries(marcasIniciais.flatMap((m) => m.arquivos.map((a) => [a.id, a.nome]))),
   );
-  const [marca, setMarca] = useState<ArquivoMarca[]>(arquivosMarca);
+  const [marcas, setMarcas] = useState<MarcaWizard[]>(marcasIniciais);
+  const [novaMarca, setNovaMarca] = useState<string | null>(null); // null = não está criando
+  const [criandoMarca, setCriandoMarca] = useState(false);
+  const marcaAtual = marcas.find((m) => m.id === b.marcaId);
   const [enviandoArquivo, setEnviandoArquivo] = useState<string | null>(null);
   const [erroGeral, setErroGeral] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
@@ -310,17 +323,42 @@ export function Wizard({
     setDescartado(true);
   };
 
+  const escolherMarca = (m: MarcaWizard) => {
+    setB((x) => comMarca(x, m));
+    setNovaMarca(null);
+    setErros((e) => e.filter((x) => !["marca", "logo"].includes(x)));
+  };
+
+  async function criarNovaMarca() {
+    const nome = (novaMarca ?? "").trim();
+    if (nome.length < 2) return setErroGeral("Dê um nome para a nova marca.");
+    setCriandoMarca(true);
+    setErroGeral(null);
+    const r = await criarMarcaNoBriefingAction(nome);
+    setCriandoMarca(false);
+    if (r?.erro || !r?.id) return setErroGeral(r?.erro ?? "Não foi possível criar a marca.");
+    const nova: MarcaWizard = { id: r.id, nome, cores: [], arquivos: [] };
+    setMarcas((ms) => [...ms, nova]);
+    escolherMarca(nova);
+  }
+
   async function subir(lista: FileList | null, categoria: "logo" | "manual" | "foto") {
     if (!lista?.length) return;
+    const marcaId = b.marcaId;
+    if (categoria !== "foto" && !marcaId) return setErroGeral("Escolha a marca antes de enviar o logo ou o manual.");
     setEnviandoArquivo(categoria);
     setErroGeral(null);
     try {
       for (const f of Array.from(lista)) {
-        const a = await enviarArquivo(f, categoria);
+        const a = await enviarArquivo(f, categoria, categoria === "foto" ? null : marcaId);
         setNomes((n) => ({ ...n, [a.id]: a.nome }));
         const chave = categoria === "foto" ? "fotos" : categoria;
         setB((x) => ({ ...x, arquivos: { ...x.arquivos, [chave]: [...x.arquivos[chave], a.id] } }));
-        if (categoria !== "foto") setMarca((m) => [{ id: a.id, nome: a.nome, categoria }, ...m]);
+        // Logo e manual passam a fazer parte da marca, para os próximos pedidos.
+        if (categoria !== "foto")
+          setMarcas((ms) =>
+            ms.map((m) => (m.id === marcaId ? { ...m, arquivos: [{ id: a.id, nome: a.nome, categoria }, ...m.arquivos] } : m)),
+          );
         setErros((e) => e.filter((x) => x !== categoria));
       }
     } catch (e) {
@@ -343,7 +381,7 @@ export function Wizard({
 
   const upload = { enviando: enviandoArquivo, onArquivos: subir };
   const doPerfil = (categoria: "logo" | "manual") => ({
-    itens: marca.filter((a) => a.categoria === categoria),
+    itens: (marcaAtual?.arquivos ?? []).filter((a) => a.categoria === categoria),
     selecionados: b.arquivos[categoria],
     onAlternar: (id: number) => alternarArquivo(categoria, id),
   });
@@ -360,7 +398,10 @@ export function Wizard({
     logo
       ? ["Como o logo deve aparecer", "Escolha o tipo de revelação. O designer adapta ao desenho do seu logo."]
       : ["O que aparece no vídeo", "Descreva cena por cena. Quanto mais claro, menos ajustes depois."],
-    ["Identidade da marca", "Logo e manual ficam salvos no perfil da marca. Nos próximos pedidos você não precisa enviar de novo."],
+    [
+      "Identidade da marca",
+      "Escolha a marca deste pedido. Logo, manual e cores ficam salvos nela e vêm prontos nos próximos pedidos.",
+    ],
     ["Estilo e referências", "Uma boa referência vale mais que qualquer descrição. Diga sempre o que você gosta nela."],
     ["Prazo e aprovação", "O prazo começa a contar quando o pedido é enviado com tudo preenchido."],
     ["Confira antes de enviar", "Revise cada parte. Depois de enviado, mudanças contam como revisão."],
@@ -654,10 +695,56 @@ export function Wizard({
         );
       }
 
-      case 4:
+      case 4: {
+        const escolhaMarca = (
+          <Campo
+            id="marca"
+            label="Para qual marca é este pedido?"
+            hint={
+              marcas.length
+                ? "Use uma marca existente para reaproveitar logo, manual e cores, ou crie uma nova com novos arquivos."
+                : "Crie a marca deste pedido. Logo, manual e cores ficam salvos nela."
+            }
+            erro="Escolha uma marca ou crie uma nova."
+          >
+            <div className="chips">
+              {marcas.map((m) => (
+                <Chip key={m.id} on={b.marcaId === m.id} onClick={() => escolherMarca(m)}>
+                  {m.nome}
+                </Chip>
+              ))}
+              <Chip on={novaMarca !== null} onClick={() => setNovaMarca(novaMarca === null ? "" : null)}>
+                + Nova marca
+              </Chip>
+            </div>
+            {novaMarca !== null && (
+              <div className={styles.novaMarca}>
+                <input
+                  className="txt"
+                  value={novaMarca}
+                  autoFocus
+                  aria-label="Nome da nova marca"
+                  placeholder="Nome da nova marca"
+                  onChange={(e) => setNovaMarca(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      criarNovaMarca();
+                    }
+                  }}
+                />
+                <button type="button" className="btn btn-primary" onClick={criarNovaMarca} disabled={criandoMarca}>
+                  {criandoMarca ? "Criando..." : "Criar marca"}
+                </button>
+              </div>
+            )}
+          </Campo>
+        );
+        if (!marcaAtual) return escolhaMarca;
         return (
           <>
-            <Campo id="logo" label="Logo" erro="Envie ou selecione o logo da marca.">
+            {escolhaMarca}
+            <Campo id="logo" label={`Logo da ${marcaAtual.nome}`} erro="Envie ou selecione o logo da marca.">
               <ArquivosMarca {...doPerfil("logo")} />
               <Upload categoria="logo" titulo="Enviar logo" sub="SVG, AI, PDF ou PNG em alta resolução" accept=".svg,.ai,.png,.pdf,.eps" {...upload} />
             </Campo>
@@ -727,6 +814,7 @@ export function Wizard({
             </Campo>
           </>
         );
+      }
 
       case 5:
         return (
@@ -884,6 +972,7 @@ export function Wizard({
                   ],
             )}
             {linha(4, [
+              ["Marca", marcaAtual?.nome],
               ["Arquivos", arquivosNomes.join(", ")],
               ["Cores", b.cores.map((x) => x.toUpperCase()).join(", ")],
               ["Visual", b.visual === "padrao" ? "Padrão da marca" : b.visual === "especial" ? "Especial de campanha" : null],

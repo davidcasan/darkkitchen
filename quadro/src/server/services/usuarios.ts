@@ -5,6 +5,7 @@ import type { Usuario } from "../auth";
 import { hashSenha, verificarSenha } from "../senha";
 import { assinar } from "./assinaturas";
 import { adicionarMetodo } from "./pagamentos";
+import { criarMarca } from "./marcas";
 
 const CAMPOS = "id, papel, nome, email, empresa, senior";
 
@@ -44,7 +45,7 @@ export function cadastrarCliente(d: DadosCadastro): Usuario {
       hashSenha(d.senha),
       d.empresa.trim() || null,
     ).id;
-    executar("INSERT INTO marcas (usuario_id) VALUES (?)", id);
+    criarMarca(id, d.empresa.trim() || nome);
     adicionarMetodo(id, d.metodo, d.cartaoFinal);
     assinar(id, d.planoId);
     return um<Usuario>(`SELECT ${CAMPOS} FROM usuarios WHERE id = ?`, id)!;

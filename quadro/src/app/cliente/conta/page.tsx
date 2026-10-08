@@ -37,8 +37,8 @@ export default async function ContaCliente() {
             {u.nome} · {u.email}
           </p>
         </div>
-        <Link href="/cliente/marca" className="btn">
-          Perfil da marca
+        <Link href="/cliente/marcas" className="btn">
+          Minhas marcas
         </Link>
       </div>
 

@@ -243,7 +243,7 @@ export default async function PedidoCliente({ params, searchParams }: PageProps<
         <div className="stack">
           <section className="card">
             <h2>Briefing</h2>
-            <BriefingResumo b={b} arquivos={arquivos} mostrarCreditos />
+            <BriefingResumo b={b} arquivos={arquivos} marcaNome={p.marca_nome} mostrarCreditos />
           </section>
           <section className="card">
             <h2>Histórico</h2>

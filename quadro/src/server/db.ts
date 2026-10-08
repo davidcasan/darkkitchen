@@ -10,6 +10,18 @@ import { DatabaseSync } from "node:sqlite";
 export const PASTA_DADOS = path.join(process.cwd(), "data");
 export const PASTA_ARQUIVOS = path.join(PASTA_DADOS, "arquivos");
 
+// Um cliente pode ter várias marcas; cada uma guarda seus próprios assets (logo, manual, cores).
+const SQL_MARCAS = `
+CREATE TABLE IF NOT EXISTS marcas (
+  id INTEGER PRIMARY KEY,
+  usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+  nome TEXT NOT NULL,
+  cores TEXT NOT NULL DEFAULT '[]',
+  observacoes TEXT NOT NULL DEFAULT '',
+  criado_em TEXT NOT NULL DEFAULT (datetime('now')),
+  atualizado_em TEXT NOT NULL DEFAULT (datetime('now'))
+);`;
+
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS usuarios (
   id INTEGER PRIMARY KEY,
@@ -72,12 +84,7 @@ CREATE TABLE IF NOT EXISTS creditos (
   criado_em TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
-CREATE TABLE IF NOT EXISTS marcas (
-  usuario_id INTEGER PRIMARY KEY REFERENCES usuarios(id) ON DELETE CASCADE,
-  cores TEXT NOT NULL DEFAULT '[]',
-  observacoes TEXT NOT NULL DEFAULT '',
-  atualizado_em TEXT NOT NULL DEFAULT (datetime('now'))
-);
+${SQL_MARCAS}
 
 CREATE TABLE IF NOT EXISTS pedidos (
   id INTEGER PRIMARY KEY,
@@ -230,8 +237,39 @@ export class ErroNegocio extends Error {
 
 /** Ajustes em bancos criados por versões anteriores. Cada passo pode rodar mais de uma vez. */
 function migrar(d: DatabaseSync) {
-  const colunas = (d.prepare("PRAGMA table_info(usuarios)").all() as { name: string }[]).map((c) => c.name);
-  if (!colunas.includes("ativo")) d.exec("ALTER TABLE usuarios ADD COLUMN ativo INTEGER NOT NULL DEFAULT 1");
+  const colunas = (tabela: string) =>
+    (d.prepare(`PRAGMA table_info(${tabela})`).all() as { name: string }[]).map((c) => c.name);
+
+  if (!colunas("usuarios").includes("ativo")) d.exec("ALTER TABLE usuarios ADD COLUMN ativo INTEGER NOT NULL DEFAULT 1");
   // Gerente de projetos foi fundido ao diretor de arte (out/2026).
   d.exec("UPDATE usuarios SET papel = 'diretor' WHERE papel = 'gerente'");
+
+  // Várias marcas por cliente (out/2026): a antiga marca única vira a primeira marca da lista.
+  if (!colunas("marcas").includes("id")) {
+    d.exec(`
+      BEGIN;
+      ALTER TABLE marcas RENAME TO marcas_antiga;
+      ${SQL_MARCAS}
+      INSERT INTO marcas (usuario_id, nome, cores, observacoes, atualizado_em)
+        SELECT m.usuario_id, COALESCE(NULLIF(u.empresa, ''), 'Minha marca'), m.cores, m.observacoes, m.atualizado_em
+        FROM marcas_antiga m JOIN usuarios u ON u.id = m.usuario_id;
+      DROP TABLE marcas_antiga;
+      COMMIT;`);
+  }
+  // Todo cliente tem pelo menos uma marca.
+  d.exec(`INSERT INTO marcas (usuario_id, nome)
+    SELECT u.id, COALESCE(NULLIF(u.empresa, ''), 'Minha marca') FROM usuarios u
+    WHERE u.papel = 'cliente' AND NOT EXISTS (SELECT 1 FROM marcas m WHERE m.usuario_id = u.id)`);
+  const primeiraMarca = "(SELECT m.id FROM marcas m WHERE m.usuario_id = %s ORDER BY m.id LIMIT 1)";
+  if (!colunas("arquivos").includes("marca_id")) {
+    d.exec("ALTER TABLE arquivos ADD COLUMN marca_id INTEGER REFERENCES marcas(id)");
+    d.exec(`UPDATE arquivos SET marca_id = ${primeiraMarca.replace("%s", "arquivos.dono_id")} WHERE categoria IN ('logo','manual')`);
+  }
+  if (!colunas("pedidos").includes("marca_id")) {
+    d.exec("ALTER TABLE pedidos ADD COLUMN marca_id INTEGER REFERENCES marcas(id)");
+    d.exec(`UPDATE pedidos SET marca_id = ${primeiraMarca.replace("%s", "pedidos.cliente_id")}`);
+  }
+  d.exec(`
+    CREATE INDEX IF NOT EXISTS idx_marcas_usuario ON marcas(usuario_id);
+    CREATE INDEX IF NOT EXISTS idx_arquivos_marca ON arquivos(marca_id);`);
 }

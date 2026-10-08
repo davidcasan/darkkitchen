@@ -16,6 +16,7 @@ export interface Arquivo {
   dono_id: number;
   pedido_id: number | null;
   versao_id: number | null;
+  marca_id: number | null;
   categoria: Categoria;
   nome: string;
   caminho: string;
@@ -40,8 +41,14 @@ export async function salvarArquivo(
   arquivo: File,
   categoria: Categoria,
   pedidoId?: number | null,
+  marcaId?: number | null,
 ): Promise<Arquivo> {
   if (!LIMITE_MB[categoria]) throw new ErroNegocio("Categoria de arquivo inválida.");
+  // Logo e manual pertencem a uma marca do próprio cliente.
+  const ehDaMarca = categoria === "logo" || categoria === "manual";
+  if (ehDaMarca && !marcaId) throw new ErroNegocio("Escolha a marca deste arquivo.");
+  if (ehDaMarca && !um("SELECT 1 FROM marcas WHERE id = ? AND usuario_id = ?", marcaId!, usuario.id))
+    throw new ErroNegocio("Marca não encontrada.", 404);
   if (!ehEquipe(usuario.papel) && !CATEGORIAS_CLIENTE.includes(categoria))
     throw new ErroNegocio("Você não pode enviar esse tipo de arquivo.", 403);
   if (arquivo.size === 0) throw new ErroNegocio("O arquivo está vazio.");
@@ -56,9 +63,10 @@ export async function salvarArquivo(
 
   const nome = path.basename(arquivo.name).slice(0, 180) || "arquivo";
   const id = executar(
-    "INSERT INTO arquivos (dono_id, pedido_id, categoria, nome, caminho, mime, tamanho) VALUES (?, ?, ?, ?, ?, ?, ?)",
+    "INSERT INTO arquivos (dono_id, pedido_id, marca_id, categoria, nome, caminho, mime, tamanho) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
     usuario.id,
     pedidoId ?? null,
+    ehDaMarca ? marcaId! : null,
     categoria,
     nome,
     relativo,
@@ -91,13 +99,6 @@ export function arquivoParaUsuario(id: number, usuario: Usuario): Arquivo {
   return a;
 }
 
-/** Arquivos da marca salvos no perfil (logo e manual enviados pelo cliente). */
-export const arquivosDaMarca = (clienteId: number) =>
-  varios<Arquivo>(
-    "SELECT * FROM arquivos WHERE dono_id = ? AND categoria IN ('logo','manual') ORDER BY id DESC",
-    clienteId,
-  );
-
 export function arquivosPorIds(ids: number[]): Arquivo[] {
   const limpos = ids.filter((n) => Number.isInteger(n));
   if (!limpos.length) return [];
@@ -108,6 +109,6 @@ export function removerArquivoDaMarca(usuario: Usuario, id: number) {
   const a = um<Arquivo>("SELECT * FROM arquivos WHERE id = ? AND dono_id = ?", id, usuario.id);
   if (!a || !["logo", "manual"].includes(a.categoria)) throw new ErroNegocio("Arquivo não encontrado.", 404);
   // Mantém o arquivo em disco: pedidos antigos ainda podem referenciá-lo.
-  executar("UPDATE arquivos SET categoria = 'anexo' WHERE id = ?", id);
+  executar("UPDATE arquivos SET categoria = 'anexo', marca_id = NULL WHERE id = ?", id);
 }
 

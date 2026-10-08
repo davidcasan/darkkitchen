@@ -39,7 +39,17 @@ function ListaArquivos({ ids, arquivos }: { ids: number[]; arquivos: Map<number,
 }
 
 /** Relatório do briefing, organizado por etapa. A equipe trabalha a partir dele. */
-export function BriefingResumo({ b, arquivos, mostrarCreditos }: { b: Briefing; arquivos: Arquivo[]; mostrarCreditos?: boolean }) {
+export function BriefingResumo({
+  b,
+  arquivos,
+  marcaNome,
+  mostrarCreditos,
+}: {
+  b: Briefing;
+  arquivos: Arquivo[];
+  marcaNome?: string | null;
+  mostrarCreditos?: boolean;
+}) {
   const logo = b.tipo === "logo";
   const mapa = new Map(arquivos.map((a) => [a.id, a]));
   const cenas = b.cenas.filter((c) => c.trim());
@@ -106,6 +116,7 @@ export function BriefingResumo({ b, arquivos, mostrarCreditos }: { b: Briefing; 
       <Secao
         titulo="Marca"
         linhas={[
+          ["Marca", marcaNome],
           ["Logo", <ListaArquivos key="l" ids={b.arquivos.logo} arquivos={mapa} />],
           ["Manual e fontes", b.arquivos.manual.length ? <ListaArquivos key="m" ids={b.arquivos.manual} arquivos={mapa} /> : null],
           ["Fotos", b.arquivos.fotos.length ? <ListaArquivos key="f" ids={b.arquivos.fotos} arquivos={mapa} /> : null],

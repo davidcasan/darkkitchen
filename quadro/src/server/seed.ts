@@ -16,20 +16,13 @@ import {
   enviarVersao,
 } from "./services/pedidos";
 import { cadastrarCliente } from "./services/usuarios";
+import { criarMarca } from "./services/marcas";
 
 // Dados de teste, criados na primeira vez que o servidor sobe com o banco vazio.
 // Usa os serviços reais, então também funciona como um teste do fluxo completo.
 // Para recomeçar do zero: pare o servidor e rode "npm run db:reset".
 
 export const SENHA_TESTE = "quadro123";
-
-export const CONTAS_TESTE = [
-  { email: "cliente@teste.com", papel: "Cliente", nome: "Marina Alves" },
-  { email: "designer@teste.com", papel: "Designer", nome: "Rafa Lima" },
-  { email: "senior@teste.com", papel: "Designer sênior", nome: "Bruno Costa" },
-  { email: "diretor@teste.com", papel: "Diretor de arte", nome: "Caio Mendes" },
-  { email: "admin@teste.com", papel: "Administrador", nome: "Admin Quadro" },
-];
 
 const PASTA_SEED = path.join(process.cwd(), "seed");
 
@@ -73,8 +66,11 @@ export async function popularSeVazio() {
   });
   comprarCreditos(marina.id, 25);
 
-  const logo = await salvarArquivo(marina, arquivoLocal("logo-verao-moda.svg", "image/svg+xml"), "logo");
+  const marcaId = um<{ id: number }>("SELECT id FROM marcas WHERE usuario_id = ?", marina.id)!.id;
+  criarMarca(marina.id, "Verão Kids", ["#FF7A59", "#3BC4FF"]); // segunda marca, ainda sem arquivos
+  const logo = await salvarArquivo(marina, arquivoLocal("logo-verao-moda.svg", "image/svg+xml"), "logo", null, marcaId);
   const marca = {
+    marcaId,
     arquivos: { logo: [logo.id], manual: [], fotos: [] },
     cores: ["#4B3BFF", "#FFD23F", "#191C2E"],
     visual: "padrao" as const,

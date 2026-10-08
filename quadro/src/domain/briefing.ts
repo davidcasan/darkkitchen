@@ -32,7 +32,8 @@ export interface Briefing {
   obrig: string;
   revelacao: string | null; // só logo
   slogan: string; // só logo
-  // Marca (ids de arquivos enviados)
+  // Marca: o pedido pertence a uma das marcas do cliente (ids de arquivos enviados)
+  marcaId: number | null;
   arquivos: { logo: number[]; manual: number[]; fotos: number[] };
   cores: string[];
   visual: "padrao" | "especial" | null;
@@ -89,6 +90,7 @@ export function briefingVazio(): Briefing {
     obrig: "",
     revelacao: null,
     slogan: "",
+    marcaId: null,
     arquivos: { logo: [], manual: [], fotos: [] },
     cores: ["#4B3BFF", "#FFD23F"],
     visual: null,
@@ -180,7 +182,7 @@ export function errosDaEtapa(b: Briefing, etapa: number): string[] {
       if (b.audio === LOCUCAO) e.push(vazio(b.locucao) && "locucao", !b.voz && "voz");
       break;
     case 4:
-      e.push(!b.arquivos.logo.length && "logo", !b.visual && "visual");
+      e.push(!b.marcaId && "marca", !b.arquivos.logo.length && "logo", !b.visual && "visual");
       break;
     case 5:
       e.push(!b.estilo.length && "estilo", !b.tom && "tom");

@@ -6,6 +6,7 @@ import type { Usuario } from "../auth";
 import { hashSenha } from "../senha";
 import { lancar, saldo } from "./creditos";
 import { notificar } from "./notificacoes";
+import { criarMarca } from "./marcas";
 
 // Gerenciamento de contas (somente admin): clientes e colaboradores.
 
@@ -99,7 +100,7 @@ export function criarConta(admin: Usuario, d: DadosConta & { senha: string; cred
       v.senior,
     ).id;
     if (v.papel === "cliente") {
-      executar("INSERT INTO marcas (usuario_id) VALUES (?)", id);
+      criarMarca(id, v.empresa ?? v.nome);
       if (d.creditos > 0) lancar(id, Math.floor(d.creditos), "ajuste", `Créditos iniciais (por ${admin.nome})`);
     }
     return { id, senha };
@@ -123,7 +124,7 @@ export function atualizarConta(admin: Usuario, id: number, d: DadosConta) {
     v.senior,
     id,
   );
-  if (v.papel === "cliente") executar("INSERT OR IGNORE INTO marcas (usuario_id) VALUES (?)", id);
+  if (v.papel === "cliente" && !um("SELECT 1 FROM marcas WHERE usuario_id = ?", id)) criarMarca(id, v.empresa ?? v.nome);
 }
 
 /** Gera uma senha temporária e encerra todas as sessões da conta. */

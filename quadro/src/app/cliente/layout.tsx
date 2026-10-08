@@ -11,7 +11,7 @@ const ITENS: ItemNav[] = [
   { href: "/cliente/pedidos/novo", rotulo: "Novo pedido", icone: "novo", movel: true, destaque: true },
   { href: "/cliente/pedidos", rotulo: "Pedidos", icone: "pedidos", movel: true },
   { href: "/cliente/creditos", rotulo: "Créditos", icone: "creditos", movel: true },
-  { href: "/cliente/marca", rotulo: "Marca", icone: "marca" },
+  { href: "/cliente/marcas", rotulo: "Marcas", icone: "marca" },
   { href: "/cliente/conta", rotulo: "Conta", icone: "conta", movel: true },
 ];
 

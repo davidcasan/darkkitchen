@@ -28,6 +28,7 @@ export function ListaPedidos({
               <span className="tnum">{p.codigo}</span>
               <span>{pecaDo({ tipo: p.tipo as TipoPeca })?.nome}</span>
               {visao === "equipe" && <span>{p.empresa ?? p.cliente_nome}</span>}
+              {p.marca_nome && (visao === "cliente" || p.marca_nome !== p.empresa) && <span>Marca: {p.marca_nome}</span>}
               {visao === "equipe" && <span>{p.designer_nome ? `Designer: ${p.designer_nome}` : "Sem designer"}</span>}
               {!["aprovado", "cancelado"].includes(p.status) && <span>Entrega prevista {formatarData(p.entrega_prevista)}</span>}
               {p.urgente === 1 && <span className="tag">Urgente</span>}

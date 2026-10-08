@@ -2,7 +2,9 @@
 
 import { type Estado, campo, campoNumero, rodar, rodarEIr } from "@/server/acao";
 import { exigirUsuario } from "@/server/auth";
-import { ErroNegocio, executar } from "@/server/db";
+import { redirect } from "next/navigation";
+import { ErroNegocio } from "@/server/db";
+import { atualizarMarca, criarMarca, removerMarca } from "@/server/services/marcas";
 import { removerArquivoDaMarca } from "@/server/services/arquivos";
 import { assinar, cancelarAssinatura, comprarCreditos, trocarPlano } from "@/server/services/assinaturas";
 import { adicionarMetodo, definirPadrao, removerMetodo } from "@/server/services/pagamentos";
@@ -99,19 +101,39 @@ export async function removerMetodoAction(_: Estado, fd: FormData): Promise<Esta
 
 export async function salvarMarcaAction(_: Estado, fd: FormData): Promise<Estado> {
   const u = await cliente();
-  return rodar(() => {
-    const cores = fd
-      .getAll("cor")
-      .filter((c): c is string => typeof c === "string" && /^#[0-9a-f]{6}$/i.test(c))
-      .slice(0, 5);
-    executar(
-      `INSERT INTO marcas (usuario_id, cores, observacoes) VALUES (?, ?, ?)
-       ON CONFLICT(usuario_id) DO UPDATE SET cores = excluded.cores, observacoes = excluded.observacoes, atualizado_em = datetime('now')`,
-      u.id,
-      JSON.stringify(cores),
-      campo(fd, "observacoes").slice(0, 2000),
-    );
-  }, "Perfil da marca salvo.");
+  return rodar(
+    () =>
+      atualizarMarca(u, campoNumero(fd, "marca"), {
+        nome: campo(fd, "nome"),
+        cores: fd.getAll("cor").filter((c): c is string => typeof c === "string"),
+        observacoes: campo(fd, "observacoes"),
+      }),
+    "Marca salva.",
+  );
+}
+
+/** Nova marca pela página de marcas: cria e abre a página dela. */
+export async function novaMarcaAction(_: Estado, fd: FormData): Promise<Estado> {
+  const u = await cliente();
+  const saida: { id?: number } = {};
+  const r = await rodar(() => {
+    saida.id = criarMarca(u.id, campo(fd, "nome"));
+  });
+  if (r?.erro || !saida.id) return r;
+  redirect(`/cliente/marcas/${saida.id}`);
+}
+
+/** Nova marca de dentro do briefing: devolve o id para o formulário continuar. */
+export async function criarMarcaNoBriefingAction(nome: string): Promise<Estado> {
+  const u = await cliente();
+  return rodar(() => criarMarca(u.id, nome));
+}
+
+export async function removerMarcaAction(_: Estado, fd: FormData): Promise<Estado> {
+  const u = await cliente();
+  const r = await rodar(() => removerMarca(u, campoNumero(fd, "marca")));
+  if (r?.erro) return r;
+  redirect("/cliente/marcas?ok=removida");
 }
 
 export async function removerArquivoMarcaAction(_: Estado, fd: FormData): Promise<Estado> {

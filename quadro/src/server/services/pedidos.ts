@@ -45,6 +45,8 @@ export interface PedidoResumo {
   revisoes_usadas: number;
   tentativas_internas: number;
   cliente_id: number;
+  marca_id: number | null;
+  marca_nome: string | null;
   cliente_nome: string;
   empresa: string | null;
   designer_id: number | null;
@@ -97,10 +99,11 @@ export interface PedidoDetalhe extends PedidoResumo {
 const SELECT_RESUMO = `
   SELECT p.id, p.codigo, p.titulo, p.tipo, p.status, p.creditos, p.urgente, p.entrega_prevista,
          p.criado_em, p.atualizado_em, p.revisoes_incluidas, p.revisoes_usadas, p.tentativas_internas,
-         p.cliente_id, c.nome cliente_nome, c.empresa, p.designer_id, d.nome designer_nome
+         p.cliente_id, c.nome cliente_nome, c.empresa, p.designer_id, d.nome designer_nome, p.marca_id, m.nome marca_nome
   FROM pedidos p
   JOIN usuarios c ON c.id = p.cliente_id
-  LEFT JOIN usuarios d ON d.id = p.designer_id`;
+  LEFT JOIN usuarios d ON d.id = p.designer_id
+  LEFT JOIN marcas m ON m.id = p.marca_id`;
 
 // ---------- Briefing recebido ----------
 
@@ -138,6 +141,7 @@ export function normalizarBriefing(raw: unknown): Briefing {
     obrig: texto(r.obrig, 500),
     revelacao: opcional(r.revelacao),
     slogan: texto(r.slogan, 200),
+    marcaId: Number.isInteger(Number(r.marcaId)) && Number(r.marcaId) > 0 ? Number(r.marcaId) : null,
     arquivos: { logo: ids(arq.logo), manual: ids(arq.manual), fotos: ids(arq.fotos) },
     cores: lista(r.cores, 5).filter((c) => /^#[0-9a-f]{6}$/i.test(c)),
     visual: r.visual === "padrao" || r.visual === "especial" ? r.visual : null,
@@ -181,7 +185,18 @@ export function criarPedido(cliente: Usuario, raw: unknown): PedidoResumo {
   const invalida = primeiraEtapaInvalida(b);
   if (invalida >= 0) throw new ErroNegocio(`O briefing está incompleto na etapa "${ETAPAS[invalida]}".`);
 
-  // Os arquivos citados precisam ser do próprio cliente.
+  // A marca precisa ser do cliente; logo e manual precisam ser dessa marca; fotos, do cliente.
+  if (!um("SELECT 1 FROM marcas WHERE id = ? AND usuario_id = ?", b.marcaId!, cliente.id))
+    throw new ErroNegocio("Escolha uma das suas marcas.");
+  const daMarca = [...b.arquivos.logo, ...b.arquivos.manual];
+  if (daMarca.length) {
+    const ok = varios<{ id: number }>(
+      `SELECT id FROM arquivos WHERE marca_id = ? AND id IN (${daMarca.map(() => "?").join(",")})`,
+      b.marcaId!,
+      ...daMarca,
+    );
+    if (ok.length !== new Set(daMarca).size) throw new ErroNegocio("O logo ou o manual escolhido não é desta marca.");
+  }
   const todos = [...b.arquivos.logo, ...b.arquivos.manual, ...b.arquivos.fotos];
   if (todos.length) {
     const meus = varios<{ id: number }>(
@@ -202,9 +217,10 @@ export function criarPedido(cliente: Usuario, raw: unknown): PedidoResumo {
       throw new ErroNegocio(`Saldo insuficiente: este pedido custa ${total} créditos e você tem ${disponivel}.`, 402);
 
     const id = executar(
-      `INSERT INTO pedidos (cliente_id, tipo, titulo, briefing, creditos, urgente, dias_uteis, revisoes_incluidas, status, entrega_prevista)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'triagem', ?)`,
+      `INSERT INTO pedidos (cliente_id, marca_id, tipo, titulo, briefing, creditos, urgente, dias_uteis, revisoes_incluidas, status, entrega_prevista)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'triagem', ?)`,
       cliente.id,
+      b.marcaId!,
       peca.id,
       nomeDoPedido(b),
       JSON.stringify(b),
@@ -223,9 +239,9 @@ export function criarPedido(cliente: Usuario, raw: unknown): PedidoResumo {
         ...b.arquivos.fotos,
       );
     executar(
-      "INSERT INTO marcas (usuario_id, cores) VALUES (?, ?) ON CONFLICT(usuario_id) DO UPDATE SET cores = excluded.cores, atualizado_em = datetime('now')",
-      cliente.id,
+      "UPDATE marcas SET cores = ?, atualizado_em = datetime('now') WHERE id = ?",
       JSON.stringify(b.cores),
+      b.marcaId!,
     );
     lancar(cliente.id, -total, "pedido", `Pedido ${codigo} · ${peca.nome}`, { pedidoId: id });
     registrarEvento(id, cliente.id, "criado", null, "triagem", { creditos: total });

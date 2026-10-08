@@ -7,10 +7,11 @@ export interface ArquivoEnviado {
   mime: string;
 }
 
-export async function enviarArquivo(arquivo: File, categoria: string): Promise<ArquivoEnviado> {
+export async function enviarArquivo(arquivo: File, categoria: string, marcaId?: number | null): Promise<ArquivoEnviado> {
   const fd = new FormData();
   fd.append("arquivo", arquivo);
   fd.append("categoria", categoria);
+  if (marcaId) fd.append("marca", String(marcaId));
   const r = await fetch("/api/v1/arquivos", { method: "POST", body: fd });
   const json = (await r.json().catch(() => ({}))) as { dados?: ArquivoEnviado; erro?: string };
   if (!r.ok || !json.dados) throw new Error(json.erro ?? "Não foi possível enviar o arquivo.");

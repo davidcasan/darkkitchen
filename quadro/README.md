@@ -17,7 +17,7 @@ Na primeira vez, o banco é criado com dados de teste. Todas as contas usam a se
 
 | E-mail | Papel |
 |---|---|
-| cliente@teste.com | Cliente (plano Crescimento, com pedidos de exemplo) |
+| cliente@teste.com | Cliente (plano Crescimento, marcas Verão Moda e Verão Kids, pedidos de exemplo) |
 | designer@teste.com | Designer |
 | senior@teste.com | Designer sênior |
 | diretor@teste.com | Diretor de arte |
@@ -27,7 +27,7 @@ Para recomeçar do zero: pare o servidor, rode `npm run db:reset` e inicie de no
 
 ## Fluxo de um pedido
 
-1. **Cliente** preenche o briefing (8 etapas) e os créditos são debitados.
+1. **Cliente** preenche o briefing (8 etapas), escolhe a marca do pedido (ou cria uma nova) e os créditos são debitados. Cada marca guarda logo, manual e cores para os próximos pedidos.
 2. **Diretor de arte** faz a triagem e atribui um designer.
 3. **Designer** envia a versão (vídeo + arquivos de entrega).
 4. **Diretor de arte** aprova ou reprova com diagnóstico (tipo de erro, cena, minutagem). Depois de 2 reprovações, o pedido é sinalizado para ir a um designer sênior.

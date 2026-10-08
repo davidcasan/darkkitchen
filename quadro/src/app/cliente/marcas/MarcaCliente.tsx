@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { enviarArquivo } from "@/components/app/upload";
 
-export function EnviarArquivoMarca({ categoria }: { categoria: "logo" | "manual" }) {
+export function EnviarArquivoMarca({ categoria, marcaId }: { categoria: "logo" | "manual"; marcaId: number }) {
   const router = useRouter();
   const [estado, setEstado] = useState<{ enviando: boolean; erro?: string }>({ enviando: false });
   return (
@@ -29,7 +29,7 @@ export function EnviarArquivoMarca({ categoria }: { categoria: "logo" | "manual"
             if (!lista.length) return;
             setEstado({ enviando: true });
             try {
-              for (const f of lista) await enviarArquivo(f, categoria);
+              for (const f of lista) await enviarArquivo(f, categoria, marcaId);
               setEstado({ enviando: false });
               router.refresh();
             } catch (err) {

@@ -1,0 +1,51 @@
+.grade {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 14px;
+}
+
+.cartao {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 18px;
+  text-decoration: none;
+  transition: border-color 0.15s;
+}
+
+a.cartao:hover {
+  border-color: var(--accent);
+}
+
+.cartao b {
+  font-family: var(--font-display), sans-serif;
+  font-size: 18px;
+}
+
+.logo {
+  height: 72px;
+  border-radius: 10px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  margin-bottom: 4px;
+}
+
+.logo img {
+  max-height: 100%;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+.logo :global(.muted) {
+  color: #8a8fa6;
+}
+
+.nova {
+  border-style: dashed;
+}
