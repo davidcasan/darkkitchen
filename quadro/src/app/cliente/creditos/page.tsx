@@ -1,18 +1,18 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { comprarCreditosAction } from "@/app/actions/cliente";
-import { Enviar, FormAcao } from "@/components/app/FormAcao";
-import { PACOTES_AVULSOS, PRECO_CREDITO_AVULSO, formatarReais } from "@/domain/catalogo";
+import { formatarReais } from "@/domain/catalogo";
+import { planoPorId } from "@/domain/precos";
+import { assinaturaDo } from "@/server/services/assinaturas";
+import { precos } from "@/server/services/precos";
 import { exigirUsuario } from "@/server/auth";
 import { formatarData } from "@/server/datas";
 import { extrato, saldo } from "@/server/services/creditos";
-import { gatewayEhSimulado, listarMetodos } from "@/server/services/pagamentos";
 
 export const metadata: Metadata = { title: "Créditos" };
 
 const TIPOS: Record<string, string> = {
   assinatura: "Plano",
-  compra: "Compra",
+  compra: "Compra avulsa",
   pedido: "Pedido",
   revisao_extra: "Revisão extra",
   estorno: "Devolução",
@@ -22,7 +22,9 @@ const TIPOS: Record<string, string> = {
 export default async function CreditosCliente() {
   const u = await exigirUsuario(["cliente"]);
   const lancamentos = extrato(u.id);
-  const metodos = listarMetodos(u.id);
+  const assinatura = assinaturaDo(u.id);
+  const plano = planoPorId(precos(), assinatura?.plano_id);
+  const ativa = assinatura?.status === "ativa";
 
   return (
     <>
@@ -40,39 +42,26 @@ export default async function CreditosCliente() {
             {saldo(u.id)} <span style={{ fontSize: 18, color: "var(--muted)" }}>créditos</span>
           </p>
           <p className="muted small" style={{ marginTop: 8 }}>
-            Os créditos do plano entram a cada renovação. <Link href="/cliente/conta" className="link">Ver assinatura</Link>
+            Créditos vêm do seu plano de assinatura, a cada renovação.
           </p>
         </section>
 
         <section className="card">
-          <h2>Comprar créditos avulsos</h2>
-          <FormAcao action={comprarCreditosAction}>
-            <div className="field">
-              <span className="label">Pacote</span>
-              <div className="chips" role="radiogroup">
-                {PACOTES_AVULSOS.map((q, i) => (
-                  <label key={q} className="chip" style={{ cursor: "pointer" }}>
-                    <input type="radio" name="quantidade" value={q} defaultChecked={i === 0} />
-                    {q} créditos · {formatarReais(q * PRECO_CREDITO_AVULSO)}
-                  </label>
-                ))}
-              </div>
-            </div>
-            <div className="field">
-              <label className="label" htmlFor="metodo">
-                Pagar com
-              </label>
-              <select id="metodo" name="metodo" className="txt">
-                {metodos.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.descricao}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <Enviar>Comprar</Enviar>
-            {gatewayEhSimulado() && <p className="hint" style={{ marginTop: 8 }}>Pagamento simulado nesta versão: nenhuma cobrança real é feita.</p>}
-          </FormAcao>
+          <h2>De onde vêm os créditos</h2>
+          {plano && ativa ? (
+            <p className="small">
+              Seu plano <b>{plano.nome}</b> traz <b>{plano.creditosMes} créditos</b> por {formatarReais(plano.precoMes)}/mês. Os
+              próximos entram em <b>{formatarData(assinatura!.periodo_fim)}</b>, e o saldo que sobrar continua com você.
+            </p>
+          ) : (
+            <p className="small">Você está sem assinatura ativa, então não recebe novos créditos. O saldo atual continua valendo.</p>
+          )}
+          <p className="muted small" style={{ marginTop: 10, marginBottom: 14 }}>
+            Precisa de mais créditos agora? Suba de plano: a diferença de créditos entra na hora.
+          </p>
+          <Link href="/cliente/conta" className="btn">
+            {ativa ? "Ver planos" : "Assinar um plano"}
+          </Link>
         </section>
       </div>
 

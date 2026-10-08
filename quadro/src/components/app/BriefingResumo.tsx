@@ -1,4 +1,4 @@
-import { type Briefing, LOCUCAO, calcularCreditos, contarPalavras, limitePalavras, pecaDo } from "@/domain/briefing";
+import { type Briefing, type LinhaCredito, LOCUCAO, contarPalavras, limitePalavras, pecaDo } from "@/domain/briefing";
 import type { Arquivo } from "@/server/services/arquivos";
 import { formatarTamanho, urlArquivo } from "./upload";
 import styles from "./BriefingResumo.module.css";
@@ -43,19 +43,19 @@ export function BriefingResumo({
   b,
   arquivos,
   marcaNome,
-  mostrarCreditos,
+  creditos,
 }: {
   b: Briefing;
   arquivos: Arquivo[];
   marcaNome?: string | null;
-  mostrarCreditos?: boolean;
+  /** Créditos cobrados no pedido (detalhamento salvo na criação; pedidos antigos só têm o total). */
+  creditos?: { linhas: LinhaCredito[] | null; total: number };
 }) {
   const logo = b.tipo === "logo";
   const mapa = new Map(arquivos.map((a) => [a.id, a]));
   const cenas = b.cenas.filter((c) => c.trim());
   const palavras = cenas.reduce((s, c) => s + contarPalavras(c), 0);
   const limite = limitePalavras(b);
-  const { linhas } = calcularCreditos(b);
 
   return (
     <div className={styles.wrap}>
@@ -170,8 +170,14 @@ export function BriefingResumo({
           ["E-mail", b.email],
         ]}
       />
-      {mostrarCreditos && (
-        <Secao titulo="Créditos" linhas={linhas.map((l) => [l.descricao, `${l.creditos} cr`] as Linha)} />
+      {creditos && (
+        <Secao
+          titulo="Créditos"
+          linhas={[
+            ...(creditos.linhas ?? []).map((l) => [l.descricao, `${l.creditos} cr`] as Linha),
+            ["Total", `${creditos.total} cr`],
+          ]}
+        />
       )}
     </div>
   );

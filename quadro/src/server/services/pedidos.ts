@@ -1,6 +1,7 @@
 import "server-only";
 import {
   type Briefing,
+  type LinhaCredito,
   briefingVazio,
   calcularCreditos,
   custoRevisaoExtra,
@@ -27,6 +28,8 @@ import { adicionarDiasUteis, agoraSql, deSql, paraSql } from "../datas";
 import { lancar, saldo } from "./creditos";
 import { notificar, notificarPapel } from "./notificacoes";
 import type { Arquivo } from "./arquivos";
+import type { TipoPeca } from "@/domain/catalogo";
+import { precos } from "./precos";
 
 // ---------- Tipos ----------
 
@@ -90,6 +93,8 @@ export interface Evento {
 }
 
 export interface PedidoDetalhe extends PedidoResumo {
+  /** Créditos cobrados na criação, item por item (null em pedidos antigos). */
+  linhasCreditos: LinhaCredito[] | null;
   briefing: Briefing;
   versoes: Versao[];
   comentarios: Comentario[];
@@ -208,8 +213,9 @@ export function criarPedido(cliente: Usuario, raw: unknown): PedidoResumo {
   }
 
   const peca = pecaDo(b)!;
-  const { total } = calcularCreditos(b);
-  const dias = diasUteisDo(b);
+  const tabela = precos();
+  const { linhas, total } = calcularCreditos(b, tabela);
+  const dias = diasUteisDo(b, tabela);
 
   return transacao(() => {
     const disponivel = saldo(cliente.id);
@@ -217,17 +223,18 @@ export function criarPedido(cliente: Usuario, raw: unknown): PedidoResumo {
       throw new ErroNegocio(`Saldo insuficiente: este pedido custa ${total} créditos e você tem ${disponivel}.`, 402);
 
     const id = executar(
-      `INSERT INTO pedidos (cliente_id, marca_id, tipo, titulo, briefing, creditos, urgente, dias_uteis, revisoes_incluidas, status, entrega_prevista)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'triagem', ?)`,
+      `INSERT INTO pedidos (cliente_id, marca_id, tipo, titulo, briefing, creditos, creditos_detalhe, urgente, dias_uteis, revisoes_incluidas, status, entrega_prevista)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'triagem', ?)`,
       cliente.id,
       b.marcaId!,
       peca.id,
       nomeDoPedido(b),
       JSON.stringify(b),
       total,
+      JSON.stringify(linhas),
       b.prazo === "urgente" ? 1 : 0,
       dias,
-      peca.revisoes,
+      tabela.pecas[peca.id].revisoes,
       paraSql(adicionarDiasUteis(new Date(), dias)),
     ).id;
     const codigo = `Q-${1000 + id}`;
@@ -284,7 +291,10 @@ export function contarPorStatus(): Record<StatusPedido, number> {
 
 /** Busca o pedido respeitando quem pede: cliente só vê os próprios e não vê o que é interno. */
 export function pedidoParaUsuario(id: number, usuario: Usuario): PedidoDetalhe {
-  const p = um<PedidoResumo & { briefing: string }>(`${SELECT_RESUMO.replace("SELECT", "SELECT p.briefing,")} WHERE p.id = ?`, id);
+  const p = um<PedidoResumo & { briefing: string; creditos_detalhe: string | null }>(
+    `${SELECT_RESUMO.replace("SELECT", "SELECT p.briefing, p.creditos_detalhe,")} WHERE p.id = ?`,
+    id,
+  );
   const equipe = ehEquipe(usuario.papel);
   if (!p || (!equipe && p.cliente_id !== usuario.id)) throw new ErroNegocio("Pedido não encontrado.", 404);
 
@@ -317,8 +327,15 @@ export function pedidoParaUsuario(id: number, usuario: Usuario): PedidoDetalhe {
     id,
   ).map((e) => ({ ...e, detalhe: JSON.parse(e.detalhe) as Record<string, unknown> }));
 
-  const { briefing, ...resto } = p;
-  return { ...resto, briefing: JSON.parse(briefing) as Briefing, versoes, comentarios, eventos };
+  const { briefing, creditos_detalhe, ...resto } = p;
+  return {
+    ...resto,
+    briefing: JSON.parse(briefing) as Briefing,
+    linhasCreditos: creditos_detalhe ? (JSON.parse(creditos_detalhe) as LinhaCredito[]) : null,
+    versoes,
+    comentarios,
+    eventos,
+  };
 }
 
 // ---------- Transições ----------
@@ -543,8 +560,11 @@ export function processarAprovacoesAutomaticas(): number {
 }
 
 /** Custo da próxima rodada de ajuste para este pedido (0 se ainda há revisões incluídas). */
-export function custoProximoAjuste(p: Pick<PedidoResumo, "revisoes_usadas" | "revisoes_incluidas">, duracao: number | null) {
-  return p.revisoes_usadas >= p.revisoes_incluidas ? custoRevisaoExtra(duracao) : 0;
+export function custoProximoAjuste(
+  p: Pick<PedidoResumo, "revisoes_usadas" | "revisoes_incluidas" | "tipo">,
+  duracao: number | null,
+) {
+  return p.revisoes_usadas >= p.revisoes_incluidas ? custoRevisaoExtra(p.tipo as TipoPeca, duracao, precos()) : 0;
 }
 
 export function clientePedirAjuste(

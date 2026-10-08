@@ -12,6 +12,7 @@ import {
   redefinirSenha,
   removerConta,
 } from "@/server/services/contas";
+import { salvarPrecos } from "@/server/services/precos";
 import { usuarioPorId } from "@/server/services/usuarios";
 
 const admin = () => exigirUsuario(["admin"]);
@@ -97,4 +98,14 @@ export async function acessarComoAction(_: Estado, fd: FormData): Promise<Estado
 export async function voltarAoAdminAction() {
   await voltarAoAdmin();
   redirect("/equipe/contas");
+}
+
+/** Salva a tabela de preços inteira (vinda do editor). */
+export async function salvarPrecosAction(tabela: unknown): Promise<Estado> {
+  const u = await admin();
+  let resumo = "";
+  const r = await rodar(() => {
+    resumo = salvarPrecos(u, tabela);
+  });
+  return r?.erro ? r : { ok: resumo === "Nada mudou." ? resumo : `Preços atualizados: ${resumo}.` };
 }

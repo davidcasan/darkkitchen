@@ -6,7 +6,9 @@ import { redirect } from "next/navigation";
 import { ErroNegocio } from "@/server/db";
 import { atualizarMarca, criarMarca, removerMarca } from "@/server/services/marcas";
 import { removerArquivoDaMarca } from "@/server/services/arquivos";
-import { assinar, cancelarAssinatura, comprarCreditos, trocarPlano } from "@/server/services/assinaturas";
+import { type ResultadoTroca, assinar, cancelarAssinatura, trocarPlano } from "@/server/services/assinaturas";
+import { formatarReais } from "@/domain/catalogo";
+import { formatarData } from "@/server/datas";
 import { adicionarMetodo, definirPadrao, removerMetodo } from "@/server/services/pagamentos";
 import {
   cancelarPedido,
@@ -58,15 +60,28 @@ export async function cancelarPedidoAction(_: Estado, fd: FormData): Promise<Est
   return rodarEIr(() => cancelarPedido(u, campoNumero(fd, "pedido")), paginaPedido(fd), "cancelado");
 }
 
-export async function comprarCreditosAction(_: Estado, fd: FormData): Promise<Estado> {
-  const u = await cliente();
-  const qtd = campoNumero(fd, "quantidade");
-  return rodar(() => comprarCreditos(u.id, qtd, campoNumero(fd, "metodo") || undefined), `${qtd} créditos adicionados.`);
-}
-
 export async function trocarPlanoAction(_: Estado, fd: FormData): Promise<Estado> {
   const u = await cliente();
-  return rodar(() => trocarPlano(u.id, campo(fd, "plano")), "Plano atualizado.");
+  const saida: { r?: ResultadoTroca } = {};
+  const r = await rodar(() => {
+    saida.r = trocarPlano(u.id, campo(fd, "plano"));
+  });
+  if (r?.erro || !saida.r) return r;
+  const t = saida.r;
+  switch (t.tipo) {
+    case "upgrade":
+      return {
+        ok: `Pronto! Você agora está no plano ${t.plano}. ${t.creditos} créditos já entraram no seu saldo${
+          t.cobrado > 0 ? ` e cobramos ${formatarReais(t.cobrado)} (diferença entre os planos)` : ""
+        }.`,
+      };
+    case "agendada":
+      return { ok: `Troca agendada: seu plano muda para ${t.plano} na renovação de ${formatarData(t.em)}. Até lá, nada muda.` };
+    case "cancelou_agendamento":
+      return { ok: `Troca cancelada. Você continua no plano ${t.plano}.` };
+    default:
+      return { ok: `Assinatura do plano ${t.plano} ativada.` };
+  }
 }
 
 export async function cancelarAssinaturaAction(): Promise<Estado> {

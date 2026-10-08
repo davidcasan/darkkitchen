@@ -13,6 +13,7 @@
   --danger: #c42b3b;
   --danger-soft: #fdecee;
   --ok: #16825d;
+  --chart-bar: #4b3bff; /* validado no claro (paper) */
 
   --radius-sm: 10px;
   --radius: 16px;
@@ -37,6 +38,7 @@
     --danger: #ff7a88;
     --danger-soft: #3d1d27;
     --ok: #4fd1a0;
+    --chart-bar: #8378ff; /* validado no escuro (paper) */
     color-scheme: dark;
   }
 }
@@ -54,6 +56,7 @@
   --danger: #ff7a88;
   --danger-soft: #3d1d27;
   --ok: #4fd1a0;
+  --chart-bar: #8378ff;
   color-scheme: dark;
 }
 

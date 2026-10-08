@@ -21,7 +21,7 @@ Na primeira vez, o banco é criado com dados de teste. Todas as contas usam a se
 | designer@teste.com | Designer |
 | senior@teste.com | Designer sênior |
 | diretor@teste.com | Diretor de arte |
-| admin@teste.com | Administrador: faz qualquer ação, gerencia contas e acessa como qualquer usuário |
+| admin@teste.com | Administrador: faz qualquer ação, gerencia contas e preços, vê relatórios e acessa como qualquer usuário |
 
 Para recomeçar do zero: pare o servidor, rode `npm run db:reset` e inicie de novo.
 

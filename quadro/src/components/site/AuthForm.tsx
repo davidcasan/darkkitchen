@@ -4,14 +4,25 @@ import Link from "next/link";
 import { useActionState, useState } from "react";
 import { cadastrarAction, entrarAction } from "@/app/actions/conta";
 import { Enviar } from "@/components/app/FormAcao";
-import { PLANOS, formatarReais } from "@/domain/catalogo";
+import { formatarReais } from "@/domain/catalogo";
+import type { Plano } from "@/domain/precos";
 import styles from "./AuthForm.module.css";
 
-export function AuthForm({ modo, planoInicial }: { modo: "entrar" | "cadastro"; planoInicial?: string }) {
+export function AuthForm({
+  modo,
+  planoInicial,
+  planos = [],
+}: {
+  modo: "entrar" | "cadastro";
+  planoInicial?: string;
+  planos?: Plano[];
+}) {
   const cadastro = modo === "cadastro";
   const [estado, acao] = useActionState(cadastro ? cadastrarAction : entrarAction, null);
   const [metodo, setMetodo] = useState<"cartao" | "pix">("cartao");
-  const plano = PLANOS.some((p) => p.id === planoInicial) ? planoInicial : "crescimento";
+  const plano = planos.some((p) => p.id === planoInicial)
+    ? planoInicial
+    : (planos.find((p) => p.destaque) ?? planos[0])?.id;
 
   return (
     <form className={styles.form} action={acao}>
@@ -47,7 +58,7 @@ export function AuthForm({ modo, planoInicial }: { modo: "entrar" | "cadastro"; 
           <label className={styles.field}>
             <span>Plano</span>
             <select className={styles.txt} name="plano" defaultValue={plano}>
-              {PLANOS.map((p) => (
+              {planos.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.nome} · {p.creditosMes} créditos · {formatarReais(p.precoMes)}/mês
                 </option>

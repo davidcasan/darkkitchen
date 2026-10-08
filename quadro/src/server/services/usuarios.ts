@@ -1,5 +1,6 @@
 import "server-only";
-import { planoPorId } from "@/domain/catalogo";
+import { planoPorId } from "@/domain/precos";
+import { precos } from "./precos";
 import { ErroNegocio, executar, transacao, um, varios } from "../db";
 import type { Usuario } from "../auth";
 import { hashSenha, verificarSenha } from "../senha";
@@ -34,7 +35,7 @@ export function cadastrarCliente(d: DadosCadastro): Usuario {
   if (nome.length < 2) throw new ErroNegocio("Informe seu nome.");
   if (!/^\S+@\S+\.\S+$/.test(email)) throw new ErroNegocio("Digite um e-mail válido.");
   if (d.senha.length < 8) throw new ErroNegocio("A senha precisa ter pelo menos 8 caracteres.");
-  if (!planoPorId(d.planoId)) throw new ErroNegocio("Escolha um plano.");
+  if (!planoPorId(precos(), d.planoId)?.ativo) throw new ErroNegocio("Escolha um plano.");
   if (um("SELECT id FROM usuarios WHERE email = ?", email)) throw new ErroNegocio("Já existe uma conta com esse e-mail.");
 
   return transacao(() => {

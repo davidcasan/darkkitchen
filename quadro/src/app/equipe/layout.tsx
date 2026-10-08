@@ -11,7 +11,11 @@ const ITENS: ItemNav[] = [
   { href: "/equipe/conta", rotulo: "Conta", icone: "conta", movel: true },
 ];
 
-const ITEM_CONTAS: ItemNav = { href: "/equipe/contas", rotulo: "Contas", icone: "pessoas", movel: true };
+const ITENS_ADMIN: ItemNav[] = [
+  { href: "/equipe/contas", rotulo: "Contas", icone: "pessoas", movel: true },
+  { href: "/equipe/relatorios", rotulo: "Relatórios", icone: "grafico", movel: true },
+  { href: "/equipe/precos", rotulo: "Preços", icone: "creditos" },
+];
 
 export default async function EquipeLayout({ children }: LayoutProps<"/equipe">) {
   const usuario = await exigirUsuario(EQUIPE);
@@ -19,7 +23,7 @@ export default async function EquipeLayout({ children }: LayoutProps<"/equipe">)
   return (
     <AppShell
       usuario={usuario}
-      itens={usuario.papel === "admin" ? [...ITENS.slice(0, 2), ITEM_CONTAS, ITENS[2]] : ITENS}
+      itens={usuario.papel === "admin" ? [...ITENS.slice(0, 2), ...ITENS_ADMIN, ITENS[2]] : ITENS}
       raiz="/equipe"
       naoLidas={contarNaoLidas(usuario.id)}
       comoAdmin={(await adminOriginal())?.nome}

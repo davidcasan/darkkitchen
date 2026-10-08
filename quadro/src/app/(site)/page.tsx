@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { Stage } from "@/components/site/Stage";
-import { PECAS, PLANOS, formatarReais } from "@/domain/catalogo";
+import { formatarReais } from "@/domain/catalogo";
+import { pecasComPrecos, planosAtivos } from "@/domain/precos";
+import { precos } from "@/server/services/precos";
 import styles from "./page.module.css";
 
 const PASSOS = [
@@ -55,6 +57,10 @@ const DUVIDAS = [
 ];
 
 export default function Home() {
+  const tabela = precos();
+  const pecas = pecasComPrecos(tabela);
+  const planos = planosAtivos(tabela);
+  const prazoMinimo = Math.min(...pecas.map((p) => p.diasUteis));
   return (
     <>
       <section className={`container ${styles.hero}`}>
@@ -76,7 +82,9 @@ export default function Home() {
           <ul className={styles.proof}>
             <li>Preço fechado por peça</li>
             <li>Revisões incluídas</li>
-            <li>Entrega a partir de 2 dias úteis</li>
+            <li>
+              Entrega a partir de {prazoMinimo} {prazoMinimo === 1 ? "dia útil" : "dias úteis"}
+            </li>
           </ul>
         </div>
         <div className={styles.heroArt}>
@@ -91,7 +99,7 @@ export default function Home() {
           <p>Cada peça já vem com duração máxima, prazo e número de revisões. Você escolhe, preenche e pronto.</p>
         </div>
         <div className={styles.cards}>
-          {PECAS.map((p) => (
+          {pecas.map((p) => (
             <article key={p.id} className={styles.card}>
               <h3>{p.nome}</h3>
               <p>{p.descricao}</p>
@@ -155,7 +163,7 @@ export default function Home() {
           <p>Os créditos são renovados todo mês. Mude de plano quando quiser.</p>
         </div>
         <div className={styles.plans}>
-          {PLANOS.map((p) => (
+          {planos.map((p) => (
             <article key={p.id} className={styles.plan} data-destaque={p.destaque ?? false}>
               {p.destaque && <span className={styles.badge}>Mais escolhido</span>}
               <h3>{p.nome}</h3>

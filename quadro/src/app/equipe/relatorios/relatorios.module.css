@@ -1,0 +1,12 @@
+.meta[data-ok="true"] {
+  color: var(--ok);
+}
+
+.meta[data-ok="false"] {
+  color: var(--danger);
+}
+
+.total td {
+  font-weight: 700;
+  border-top: 2px solid var(--line);
+}

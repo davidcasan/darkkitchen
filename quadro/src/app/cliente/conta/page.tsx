@@ -10,10 +10,12 @@ import {
 } from "@/app/actions/cliente";
 import { alterarSenhaAction, sairAction } from "@/app/actions/conta";
 import { Enviar, FormAcao } from "@/components/app/FormAcao";
-import { PLANOS, formatarReais, planoPorId } from "@/domain/catalogo";
+import { formatarReais } from "@/domain/catalogo";
+import { planoPorId } from "@/domain/precos";
+import { precos } from "@/server/services/precos";
 import { exigirUsuario } from "@/server/auth";
 import { formatarData } from "@/server/datas";
-import { assinaturaDo } from "@/server/services/assinaturas";
+import { assinaturaDo, simularTroca } from "@/server/services/assinaturas";
 import { gatewayEhSimulado, listarFaturas, listarMetodos } from "@/server/services/pagamentos";
 
 export const metadata: Metadata = { title: "Conta" };
@@ -23,8 +25,12 @@ const STATUS_FATURA = { paga: "Paga", pendente: "Pendente", falhou: "Recusada" }
 export default async function ContaCliente() {
   const u = await exigirUsuario(["cliente"]);
   const assinatura = assinaturaDo(u.id);
-  const plano = planoPorId(assinatura?.plano_id);
+  const tabela = precos();
+  const plano = planoPorId(tabela, assinatura?.plano_id);
+  // Planos à venda, mais o atual do cliente mesmo que tenha sido ocultado.
+  const planos = tabela.planos.filter((p) => p.ativo || p.id === plano?.id);
   const ativa = assinatura?.status === "ativa";
+  const proximo = planoPorId(tabela, assinatura?.plano_proximo);
   const metodos = listarMetodos(u.id);
   const faturas = listarFaturas(u.id);
 
@@ -62,22 +68,57 @@ export default async function ContaCliente() {
             ? `Plano ${plano?.nome}: ${plano?.creditosMes} créditos por ${formatarReais(plano?.precoMes ?? 0)}/mês. Próxima renovação em ${formatarData(assinatura!.periodo_fim)}.`
             : "Sem renovação automática. Seus créditos continuam valendo."}
         </p>
+        {ativa && proximo && (
+          <p className="alerta alerta-aviso" style={{ marginBottom: 16 }}>
+            Seu plano muda para <b>{proximo.nome}</b> na renovação de {formatarData(assinatura!.periodo_fim)}. Para desistir, escolha
+            o plano {plano?.nome} abaixo e confirme.
+          </p>
+        )}
         <FormAcao action={ativa ? trocarPlanoAction : reativarAssinaturaAction}>
           <div className="grid-kpi" role="radiogroup" aria-label="Planos">
-            {PLANOS.map((p) => (
-              <label key={p.id} className="kpi" style={{ cursor: "pointer" }}>
-                <span className="row">
-                  <input type="radio" name="plano" value={p.id} defaultChecked={p.id === (plano?.id ?? "crescimento")} />
-                  {p.nome}
-                </span>
-                <b style={{ fontSize: 22 }}>{formatarReais(p.precoMes)}</b>
-                <small>{p.creditosMes} créditos/mês</small>
-              </label>
-            ))}
+            {planos.map((p) => {
+              const sim = ativa ? simularTroca(plano?.id, p.id) : null;
+              const atual = ativa && p.id === plano?.id;
+              return (
+                <label key={p.id} className="kpi" style={{ cursor: "pointer" }} data-atual={atual}>
+                  <span className="row">
+                    <input
+                      type="radio"
+                      name="plano"
+                      value={p.id}
+                      defaultChecked={p.id === (plano?.id ?? planos.find((x) => x.destaque)?.id ?? planos[0]?.id)}
+                    />
+                    {p.nome}
+                  </span>
+                  <b style={{ fontSize: 22 }}>{formatarReais(p.precoMes)}</b>
+                  <small>{p.creditosMes} créditos/mês</small>
+                  {atual && (
+                    <span style={{ display: "block", marginTop: 8 }}>
+                      <span className="badge" style={{ display: "inline-flex" }}>
+                        Plano atual
+                      </span>
+                    </span>
+                  )}
+                  {sim?.tipo === "upgrade" && (
+                    <small style={{ display: "block", marginTop: 8, color: "var(--ok)", fontWeight: 600 }}>
+                      Na hora: +{sim.creditos} créditos{sim.cobrar > 0 ? ` por ${formatarReais(sim.cobrar)}` : ""}
+                    </small>
+                  )}
+                  {sim?.tipo === "agendada" && (
+                    <small style={{ display: "block", marginTop: 8 }}>Vale a partir de {formatarData(assinatura!.periodo_fim)}</small>
+                  )}
+                </label>
+              );
+            })}
           </div>
           <div className="row" style={{ marginTop: 14 }}>
             <Enviar>{ativa ? "Trocar plano" : "Reativar assinatura"}</Enviar>
-            {ativa && <span className="hint">A troca vale a partir da próxima renovação.</span>}
+            {ativa && (
+              <span className="hint">
+                Plano maior: vale na hora (você paga a diferença e recebe os créditos extras agora). Plano menor: vale na próxima
+                renovação.
+              </span>
+            )}
           </div>
         </FormAcao>
         {ativa && (

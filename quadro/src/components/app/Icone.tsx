@@ -9,6 +9,7 @@ const PATHS = {
   fila: "M4 5h16v4H4zM4 12h16v7H4z",
   sair: "M15 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4M10 17l5-5-5-5M15 12H3",
   sino: "M6 16V11a6 6 0 1 1 12 0v5l2 2H4zM10 21h4",
+  grafico: "M4 20V10M10 20V4M16 20v-7M22 20H2",
   pessoas: "M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21a7 7 0 0 1 14 0M16 3.5a4 4 0 0 1 0 7.5M18 14a6 6 0 0 1 4 7",
 };
 

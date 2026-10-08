@@ -328,7 +328,7 @@ export default async function PedidoEquipe({ params, searchParams }: PageProps<"
         <div className="stack">
           <section className="card">
             <h2>Briefing</h2>
-            <BriefingResumo b={b} arquivos={arquivos} marcaNome={p.marca_nome} mostrarCreditos />
+            <BriefingResumo b={b} arquivos={arquivos} marcaNome={p.marca_nome} creditos={{ linhas: p.linhasCreditos, total: p.creditos }} />
             {marca?.observacoes && (
               <p className="alerta" style={{ marginTop: 12 }}>
                 <b>Observação da marca:</b> {marca.observacoes}

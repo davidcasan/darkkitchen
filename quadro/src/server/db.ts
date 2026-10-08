@@ -272,4 +272,26 @@ function migrar(d: DatabaseSync) {
   d.exec(`
     CREATE INDEX IF NOT EXISTS idx_marcas_usuario ON marcas(usuario_id);
     CREATE INDEX IF NOT EXISTS idx_arquivos_marca ON arquivos(marca_id);`);
+
+  // Configurações editáveis pelo admin (tabela de preços) e o histórico de alterações (out/2026).
+  d.exec(`
+    CREATE TABLE IF NOT EXISTS configuracoes (
+      chave TEXT PRIMARY KEY,
+      valor TEXT NOT NULL,
+      atualizado_em TEXT NOT NULL DEFAULT (datetime('now')),
+      atualizado_por INTEGER REFERENCES usuarios(id)
+    );
+    CREATE TABLE IF NOT EXISTS configuracoes_historico (
+      id INTEGER PRIMARY KEY,
+      chave TEXT NOT NULL,
+      valor TEXT NOT NULL,
+      autor_id INTEGER REFERENCES usuarios(id),
+      resumo TEXT NOT NULL DEFAULT '',
+      criado_em TEXT NOT NULL DEFAULT (datetime('now'))
+    );`);
+  // Troca para um plano menor fica agendada para a próxima renovação (out/2026).
+  if (!colunas("assinaturas").includes("plano_proximo")) d.exec("ALTER TABLE assinaturas ADD COLUMN plano_proximo TEXT");
+  // Cada pedido guarda o detalhamento dos créditos cobrados, para não mudar se os preços mudarem.
+  if (!colunas("pedidos").includes("creditos_detalhe"))
+    d.exec("ALTER TABLE pedidos ADD COLUMN creditos_detalhe TEXT");
 }

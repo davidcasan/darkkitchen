@@ -2,6 +2,7 @@
 // Código puro, usado tanto no formulário (navegador) quanto no servidor.
 
 import { PECAS, type Peca, type TipoPeca } from "./catalogo";
+import { type TabelaPrecos, creditosLocucao, creditosRoteiro, faixaCreditos, tabelaCreditos } from "./precos";
 
 export interface Referencia {
   url: string;
@@ -122,33 +123,57 @@ export interface LinhaCredito {
   creditos: number;
 }
 
-/** Créditos simbólicos, mesma regra do protótipo. O servidor sempre recalcula. */
-export function calcularCreditos(b: Briefing): { linhas: LinhaCredito[]; total: number } {
+/** Créditos do pedido pela tabela de preços atual. O servidor sempre recalcula. */
+export function calcularCreditos(b: Briefing, t: TabelaPrecos): { linhas: LinhaCredito[]; total: number } {
   const peca = pecaDo(b);
   if (!peca) return { linhas: [], total: 0 };
-  const linhas: LinhaCredito[] = [{ descricao: peca.nome, creditos: peca.creditos }];
+  const tc = tabelaCreditos(t);
+  const faixa = faixaCreditos(tc, peca.id, b.duracao);
+  const linhas: LinhaCredito[] = [
+    { descricao: b.duracao ? `${peca.nome} (até ${faixa.ate}s)` : peca.nome, creditos: faixa.creditos },
+  ];
   const extras = b.formatos.length - 1;
-  if (extras > 0) linhas.push({ descricao: `${extras} formato${extras > 1 ? "s" : ""} extra`, creditos: extras * 2 });
-  if (b.audio === LOCUCAO) linhas.push({ descricao: "Locução profissional", creditos: 3 });
-  if (b.semRoteiro && b.tipo !== "logo") linhas.push({ descricao: "Criação de roteiro", creditos: 4 });
-  if (b.aberto) linhas.push({ descricao: "Arquivo aberto (.aep)", creditos: 5 });
+  if (extras > 0 && tc.formatoExtra)
+    linhas.push({ descricao: `${extras} formato${extras > 1 ? "s" : ""} extra`, creditos: extras * tc.formatoExtra });
+  const locucao = creditosLocucao(tc, b.duracao);
+  if (b.audio === LOCUCAO && locucao) linhas.push({ descricao: "Locução profissional", creditos: locucao });
+  const roteiro = creditosRoteiro(tc, b.duracao);
+  if (b.semRoteiro && b.tipo !== "logo" && roteiro) linhas.push({ descricao: "Criação de roteiro", creditos: roteiro });
+  if (b.aberto && tc.arquivoAberto) linhas.push({ descricao: "Arquivo aberto (.aep)", creditos: tc.arquivoAberto });
   let total = linhas.reduce((s, l) => s + l.creditos, 0);
-  if (b.prazo === "urgente") {
-    const u = Math.ceil(total * 0.5);
+  if (b.prazo === "urgente" && t.urgenciaPct) {
+    const u = Math.ceil((total * t.urgenciaPct) / 100);
     linhas.push({ descricao: "Entrega urgente", creditos: u });
     total += u;
   }
   return { linhas, total };
 }
 
-export const diasUteisDo = (b: Briefing) => {
+/** Créditos de cada adicional para a peça e duração do briefing (rótulos "+N" no formulário). */
+export function creditosAdicionais(b: Briefing, t: TabelaPrecos) {
+  const tc = tabelaCreditos(t);
+  return {
+    formatoExtra: tc.formatoExtra,
+    locucao: creditosLocucao(tc, b.duracao),
+    roteiro: creditosRoteiro(tc, b.duracao),
+    arquivoAberto: tc.arquivoAberto,
+    urgenciaPct: t.urgenciaPct,
+  };
+}
+
+/** Prazo em dias úteis; urgente corta pela metade (mínimo 1). */
+export const prazoUrgente = (dias: number) => Math.max(1, Math.ceil(dias / 2));
+
+export const diasUteisDo = (b: Briefing, t: TabelaPrecos) => {
   const peca = pecaDo(b);
   if (!peca) return 0;
-  return b.prazo === "urgente" ? Math.max(1, Math.ceil(peca.diasUteis / 2)) : peca.diasUteis;
+  const dias = t.pecas[peca.id].diasUteis;
+  return b.prazo === "urgente" ? prazoUrgente(dias) : dias;
 };
 
-/** Custo de uma rodada de ajuste além das incluídas (revisão extra 3 / 6 cr). */
-export const custoRevisaoExtra = (duracao: number | null) => ((duracao ?? 0) > 30 ? 6 : 3);
+/** Créditos de uma rodada de ajuste além das incluídas (calculado pelo custo do retrabalho). */
+export const custoRevisaoExtra = (tipo: TipoPeca, duracao: number | null, t: TabelaPrecos) =>
+  faixaCreditos(tabelaCreditos(t), tipo, duracao).revisaoExtra;
 
 const vazio = (s: string | null | undefined) => !s || !s.trim();
 

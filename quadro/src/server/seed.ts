@@ -6,7 +6,6 @@ import { executar, um } from "./db";
 import { hashSenha } from "./senha";
 import type { Usuario } from "./auth";
 import { salvarArquivo } from "./services/arquivos";
-import { comprarCreditos } from "./services/assinaturas";
 import {
   aprovarQualidade,
   atribuirDesigner,
@@ -60,11 +59,10 @@ export async function popularSeVazio() {
     empresa: "Verão Moda",
     email: "cliente@teste.com",
     senha: SENHA_TESTE,
-    planoId: "crescimento",
+    planoId: "estudio",
     metodo: "cartao",
     cartaoFinal: "4242",
   });
-  comprarCreditos(marina.id, 25);
 
   const marcaId = um<{ id: number }>("SELECT id FROM marcas WHERE usuario_id = ?", marina.id)!.id;
   criarMarca(marina.id, "Verão Kids", ["#FF7A59", "#3BC4FF"]); // segunda marca, ainda sem arquivos

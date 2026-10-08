@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { planoPorId } from "@/domain/catalogo";
+import { planoPorId } from "@/domain/precos";
+import { precos } from "@/server/services/precos";
 import { ListaPedidos } from "@/components/app/ListaPedidos";
 import { Notificacoes } from "@/components/app/Notificacoes";
 import { exigirUsuario } from "@/server/auth";
@@ -19,7 +20,7 @@ export default async function PainelCliente({ searchParams }: PageProps<"/client
   const aRevisar = pedidos.filter((p) => p.status === "revisao_cliente");
   const andamento = pedidos.filter((p) => !["aprovado", "cancelado", "revisao_cliente"].includes(p.status));
   const assinatura = assinaturaDo(u.id);
-  const plano = planoPorId(assinatura?.plano_id);
+  const plano = planoPorId(precos(), assinatura?.plano_id);
 
   return (
     <>

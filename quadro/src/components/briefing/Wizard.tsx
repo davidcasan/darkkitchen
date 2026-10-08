@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { criarMarcaNoBriefingAction, criarPedidoAction } from "@/app/actions/cliente";
-import { PECAS } from "@/domain/catalogo";
+import { type TabelaPrecos, pecasComPrecos } from "@/domain/precos";
 import {
   type Briefing,
   ETAPAS,
@@ -12,8 +12,10 @@ import {
   OPCOES,
   briefingVazio,
   calcularCreditos,
+  creditosAdicionais,
   contarPalavras,
   diasUteisDo,
+  prazoUrgente,
   errosDaEtapa,
   limitePalavras,
   opcoesAudio,
@@ -196,11 +198,13 @@ function comMarca(b: Briefing, m: MarcaWizard): Briefing {
 
 export function Wizard({
   saldo,
+  precos,
   marcas: marcasIniciais,
   aprovador,
   email,
 }: {
   saldo: number;
+  precos: TabelaPrecos;
   marcas: MarcaWizard[];
   aprovador: string;
   email: string;
@@ -255,8 +259,10 @@ export function Wizard({
 
   const peca = pecaDo(b);
   const logo = b.tipo === "logo";
-  const { linhas, total } = calcularCreditos(b);
-  const dias = diasUteisDo(b);
+  const { linhas, total } = calcularCreditos(b, precos);
+  const dias = diasUteisDo(b, precos);
+  const ad = creditosAdicionais(b, precos);
+  const precoPeca = peca ? precos.pecas[peca.id] : null;
   const falta = total - saldo;
 
   const set = <K extends keyof Briefing>(k: K, v: Briefing[K]) => {
@@ -413,7 +419,7 @@ export function Wizard({
         return (
           <Campo id="tipo" erro="Escolha um tipo de peça.">
             <div className={styles.types}>
-              {PECAS.map((p) => (
+              {pecasComPrecos(precos).map((p) => (
                 <button
                   key={p.id}
                   type="button"
@@ -432,7 +438,7 @@ export function Wizard({
                     <span>
                       até {p.duracoes[p.duracoes.length - 1]}s · {p.diasUteis} dias úteis
                     </span>
-                    <span className={styles.cr}>{p.creditos} créditos</span>
+                    <span className={styles.cr}>{p.duracoes.length > 1 ? "a partir de " : ""}{p.creditos} cr</span>
                   </span>
                 </button>
               ))}
@@ -498,7 +504,7 @@ export function Wizard({
             <Campo
               id="formatos"
               label="Proporções"
-              hint="Cada formato além do primeiro adiciona 2 créditos."
+              hint={`Cada formato além do primeiro adiciona ${ad.formatoExtra} créditos.`}
               erro="Escolha pelo menos uma proporção."
             >
               <div className="chips">
@@ -507,7 +513,7 @@ export function Wizard({
                     key={v}
                     on={b.formatos.includes(v)}
                     onClick={() => alternar("formatos", v)}
-                    extra={b.formatos.length && !b.formatos.includes(v) ? "+2" : undefined}
+                    extra={b.formatos.length && !b.formatos.includes(v) && ad.formatoExtra ? `+${ad.formatoExtra}` : undefined}
                   >
                     {l}
                   </Chip>
@@ -538,7 +544,7 @@ export function Wizard({
                       set("audio", o);
                       if (o !== LOCUCAO) set("voz", null);
                     }}
-                    extra={o === LOCUCAO ? "+3" : undefined}
+                    extra={o === LOCUCAO && ad.locucao ? `+${ad.locucao}` : undefined}
                   >
                     {o}
                   </Chip>
@@ -558,7 +564,7 @@ export function Wizard({
             )}
             <Campo id="aberto" label="Arquivo aberto do After Effects" hint="Útil se sua equipe vai editar a peça depois.">
               <div className="chips">
-                <Chip on={b.aberto} onClick={() => set("aberto", true)} extra="+5">
+                <Chip on={b.aberto} onClick={() => set("aberto", true)} extra={ad.arquivoAberto ? `+${ad.arquivoAberto}` : undefined}>
                   Sim
                 </Chip>
                 <Chip on={!b.aberto} onClick={() => set("aberto", false)}>
@@ -597,7 +603,7 @@ export function Wizard({
                 <span>
                   <b>Não tenho roteiro, quero que criem</b>
                   <br />
-                  <span className="opt">Um redator escreve a partir da sua ideia. +4 créditos.</span>
+                  <span className="opt">Um redator escreve a partir da sua ideia.{ad.roteiro ? ` +${ad.roteiro} créditos.` : ""}</span>
                 </span>
               </label>
             </div>
@@ -877,7 +883,7 @@ export function Wizard({
         );
 
       case 6: {
-        const urg = Math.max(1, Math.ceil((peca?.diasUteis ?? 2) / 2));
+        const urg = prazoUrgente(precoPeca?.diasUteis ?? 2);
         return (
           <>
             <div className="field">
@@ -885,7 +891,7 @@ export function Wizard({
               <div className={styles.deadline}>
                 <button type="button" className={styles.type} aria-pressed={b.prazo === "padrao"} onClick={() => set("prazo", "padrao")}>
                   <b>Padrão</b>
-                  <span className="muted small">{peca?.diasUteis} dias úteis</span>
+                  <span className="muted small">{precoPeca?.diasUteis} dias úteis</span>
                   <span className={styles.meta}>
                     <span>Sem custo extra</span>
                   </span>
@@ -897,7 +903,7 @@ export function Wizard({
                   </span>
                   <span className={styles.meta}>
                     <span>Prioridade na fila</span>
-                    <span className={styles.cr}>+50%</span>
+                    <span className={styles.cr}>+{ad.urgenciaPct}%</span>
                   </span>
                 </button>
               </div>
@@ -1094,7 +1100,7 @@ export function Wizard({
                 {falta > 0 && (
                   <>
                     <br />
-                    Faltam {falta}. <Link href="/cliente/creditos">Comprar créditos</Link>
+                    Faltam {falta}. <Link href="/cliente/conta">Mudar de plano</Link>
                   </>
                 )}
               </div>
@@ -1103,7 +1109,7 @@ export function Wizard({
                   <strong>{dias} dias</strong>úteis de prazo
                 </div>
                 <div>
-                  <strong>{peca.revisoes} rodadas</strong>de ajuste
+                  <strong>{precoPeca?.revisoes} rodadas</strong>de ajuste
                 </div>
               </div>
             </>

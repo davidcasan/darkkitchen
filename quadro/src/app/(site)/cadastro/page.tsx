@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { AuthForm } from "@/components/site/AuthForm";
 import styles from "@/components/site/AuthForm.module.css";
 import { areaDo, usuarioAtual } from "@/server/auth";
+import { planosAtivos } from "@/domain/precos";
+import { precos } from "@/server/services/precos";
 
 export const metadata: Metadata = { title: "Criar conta" };
 
@@ -15,7 +17,11 @@ export default async function CadastroPage({ searchParams }: PageProps<"/cadastr
       <div className={styles.card}>
         <h1>Criar conta</h1>
         <p>Escolha um plano e comece a pedir peças hoje.</p>
-        <AuthForm modo="cadastro" planoInicial={typeof plano === "string" ? plano : undefined} />
+        <AuthForm
+          modo="cadastro"
+          planoInicial={typeof plano === "string" ? plano : undefined}
+          planos={planosAtivos(precos())}
+        />
       </div>
     </section>
   );
