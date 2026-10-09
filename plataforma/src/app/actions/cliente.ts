@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { ErroNegocio } from "@/server/db";
 import { atualizarMarca, criarMarca, removerMarca } from "@/server/services/marcas";
 import { removerArquivoDaMarca } from "@/server/services/arquivos";
-import { type ResultadoTroca, assinar, cancelarAssinatura, trocarPlano } from "@/server/services/assinaturas";
+import { type ResultadoTroca, definirRenovacao, pagarRenovacaoAgora, trocarPlano } from "@/server/services/assinaturas";
 import { formatarReais } from "@/domain/catalogo";
 import { formatarData } from "@/server/datas";
 import { adicionarMetodo, definirPadrao, removerMetodo } from "@/server/services/pagamentos";
@@ -84,14 +84,23 @@ export async function trocarPlanoAction(_: Estado, fd: FormData): Promise<Estado
   }
 }
 
-export async function cancelarAssinaturaAction(): Promise<Estado> {
+export async function renovacaoAction(_: Estado, fd: FormData): Promise<Estado> {
   const u = await cliente();
-  return rodar(() => cancelarAssinatura(u.id), "Assinatura cancelada. Seus créditos continuam valendo.");
+  const ligar = campo(fd, "ligar") === "1";
+  return rodar(
+    () => definirRenovacao(u.id, ligar),
+    ligar
+      ? "Renovação automática ligada. Nada foi cobrado agora; a próxima cobrança é na data de renovação."
+      : "Renovação automática desligada. Sua assinatura vale até o fim do período e os créditos não usados expiram nessa data.",
+  );
 }
 
-export async function reativarAssinaturaAction(_: Estado, fd: FormData): Promise<Estado> {
+export async function pagarRenovacaoAction(): Promise<Estado> {
   const u = await cliente();
-  return rodar(() => assinar(u.id, campo(fd, "plano")), "Assinatura reativada.");
+  const r = await rodar(() => pagarRenovacaoAgora(u.id));
+  if (r?.erro) return r;
+  // O aviso de pagamento pendente some da tela; a confirmação vai pela URL.
+  redirect("/cliente/conta?ok=pago");
 }
 
 export async function adicionarMetodoAction(_: Estado, fd: FormData): Promise<Estado> {

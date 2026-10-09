@@ -17,6 +17,7 @@ const TIPOS: Record<string, string> = {
   revisao_extra: "Revisão extra",
   estorno: "Devolução",
   ajuste: "Ajuste",
+  expiracao: "Expiração",
 };
 
 export default async function CreditosCliente() {
@@ -42,19 +43,25 @@ export default async function CreditosCliente() {
             {saldo(u.id)} <span style={{ fontSize: 18, color: "var(--muted)" }}>créditos</span>
           </p>
           <p className="muted small" style={{ marginTop: 8 }}>
-            Créditos vêm do seu plano de assinatura, a cada renovação.
+            Créditos vêm do seu plano de assinatura, a cada renovação, e valem até o fim do período do plano.
           </p>
         </section>
 
         <section className="card">
           <h2>De onde vêm os créditos</h2>
-          {plano && ativa ? (
+          {plano && ativa && assinatura!.inadimplente_desde ? (
+            <p className="small">
+              O pagamento da renovação do plano <b>{plano.nome}</b> está pendente. Os créditos do novo período entram assim que ele
+              for aprovado.
+            </p>
+          ) : plano && ativa ? (
             <p className="small">
               Seu plano <b>{plano.nome}</b> traz <b>{plano.creditosMes} créditos</b> por {formatarReais(plano.precoMes)}/mês. Os
-              próximos entram em <b>{formatarData(assinatura!.periodo_fim)}</b>, e o saldo que sobrar continua com você.
+              créditos valem até <b>{formatarData(assinatura!.periodo_fim)}</b>: o saldo que sobrar expira nessa data e
+              {assinatura!.renovacao_automatica ? " os créditos do novo período entram." : " a assinatura termina (renovação desligada)."}
             </p>
           ) : (
-            <p className="small">Você está sem assinatura ativa, então não recebe novos créditos. O saldo atual continua valendo.</p>
+            <p className="small">Você está sem assinatura ativa, então não recebe novos créditos. O saldo atual expira no fim do mês.</p>
           )}
           <p className="muted small" style={{ marginTop: 10, marginBottom: 14 }}>
             Precisa de mais créditos agora? Suba de plano: a diferença de créditos entra na hora.

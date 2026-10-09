@@ -1,7 +1,9 @@
 import { AppShell } from "@/components/app/AppShell";
 import type { ItemNav } from "@/components/app/NavArea";
 import { adminOriginal, exigirUsuario } from "@/server/auth";
-import { renovarSeVencida } from "@/server/services/assinaturas";
+import Link from "next/link";
+import { formatarData } from "@/server/datas";
+import { assinaturaDo, fimDaCarencia, processarAssinaturas } from "@/server/services/assinaturas";
 import { saldo } from "@/server/services/creditos";
 import { contarNaoLidas } from "@/server/services/notificacoes";
 import { processarAprovacoesAutomaticas } from "@/server/services/pedidos";
@@ -17,9 +19,17 @@ const ITENS: ItemNav[] = [
 
 export default async function ClienteLayout({ children }: LayoutProps<"/cliente">) {
   const usuario = await exigirUsuario(["cliente"]);
-  processarAprovacoesAutomaticas();
-  renovarSeVencida(usuario.id);
+  // As tarefas também rodam a cada hora (instrumentation.ts); aqui é só para o
+  // cliente ver tudo em dia ao abrir a área. Uma falha não pode derrubar a página.
+  try {
+    processarAprovacoesAutomaticas();
+    processarAssinaturas(usuario.id);
+  } catch (e) {
+    console.error("[dark-kitchen] Falha nas tarefas da área do cliente:", e);
+  }
   const creditos = saldo(usuario.id);
+  const assinatura = assinaturaDo(usuario.id);
+  const pendente = assinatura?.status === "ativa" && assinatura.inadimplente_desde ? assinatura : null;
   return (
     <AppShell
       usuario={usuario}
@@ -33,6 +43,12 @@ export default async function ClienteLayout({ children }: LayoutProps<"/cliente"
         </span>
       }
     >
+      {pendente && (
+        <p className="alerta alerta-erro" role="alert" style={{ marginBottom: 16 }}>
+          Não conseguimos cobrar a renovação do seu plano. Regularize até {formatarData(fimDaCarencia(pendente)!)} para não perder a
+          assinatura. <Link href="/cliente/conta">Pagar agora</Link>
+        </p>
+      )}
       {children}
     </AppShell>
   );

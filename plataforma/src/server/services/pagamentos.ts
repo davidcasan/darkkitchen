@@ -3,7 +3,8 @@ import crypto from "node:crypto";
 import { ErroNegocio, executar, um, varios } from "../db";
 
 // Pagamentos. Toda cobrança passa por um "gateway". Hoje o gateway é
-// simulado (aprova na hora, sem dinheiro real). Para cobrar de verdade,
+// simulado (sem dinheiro real): aprova na hora, exceto cartão com final 0000,
+// que é sempre recusado (para testar a cobrança recusada). Para cobrar de verdade,
 // implemente a interface Gateway com Asaas, Pagar.me ou Mercado Pago e troque
 // a constante GATEWAY abaixo; nenhuma tela precisa mudar.
 
@@ -20,7 +21,10 @@ export interface Gateway {
 
 const gatewaySimulado: Gateway = {
   nome: "simulado",
-  cobrar: () => ({ aprovado: true, referencia: `sim_${crypto.randomBytes(6).toString("hex")}` }),
+  cobrar: ({ metodo }) =>
+    /final 0000$/.test(metodo.descricao)
+      ? { aprovado: false, referencia: `sim_${crypto.randomBytes(6).toString("hex")}`, mensagem: "Cartão recusado pela operadora." }
+      : { aprovado: true, referencia: `sim_${crypto.randomBytes(6).toString("hex")}` },
 };
 
 const GATEWAY: Gateway = gatewaySimulado;
@@ -83,12 +87,20 @@ export const listarFaturas = (usuarioId: number) =>
     usuarioId,
   );
 
-/** Cobra e registra a fatura. Lança erro se a cobrança for recusada. */
-export function cobrar(usuarioId: number, valorReais: number, descricao: string, metodoId?: number): number {
+/**
+ * Tenta cobrar e registra a fatura (paga ou recusada). Não lança erro na recusa:
+ * quem chama decide o que fazer (ex.: a renovação entra em carência).
+ */
+export function tentarCobrar(
+  usuarioId: number,
+  valorReais: number,
+  descricao: string,
+  metodoId?: number,
+): { aprovado: true; faturaId: number } | { aprovado: false; mensagem: string } {
   const metodo = metodoId
     ? listarMetodos(usuarioId).find((m) => m.id === metodoId)
     : metodoPadrao(usuarioId);
-  if (!metodo) throw new ErroNegocio("Cadastre uma forma de pagamento antes.");
+  if (!metodo) return { aprovado: false, mensagem: "Cadastre uma forma de pagamento antes." };
   const valorCentavos = Math.round(valorReais * 100);
   const r = GATEWAY.cobrar({ valorCentavos, descricao, metodo });
   const faturaId = executar(
@@ -100,6 +112,14 @@ export function cobrar(usuarioId: number, valorReais: number, descricao: string,
     metodo.descricao,
     r.referencia,
   ).id;
-  if (!r.aprovado) throw new ErroNegocio(r.mensagem ?? "O pagamento foi recusado. Tente outra forma de pagamento.", 402);
-  return faturaId;
+  return r.aprovado
+    ? { aprovado: true, faturaId }
+    : { aprovado: false, mensagem: r.mensagem ?? "O pagamento foi recusado. Tente outra forma de pagamento." };
+}
+
+/** Cobra e registra a fatura. Lança erro se a cobrança for recusada. */
+export function cobrar(usuarioId: number, valorReais: number, descricao: string, metodoId?: number): number {
+  const r = tentarCobrar(usuarioId, valorReais, descricao, metodoId);
+  if (!r.aprovado) throw new ErroNegocio(r.mensagem, 402);
+  return r.faturaId;
 }

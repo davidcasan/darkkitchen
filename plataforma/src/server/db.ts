@@ -77,7 +77,7 @@ CREATE TABLE IF NOT EXISTS creditos (
   id INTEGER PRIMARY KEY,
   usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
   quantidade INTEGER NOT NULL,
-  tipo TEXT NOT NULL CHECK (tipo IN ('assinatura','compra','pedido','revisao_extra','estorno','ajuste')),
+  tipo TEXT NOT NULL CHECK (tipo IN ('assinatura','compra','pedido','revisao_extra','estorno','ajuste','expiracao')),
   descricao TEXT NOT NULL,
   pedido_id INTEGER REFERENCES pedidos(id),
   fatura_id INTEGER REFERENCES faturas(id),
@@ -291,6 +291,42 @@ function migrar(d: DatabaseSync) {
     );`);
   // Troca para um plano menor fica agendada para a próxima renovação (out/2026).
   if (!colunas("assinaturas").includes("plano_proximo")) d.exec("ALTER TABLE assinaturas ADD COLUMN plano_proximo TEXT");
+  // Renovação automática (o cliente pode desligar), cobrança recusada com carência e
+  // aviso de créditos expirando (out/2026).
+  const colAssinatura = colunas("assinaturas");
+  const novasColunas: [string, string][] = [
+    ["renovacao_automatica", "INTEGER NOT NULL DEFAULT 1"],
+    ["inadimplente_desde", "TEXT"], // cobrança da renovação recusada desde esta data
+    ["tentativas_cobranca", "INTEGER NOT NULL DEFAULT 0"],
+    ["proxima_tentativa", "TEXT"],
+    ["aviso_expiracao", "TEXT"], // fim de período para o qual o aviso de expiração já foi enviado
+  ];
+  for (const [nome, tipo] of novasColunas)
+    if (!colAssinatura.includes(nome)) d.exec(`ALTER TABLE assinaturas ADD COLUMN ${nome} ${tipo}`);
+  // Créditos passam a expirar: o extrato ganha o tipo "expiracao". O SQLite não altera
+  // a regra (CHECK) de uma tabela, então ela é recriada com os mesmos lançamentos.
+  const sqlCreditos = (d.prepare("SELECT sql FROM sqlite_master WHERE name = 'creditos'").get() as { sql: string }).sql;
+  if (!sqlCreditos.includes("'expiracao'")) {
+    d.exec(`
+      PRAGMA foreign_keys = OFF;
+      BEGIN;
+      CREATE TABLE creditos_nova (
+        id INTEGER PRIMARY KEY,
+        usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+        quantidade INTEGER NOT NULL,
+        tipo TEXT NOT NULL CHECK (tipo IN ('assinatura','compra','pedido','revisao_extra','estorno','ajuste','expiracao')),
+        descricao TEXT NOT NULL,
+        pedido_id INTEGER REFERENCES pedidos(id),
+        fatura_id INTEGER REFERENCES faturas(id),
+        criado_em TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+      INSERT INTO creditos_nova SELECT id, usuario_id, quantidade, tipo, descricao, pedido_id, fatura_id, criado_em FROM creditos;
+      DROP TABLE creditos;
+      ALTER TABLE creditos_nova RENAME TO creditos;
+      CREATE INDEX IF NOT EXISTS idx_creditos_usuario ON creditos(usuario_id);
+      COMMIT;
+      PRAGMA foreign_keys = ON;`);
+  }
   // Códigos de pedido passaram de "Q-" (nome antigo) para "DK-" (Dark Kitchen), out/2026.
   // Converte o código e as menções a ele em notificações, extrato e comentários.
   const antigos = d.prepare("SELECT id, codigo FROM pedidos WHERE codigo LIKE 'Q-%' ORDER BY length(codigo) DESC").all() as {

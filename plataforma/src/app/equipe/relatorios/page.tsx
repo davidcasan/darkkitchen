@@ -51,7 +51,9 @@ export default async function RelatoriosPage({ searchParams }: PageProps<"/equip
           <span>Receita recorrente mensal</span>
           <b>{formatarReais(f.receitaRecorrente)}</b>
           <small>
-            {f.assinantes} {f.assinantes === 1 ? "assinatura ativa" : "assinaturas ativas"} · {f.cancelados} canceladas
+            {f.assinantes} {f.assinantes === 1 ? "assinatura ativa" : "assinaturas ativas"}
+            {f.naoRenovam > 0 && ` (${f.naoRenovam} sem renovação)`}
+            {f.inadimplentes > 0 && ` · ${f.inadimplentes} com pagamento pendente`} · {f.cancelados} encerradas
           </small>
         </div>
         <div className="kpi">
@@ -145,6 +147,8 @@ export default async function RelatoriosPage({ searchParams }: PageProps<"/equip
             <dd className="tnum">{c.consumidos}</dd>
             <dt>Devolvidos</dt>
             <dd className="tnum">{c.devolvidos}</dd>
+            <dt>Expirados (não usados)</dt>
+            <dd className="tnum">{c.expirados}</dd>
             <dt>Saldo em aberto hoje</dt>
             <dd className="tnum">
               {c.emAberto} créditos ≈ {formatarReais(c.emAberto * c.valorCredito)} já pagos e ainda não usados

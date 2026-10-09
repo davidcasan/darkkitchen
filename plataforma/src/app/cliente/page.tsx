@@ -60,7 +60,11 @@ export default async function PainelCliente({ searchParams }: PageProps<"/client
           <span>Plano</span>
           <b style={{ fontSize: 22 }}>{plano?.nome ?? "Nenhum"}</b>
           <small>
-            {assinatura?.status === "ativa" ? `Renova em ${formatarData(assinatura.periodo_fim)}` : "Assinatura inativa"}
+            {assinatura?.status !== "ativa"
+              ? "Assinatura inativa"
+              : assinatura.inadimplente_desde
+                ? "Pagamento pendente"
+                : `${assinatura.renovacao_automatica ? "Renova" : "Termina"} em ${formatarData(assinatura.periodo_fim)}`}
           </small>
         </div>
       </div>

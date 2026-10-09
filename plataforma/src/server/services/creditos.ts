@@ -1,7 +1,7 @@
 import "server-only";
 import { executar, um, varios } from "../db";
 
-export type TipoLancamento = "assinatura" | "compra" | "pedido" | "revisao_extra" | "estorno" | "ajuste";
+export type TipoLancamento = "assinatura" | "compra" | "pedido" | "revisao_extra" | "estorno" | "ajuste" | "expiracao";
 
 export interface Lancamento {
   id: number;

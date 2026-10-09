@@ -40,7 +40,7 @@ const DUVIDAS = [
   },
   {
     q: "E se os créditos acabarem no meio do mês?",
-    r: "Suba de plano a qualquer momento: você paga só a diferença e os créditos extras entram na hora. O saldo que sobrar continua com você.",
+    r: "Suba de plano a qualquer momento: você paga só a diferença e os créditos extras entram na hora. Os créditos valem até o fim de cada mês do plano; o que sobrar expira na renovação.",
   },
   {
     q: "E se eu não gostar da peça?",
