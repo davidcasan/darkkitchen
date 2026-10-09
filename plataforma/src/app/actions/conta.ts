@@ -11,11 +11,13 @@ import { marcarTodasLidas } from "@/server/services/notificacoes";
 import { registrarLogin } from "@/server/services/acessos";
 import { type PreferenciaEmail, PREFERENCIAS_EMAIL } from "@/server/services/email";
 import { enderecoConfiavel, pedirRecuperacao, redefinirSenha } from "@/server/services/recuperacao";
+import { RECUPERACAO_IP, conferirLimite, registrarTentativa } from "@/server/services/limites";
+import { ipDe } from "@/server/ip";
 
 export async function entrarAction(_: Estado, fd: FormData): Promise<Estado> {
   let destino = "/";
   const r = await rodar(async () => {
-    const u = autenticar(campo(fd, "email"), campo(fd, "senha"));
+    const u = autenticar(campo(fd, "email"), campo(fd, "senha"), ipDe(await headers()));
     await iniciarSessaoWeb(u.id);
     registrarLogin(u, "site");
     destino = areaDo(u.papel);
@@ -71,7 +73,12 @@ export async function pedirRecuperacaoAction(_: Estado, fd: FormData): Promise<E
   if (!/^\S+@\S+\.\S+$/.test(email)) return { erro: "Digite um e-mail válido." };
   const h = await headers();
   const base = enderecoConfiavel(h.get("x-forwarded-host") ?? h.get("host"), h.get("x-forwarded-proto"));
-  const r = await rodar(() => pedirRecuperacao(email, base));
+  const ip = ipDe(h);
+  const r = await rodar(() => {
+    conferirLimite([RECUPERACAO_IP, ip]);
+    registrarTentativa([RECUPERACAO_IP, ip]);
+    pedirRecuperacao(email, base);
+  });
   if (r?.erro) return r;
   return {
     ok: "Se houver uma conta com esse e-mail, enviamos um link para criar uma nova senha. Ele vale por 1 hora. Confira também a caixa de spam.",

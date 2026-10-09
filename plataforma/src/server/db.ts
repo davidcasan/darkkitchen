@@ -7,7 +7,8 @@ import { DatabaseSync } from "node:sqlite";
 // serviços em src/server/services, então trocar por PostgreSQL no servidor
 // online significa reescrever só esta camada, sem tocar nas telas.
 
-export const PASTA_DADOS = path.join(process.cwd(), "data");
+// Pasta do banco e dos arquivos. DK_DADOS troca o local (ex.: testar a produção numa pasta à parte).
+export const PASTA_DADOS = process.env.DK_DADOS ? path.resolve(process.env.DK_DADOS) : path.join(process.cwd(), "data");
 export const PASTA_ARQUIVOS = path.join(PASTA_DADOS, "arquivos");
 
 // Um cliente pode ter várias marcas; cada uma guarda seus próprios assets (logo, manual, cores).
@@ -192,6 +193,14 @@ CREATE TABLE IF NOT EXISTS atendimento_exclusoes (
   quantidade INTEGER NOT NULL, -- mensagens apagadas
   conversa_inteira INTEGER NOT NULL DEFAULT 0,
   criado_em TEXT NOT NULL DEFAULT (datetime('now'))
+);
+-- Limite de tentativas (login e recuperação de senha): falhas por chave ("email:..." ou
+-- "ip:...") numa janela de tempo; passou do limite, fica bloqueado por um tempo.
+CREATE TABLE IF NOT EXISTS limites_tentativas (
+  chave TEXT PRIMARY KEY,
+  falhas INTEGER NOT NULL DEFAULT 0,
+  janela_desde TEXT NOT NULL DEFAULT (datetime('now')),
+  bloqueado_ate TEXT
 );
 -- Recuperação de senha: link de uso único, válido por pouco tempo. Só o resumo (hash)
 -- do código fica no banco, como nas sessões.

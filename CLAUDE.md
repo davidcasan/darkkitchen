@@ -63,7 +63,7 @@ App em `plataforma/` — Next.js 16 (App Router, TypeScript), CSS Modules + toke
   - Relatórios: receita recorrente só conta assinaturas com renovação ligada e em dia; créditos expirados aparecem à parte.
 - Conclusão do pedido: pelo cliente ("Aprovar peça"), pelo diretor (com motivo, ação `concluir`) ou automática após `DIAS_APROVACAO_AUTOMATICA` (5) dias úteis com o cliente, com lembrete 1 dia útil antes. A automática roda a cada hora (`instrumentation.ts`) e ao abrir as áreas logadas. A métrica de aprovação de primeira só conta aprovações do próprio cliente.
 - Acesso pela internet em desenvolvimento: túnel do Cloudflare (`*.trycloudflare.com`) liberado em `next.config.ts` (`allowedDevOrigins` e `serverActions.allowedOrigins`); sem isso a página abre mas não responde a cliques. Atenção: com o túnel aberto, as contas de teste ficam acessíveis pela internet.
-- Comandos (em `plataforma/`): `npm run dev` (http://localhost:3000), `npm run build`, `npm run lint`, `npm run db:reset` (apaga o banco; recriado com dados de teste ao subir).
+- Comandos (em `plataforma/`): `npm run dev` (http://localhost:3000; atalho `iniciar-servidor.bat` na raiz), `npm run build`, `npm run producao`, `npm run backup`, `npm run lint`, `npm run db:reset` (apaga o banco; recriado com dados de teste ao subir em desenvolvimento). Instalação no servidor: `INSTALACAO.md`.
 - Contas de teste (senha `quadro123`): cliente@, designer@, senior@, diretor@, admin@teste.com.
 - Papéis (out/2026): cliente, designer, diretor de arte (triagem, atribuição, controle de qualidade, conclusão, cancelamento; o antigo "gerente de projetos" foi fundido aqui — `migrar()` em db.ts converte contas antigas) e admin. O admin pode tudo (`podeExecutar`), gerencia contas em `/equipe/contas` (criar, editar, senha temporária, remover/desativar, ajustar créditos) e usa "Acessar como" para agir na conta de qualquer usuário (sessão original guardada no cookie `dk_admin`). Contas com histórico nunca são apagadas, só desativadas (`usuarios.ativo`).
 
@@ -114,13 +114,13 @@ As horas são estimativas — recalibrar com o tempo real dos primeiros pedidos.
 ## Próximo passo (out/2026): migrar para a máquina servidor
 A plataforma vai rodar num computador com **Windows 10** do dono, como servidor, exposto pela internet com **Cloudflare Tunnel fixo** (HTTPS, sem abrir portas). Atenção: o Windows 10 não recebe atualizações de segurança desde out/2025 (recomendado: Windows 11, ESU ou Ubuntu Server). Uma VPS Linux fica para depois, quando houver clientes pagando; o código não muda.
 
-**Etapa 1 — no código (Claude):**
-1. Modo produção sem contas de teste: com banco vazio, criar só o admin real (e-mail e senha definidos pelo dono), não o `seed.ts`.
-2. Limite de tentativas de login (hoje não existe).
-3. Configuração para o endereço definitivo (`serverActions.allowedOrigins`, `APP_URL`); hoje só o túnel provisório `*.trycloudflare.com` está liberado.
-4. Script de produção (`next build` + `next start`) rodando como serviço do Windows (sobe com a máquina, reinicia se cair).
-5. Backup diário automático do banco (`VACUUM INTO`) e de `data/arquivos` para pasta sincronizada (Google Drive/OneDrive), guardando 30 dias.
-6. Guia `INSTALACAO.md` com o passo a passo da máquina nova.
+**Etapa 1 — no código: ✅ feita (out/2026).** Guia completo em `INSTALACAO.md` (raiz do repositório).
+- Modo produção (`npm run producao` = `next start -H 127.0.0.1 -p 3000`, só local; o acesso de fora é pelo túnel): `instrumentation.ts` chama `server/producao.ts` em vez do `seed.ts`. Com banco vazio cria só o admin de `ADMIN_EMAIL`/`ADMIN_NOME`/`ADMIN_SENHA_INICIAL` (.env.local); se já houver admin ativo, não cria. Sempre desativa contas `@teste.com` e derruba as sessões delas. O banco atual já tem admins reais (contato@ e david@darkkitchen.art.br).
+- Limite de tentativas (`services/limites.ts`, tabela `limites_tentativas`): login 5 erros por e-mail ou 20 por IP em 15 min → bloqueio de 15 min; "esqueci minha senha" 10 por IP por hora. IP por `server/ip.ts` (cf-connecting-ip).
+- Endereço: `next.config.ts` libera o host do `APP_URL` e `DOMINIOS_EXTRA` (além de `*.trycloudflare.com`); mudar o `APP_URL` exige recompilar. `poweredByHeader` desligado.
+- `DK_DADOS` troca a pasta de dados (usado para testar produção sem mexer no banco de desenvolvimento).
+- Scripts em `plataforma/scripts/`: `producao.ps1` (roda e reinicia, log diário em `plataforma/logs`), `instalar-servico.ps1` (tarefas do Agendador do Windows "Dark Kitchen - Servidor" ao ligar e "Dark Kitchen - Backup" às 3h, logon S4U sem senha guardada), `atualizar.ps1` (backup, para, git pull, npm ci, build, sobe), `backup.mjs` (`npm run backup`: banco por `VACUUM INTO` com verificação de integridade, 30 dias; arquivos só os novos, nunca apaga no destino; `BACKUP_DESTINO\backup.log`). Os .ps1 são só ASCII (PowerShell 5.1 erra acentos). Modelo de configuração: `plataforma/.env.exemplo` (vai para o git; o `.env.local` não).
+- Testado: build de produção, banco vazio (só admin), cópia dos dados reais (5 contas de teste desativadas, clientes e pedidos mantidos), cookie `secure`, bloqueio após 5 senhas erradas, backup repetido no mesmo segundo.
 
 **Etapa 2 — máquina servidor (dono):** Node.js 24 (mesma versão: v24.13.0), Git, cloudflared; clonar o repositório; copiar à mão `plataforma/.env.local` e, se mantiver os dados, `plataforma/data/`; desligar suspensão/hibernação.
 

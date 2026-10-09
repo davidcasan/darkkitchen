@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "db:reset": "node -e \"require('fs').rmSync('data',{recursive:true,force:true});console.log('Banco apagado. Os dados de teste serao recriados ao iniciar o servidor.')\""
+    "db:reset": "node -e \"require('fs').rmSync('data',{recursive:true,force:true});console.log('Banco apagado. Os dados de teste serao recriados ao iniciar o servidor.')\"",
+    "producao": "next start -H 127.0.0.1 -p 3000",
+    "backup": "node scripts/backup.mjs"
   },
   "dependencies": {
     "next": "16.4.0",

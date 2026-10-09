@@ -1,0 +1,40 @@
+# Dark Kitchen Studio - registra as tarefas do Windows (rodar UMA vez, como Administrador):
+#   1. "Dark Kitchen - Servidor": sobe com o Windows, mesmo sem ninguem fazer login,
+#      e reinicia sozinho se cair.
+#   2. "Dark Kitchen - Backup": copia o banco e os arquivos todo dia as 3h.
+# As duas rodam com o usuario atual, sem guardar senha (tipo de logon S4U).
+#
+# Uso (PowerShell como Administrador, na pasta plataforma):
+#   powershell -ExecutionPolicy Bypass -File scripts\instalar-servico.ps1
+
+#Requires -RunAsAdministrator
+$ErrorActionPreference = "Stop"
+$raiz = Split-Path -Parent $PSScriptRoot
+$node = (Get-Command node.exe -ErrorAction SilentlyContinue).Source
+if (-not $node) { throw "Node.js nao encontrado. Instale o Node.js 24 e abra um novo PowerShell." }
+if (-not (Test-Path (Join-Path $raiz ".next\BUILD_ID"))) { throw "Falta compilar: rode 'npm run build' na pasta plataforma antes." }
+if (-not (Test-Path (Join-Path $raiz ".env.local"))) { throw "Falta o arquivo plataforma\.env.local (configuracao e senhas)." }
+
+$usuario = "$env:USERDOMAIN\$env:USERNAME"
+$quem = New-ScheduledTaskPrincipal -UserId $usuario -LogonType S4U -RunLevel Limited
+
+# Servidor: ao ligar o Windows; se cair, a propria tarefa tenta de novo a cada minuto.
+$servidor = New-ScheduledTaskAction -Execute "powershell.exe" `
+  -Argument "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$raiz\scripts\producao.ps1`"" `
+  -WorkingDirectory $raiz
+$regrasServidor = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable `
+  -ExecutionTimeLimit ([TimeSpan]::Zero) -RestartCount 999 -RestartInterval (New-TimeSpan -Minutes 1) -MultipleInstances IgnoreNew
+Register-ScheduledTask -TaskName "Dark Kitchen - Servidor" -Action $servidor -Trigger (New-ScheduledTaskTrigger -AtStartup) `
+  -Principal $quem -Settings $regrasServidor -Description "Plataforma Dark Kitchen Studio (Next.js, modo producao)" -Force | Out-Null
+
+# Backup: todo dia as 3h (se o computador estiver desligado, roda quando ligar).
+$backup = New-ScheduledTaskAction -Execute $node -Argument "`"$raiz\scripts\backup.mjs`"" -WorkingDirectory $raiz
+$regrasBackup = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable `
+  -ExecutionTimeLimit (New-TimeSpan -Hours 3)
+Register-ScheduledTask -TaskName "Dark Kitchen - Backup" -Action $backup -Trigger (New-ScheduledTaskTrigger -Daily -At 3am) `
+  -Principal $quem -Settings $regrasBackup -Description "Backup diario do banco e dos arquivos da Dark Kitchen Studio" -Force | Out-Null
+
+Start-ScheduledTask -TaskName "Dark Kitchen - Servidor"
+Write-Host "Pronto. Servidor iniciado e backup diario agendado (3h)."
+Write-Host "Teste em alguns segundos: http://localhost:3000"
+Write-Host "Registro (log) do servidor: $raiz\logs"

@@ -1,21 +1,29 @@
-// Roda uma vez quando o servidor sobe: cria os dados de teste se o banco estiver
-// vazio e agenda as tarefas periódicas (aprovação automática de versões,
+// Roda uma vez quando o servidor sobe. Desenvolvimento: cria os dados de teste se o
+// banco estiver vazio. Produção: cria só o admin real e desativa contas de teste
+// (server/producao.ts). Nos dois casos, agenda as tarefas periódicas (aprovação automática de versões,
 // renovação de assinaturas, cobranças em carência e expiração de créditos).
 export async function register() {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
-  const { popularSeVazio } = await import("./server/seed");
   try {
-    await popularSeVazio();
+    if (process.env.NODE_ENV === "production") {
+      const { prepararProducao } = await import("./server/producao");
+      prepararProducao();
+    } else {
+      const { popularSeVazio } = await import("./server/seed");
+      await popularSeVazio();
+    }
   } catch (e) {
-    console.error("[dark-kitchen] Falha ao criar dados de teste:", e);
+    console.error("[dark-kitchen] Falha ao preparar o banco:", e);
   }
 
   const g = globalThis as typeof globalThis & { __dkTarefas?: NodeJS.Timeout };
   if (g.__dkTarefas) return;
   const { processarAprovacoesAutomaticas } = await import("./server/services/pedidos");
   const { processarAssinaturas } = await import("./server/services/assinaturas");
+  const { limparTentativasAntigas } = await import("./server/services/limites");
   const rodar = () => {
     try {
+      limparTentativasAntigas();
       const n = processarAprovacoesAutomaticas();
       if (n) console.log(`[dark-kitchen] ${n} pedido(s) aprovado(s) automaticamente.`);
     } catch (e) {

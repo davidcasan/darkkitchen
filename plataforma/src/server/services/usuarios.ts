@@ -8,16 +8,24 @@ import { assinar, iniciarNegociacaoPersonalizado } from "./assinaturas";
 import { pixDisponivel } from "./pix";
 import { CARTAO_ATIVO, adicionarMetodo } from "./pagamentos";
 import { criarMarca } from "./marcas";
+import { LOGIN_EMAIL, LOGIN_IP, conferirLimite, registrarTentativa, zerarTentativas } from "./limites";
 import { enfileirarEmail } from "./email";
 
 const CAMPOS = "id, papel, nome, email, empresa, senior";
 
-export function autenticar(email: string, senha: string): Usuario {
+/** Confere e-mail e senha, com limite de tentativas por e-mail e por IP. */
+export function autenticar(email: string, senha: string, ip = "local"): Usuario {
+  const e = email.trim();
+  conferirLimite([LOGIN_EMAIL, e], [LOGIN_IP, ip]);
   const u = um<Usuario & { senha_hash: string }>(
     `SELECT ${CAMPOS}, senha_hash FROM usuarios WHERE email = ? AND ativo = 1`,
-    email.trim(),
+    e,
   );
-  if (!u || !verificarSenha(senha, u.senha_hash)) throw new ErroNegocio("E-mail ou senha incorretos.", 401);
+  if (!u || !verificarSenha(senha, u.senha_hash)) {
+    registrarTentativa([LOGIN_EMAIL, e], [LOGIN_IP, ip]);
+    throw new ErroNegocio("E-mail ou senha incorretos.", 401);
+  }
+  zerarTentativas([LOGIN_EMAIL, e]);
   return usuarioPorId(u.id)!;
 }
 
