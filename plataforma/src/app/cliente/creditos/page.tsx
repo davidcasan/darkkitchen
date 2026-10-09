@@ -7,6 +7,7 @@ import { precos } from "@/server/services/precos";
 import { exigirUsuario } from "@/server/auth";
 import { formatarData } from "@/server/datas";
 import { extrato, saldo } from "@/server/services/creditos";
+import { AbrirAtendimento } from "@/components/app/Atendimento";
 
 export const metadata: Metadata = { title: "Créditos" };
 
@@ -64,11 +65,15 @@ export default async function CreditosCliente() {
             <p className="small">Você está sem assinatura ativa, então não recebe novos créditos. O saldo atual expira no fim do mês.</p>
           )}
           <p className="muted small" style={{ marginTop: 10, marginBottom: 14 }}>
-            Precisa de mais créditos agora? Suba de plano: a diferença de créditos entra na hora.
+            Precisa de mais créditos agora? Suba de plano: a diferença de créditos entra na hora. Ou compre créditos adicionais
+            sem mudar de plano, pelo chat do atendimento.
           </p>
-          <Link href="/cliente/conta" className="btn">
-            {ativa ? "Ver planos" : "Assinar um plano"}
-          </Link>
+          <div className="row">
+            <Link href="/cliente/conta" className="btn">
+              {ativa ? "Ver planos" : "Assinar um plano"}
+            </Link>
+            <AbrirAtendimento className="btn">Comprar créditos adicionais</AbrirAtendimento>
+          </div>
         </section>
       </div>
 

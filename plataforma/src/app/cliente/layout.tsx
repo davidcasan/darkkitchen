@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/app/AppShell";
+import { BotaoAtendimento } from "@/components/app/Atendimento";
 import type { ItemNav } from "@/components/app/NavArea";
 import { adminOriginal, exigirUsuario } from "@/server/auth";
 import Link from "next/link";
@@ -50,6 +51,7 @@ export default async function ClienteLayout({ children }: LayoutProps<"/cliente"
         </p>
       )}
       {children}
+      <BotaoAtendimento visao="cliente" />
     </AppShell>
   );
 }

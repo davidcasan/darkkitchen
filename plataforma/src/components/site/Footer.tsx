@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Marca } from "@/components/Marca";
+import { EMAIL_CONTATO, mailto } from "@/domain/contato";
 import styles from "./Footer.module.css";
 
 export function Footer() {
@@ -22,6 +23,17 @@ export function Footer() {
             <Link href="/entrar">Área do cliente</Link>
             <Link href="/entrar">Área da equipe</Link>
             <Link href="/cadastro">Criar conta</Link>
+          </div>
+          <div className={styles.contato}>
+            <p className={styles.h}>Fale com a gente</p>
+            <a href={mailto(EMAIL_CONTATO, "Quero contratar")}>
+              <small>Quero contratar</small>
+              {EMAIL_CONTATO}
+            </a>
+            <Link href="/entrar">
+              <small>Já sou cliente</small>
+              Chat na área do cliente
+            </Link>
           </div>
         </nav>
       </div>

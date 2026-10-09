@@ -168,6 +168,31 @@ CREATE INDEX IF NOT EXISTS idx_pedidos_status ON pedidos(status);
 CREATE INDEX IF NOT EXISTS idx_eventos_pedido ON eventos(pedido_id);
 CREATE INDEX IF NOT EXISTS idx_comentarios_pedido ON comentarios(pedido_id);
 CREATE INDEX IF NOT EXISTS idx_notificacoes_usuario ON notificacoes(usuario_id, lida);
+
+-- Atendimento (SAC): chat entre o cliente e o admin. Uma conversa por pedido
+-- (pedido_id) e uma conversa geral do cliente (pedido_id NULL). As mensagens são
+-- permanentes: o próprio banco recusa alterar ou apagar (gatilhos abaixo).
+CREATE TABLE IF NOT EXISTS atendimento_mensagens (
+  id INTEGER PRIMARY KEY,
+  cliente_id INTEGER NOT NULL REFERENCES usuarios(id),
+  pedido_id INTEGER REFERENCES pedidos(id),
+  autor_id INTEGER NOT NULL REFERENCES usuarios(id),
+  texto TEXT NOT NULL,
+  criado_em TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_atendimento_conversa ON atendimento_mensagens(cliente_id, pedido_id, id);
+CREATE TRIGGER IF NOT EXISTS atendimento_sem_edicao BEFORE UPDATE ON atendimento_mensagens
+BEGIN SELECT RAISE(ABORT, 'Mensagens do atendimento não podem ser alteradas.'); END;
+CREATE TRIGGER IF NOT EXISTS atendimento_sem_exclusao BEFORE DELETE ON atendimento_mensagens
+BEGIN SELECT RAISE(ABORT, 'Mensagens do atendimento não podem ser apagadas.'); END;
+-- Até qual mensagem cada pessoa já leu, por conversa (pedido 0 = conversa geral).
+CREATE TABLE IF NOT EXISTS atendimento_leituras (
+  usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+  cliente_id INTEGER NOT NULL,
+  pedido_chave INTEGER NOT NULL,
+  ultima_lida INTEGER NOT NULL,
+  PRIMARY KEY (usuario_id, cliente_id, pedido_chave)
+);
 `;
 
 type GlobalDb = typeof globalThis & { __dkDb?: DatabaseSync };

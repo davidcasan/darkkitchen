@@ -158,7 +158,8 @@ export function removerConta(admin: Usuario, id: number): "removida" | "desativa
           + (SELECT COUNT(*) FROM comentarios WHERE autor_id = ?1)
           + (SELECT COUNT(*) FROM versoes WHERE autor_id = ?1)
           + (SELECT COUNT(*) FROM eventos WHERE autor_id = ?1)
-          + (SELECT COUNT(*) FROM faturas WHERE usuario_id = ?1) n`,
+          + (SELECT COUNT(*) FROM faturas WHERE usuario_id = ?1)
+          + (SELECT COUNT(*) FROM atendimento_mensagens WHERE autor_id = ?1 OR cliente_id = ?1) n`,
     id,
   )!.n;
   return transacao(() => {

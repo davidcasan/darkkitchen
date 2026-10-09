@@ -62,12 +62,19 @@ export default async function ContaDetalhe({ params, searchParams }: PageProps<"
             <span className="muted small">Desde {formatarData(c.criado_em)}</span>
           </p>
         </div>
-        {!voce && c.ativo === 1 && (
-          <FormAcao action={acessarComoAction}>
-            <input type="hidden" name="id" value={c.id} />
-            <Enviar className="btn btn-primary">Acessar como {c.nome.split(" ")[0]}</Enviar>
-          </FormAcao>
-        )}
+        <div className="row">
+          {cliente && (
+            <Link href={`/equipe/atendimento?cliente=${c.id}`} className="btn">
+              Atendimento
+            </Link>
+          )}
+          {!voce && c.ativo === 1 && (
+            <FormAcao action={acessarComoAction}>
+              <input type="hidden" name="id" value={c.id} />
+              <Enviar className="btn btn-primary">Acessar como {c.nome.split(" ")[0]}</Enviar>
+            </FormAcao>
+          )}
+        </div>
       </div>
 
       <Confirmacao texto={confirmacao} />

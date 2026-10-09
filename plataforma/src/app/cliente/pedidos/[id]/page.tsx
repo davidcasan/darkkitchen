@@ -15,6 +15,7 @@ import { formatarData, formatarDataHora, paraSql } from "@/server/datas";
 import { ErroNegocio } from "@/server/db";
 import { arquivosPorIds } from "@/server/services/arquivos";
 import { custoProximoAjuste, pedidoParaUsuario, prazoAprovacaoAutomatica, type PedidoDetalhe } from "@/server/services/pedidos";
+import { AbrirAtendimento } from "@/components/app/Atendimento";
 import styles from "./pedido.module.css";
 
 export const metadata: Metadata = { title: "Pedido" };
@@ -67,6 +68,7 @@ export default async function PedidoCliente({ params, searchParams }: PageProps<
             {p.urgente === 1 && <span className="tag">Urgente</span>}
           </p>
         </div>
+        <AbrirAtendimento>Falar com o atendimento</AbrirAtendimento>
       </div>
 
       <Confirmacao texto={confirmacao} />

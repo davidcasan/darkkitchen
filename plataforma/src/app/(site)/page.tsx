@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Stage } from "@/components/site/Stage";
 import { formatarReais } from "@/domain/catalogo";
+import { EMAIL_CONTATO, mailto } from "@/domain/contato";
 import { pecasComPrecos, planosAtivos } from "@/domain/precos";
 import { precos } from "@/server/services/precos";
 import styles from "./page.module.css";
@@ -33,14 +34,20 @@ const BENEFICIOS = [
   { t: "Feito para redes", d: "Vertical, quadrado, feed ou horizontal. Um pedido, todos os formatos de que você precisa." },
 ];
 
-const DUVIDAS = [
+const DUVIDAS: { q: string; r: React.ReactNode }[] = [
   {
     q: "Como funcionam os créditos?",
     r: "Cada plano traz uma quantidade de créditos por mês. Cada peça custa créditos conforme o tipo e a duração, e adicionais como locução, roteiro ou formato extra somam um pouco mais. Você vê o total antes de enviar o pedido.",
   },
   {
     q: "E se os créditos acabarem no meio do mês?",
-    r: "Suba de plano a qualquer momento: você paga só a diferença e os créditos extras entram na hora. Os créditos valem até o fim de cada mês do plano; o que sobrar expira na renovação.",
+    r: (
+      <>
+        Você tem dois caminhos. Subir de plano a qualquer momento: você paga só a diferença e os créditos extras entram na hora.
+        Ou comprar créditos adicionais sem mudar de plano: é só falar com o atendimento pelo chat da sua área. Os créditos valem
+        até o fim de cada mês do plano; o que sobrar expira na renovação.
+      </>
+    ),
   },
   {
     q: "E se eu não gostar da peça?",
@@ -51,8 +58,23 @@ const DUVIDAS = [
     r: "Não. No briefing você marca que não tem roteiro e conta a ideia geral. Um roteirista escreve a partir dela.",
   },
   {
-    q: "Posso usar as peças na TV?",
-    r: "Os planos cobrem uso digital: redes sociais, site, anúncios online e apresentações. Para TV e mídia nacional, fale com a gente.",
+    q: "Posso usar cenas em vídeo?",
+    r: "Pode, sim. Envie suas gravações junto com o pedido e a cozinha monta a animação em cima delas: textos, grafismos, transições e a sua marca. Só trabalhamos com o material que você mandar, então as filmagens precisam ser suas ou ter direito de uso.",
+  },
+  {
+    q: "Vocês fazem locução, trilha e efeitos sonoros?",
+    r: "Fazemos. A locução é gravada por locutores profissionais de verdade, gente, não voz de IA. É só marcar no briefing: locução, trilha e efeitos sonoros entram como adicionais e custam alguns créditos a mais, conforme a duração da peça. Você vê o total antes de enviar o pedido.",
+  },
+  {
+    q: "Como falo com vocês?",
+    r: (
+      <>
+        Ainda não é cliente e quer saber como contratar? Escreva para{" "}
+        <a href={mailto(EMAIL_CONTATO, "Quero contratar")}>{EMAIL_CONTATO}</a>. Já é cliente e tem dúvidas sobre um pedido, seus
+        créditos ou sua conta? <Link href="/entrar">Entre na sua área</Link> e fale com o atendimento pelo chat: cada pedido tem a
+        sua conversa, e tudo fica salvo.
+      </>
+    ),
   },
 ];
 

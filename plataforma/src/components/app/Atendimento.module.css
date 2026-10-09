@@ -1,0 +1,269 @@
+/* Chat do atendimento: botão no canto + painel. No celular o painel ocupa a tela. */
+
+.botao {
+  position: fixed;
+  right: 16px;
+  bottom: calc(84px + env(safe-area-inset-bottom, 0px)); /* acima da barra inferior do celular */
+  z-index: 20;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--paper-2);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  box-shadow: 0 10px 30px -10px rgb(0 0 0 / 0.8);
+}
+
+.botao:hover {
+  border-color: var(--accent);
+}
+
+.botao svg {
+  color: var(--accent-ink);
+}
+
+.selo {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 20px;
+  text-align: center;
+}
+
+.flutuante {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+}
+
+.painel {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 0;
+  background: var(--paper);
+}
+
+.painel[data-embutido="true"] {
+  height: min(640px, 75dvh);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.cabeca {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  padding-top: calc(14px + env(safe-area-inset-top, 0px));
+  border-bottom: 1px solid var(--line);
+}
+
+.painel[data-embutido="true"] .cabeca {
+  padding-top: 14px;
+}
+
+.cabeca div {
+  display: grid;
+  min-width: 0;
+}
+
+.cabeca small {
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fechar {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ink);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.lista {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+}
+
+.vazio {
+  margin: auto 0;
+  color: var(--muted);
+  text-align: center;
+  font-size: 14px;
+}
+
+.msg {
+  max-width: 85%;
+  align-self: flex-start;
+}
+
+.msg[data-minha="true"] {
+  align-self: flex-end;
+}
+
+.autor {
+  display: block;
+  margin: 0 4px 3px;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.msg[data-minha="true"] .autor {
+  text-align: right;
+}
+
+.msg p {
+  margin: 0;
+  padding: 10px 13px;
+  border-radius: 14px 14px 14px 4px;
+  background: var(--paper-2);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 14.5px;
+}
+
+.msg[data-minha="true"] p {
+  border-radius: 14px 14px 4px 14px;
+  background: var(--accent-soft);
+  border: 1px solid rgb(255 77 46 / 0.25);
+}
+
+/* Horário e marcador dentro do balão, no canto, como no Telegram. */
+.meta {
+  float: right;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 6px 0 -4px 12px;
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1;
+}
+
+.marcador {
+  display: inline-flex;
+  color: var(--muted);
+}
+
+.marcador[data-estado="lida"] {
+  color: var(--ok);
+}
+
+.marcador[data-estado="falhou"] {
+  color: var(--danger);
+}
+
+.msg[data-pendente="enviando"] p {
+  opacity: 0.75;
+}
+
+.reenviar {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--danger);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.envio {
+  border-top: 1px solid var(--line);
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+}
+
+.painel[data-embutido="true"] .envio {
+  padding-bottom: 12px;
+}
+
+.campo {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.campo textarea {
+  flex: 1;
+  min-width: 0;
+  resize: none;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--bg);
+  color: var(--ink);
+  font: inherit;
+  font-size: 15px;
+}
+
+.campo textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.erro {
+  margin: 0 0 8px;
+  color: var(--danger);
+  font-size: 13px;
+}
+
+.nota {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 11.5px;
+}
+
+@media (min-width: 960px) {
+  .botao {
+    bottom: 24px;
+    right: 24px;
+  }
+
+  .flutuante {
+    inset: auto 24px 24px auto;
+    width: 400px;
+    height: min(600px, calc(100dvh - 48px));
+  }
+
+  .flutuante .painel {
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: 0 24px 60px -20px rgb(0 0 0 / 0.9);
+  }
+
+  .flutuante .cabeca {
+    padding-top: 14px;
+  }
+
+  .flutuante .envio {
+    padding-bottom: 12px;
+  }
+}

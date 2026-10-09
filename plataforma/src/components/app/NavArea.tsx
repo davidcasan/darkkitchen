@@ -11,7 +11,15 @@ export interface ItemNav {
   icone: NomeIcone;
   movel?: boolean; // aparece na barra inferior do celular
   destaque?: boolean;
+  selo?: number; // contador (ex.: mensagens não lidas)
 }
+
+const Selo = ({ n }: { n?: number }) =>
+  n ? (
+    <span className={styles.selo} aria-label={`${n} não lidas`}>
+      {n > 9 ? "9+" : n}
+    </span>
+  ) : null;
 
 /** O item ativo é o de endereço mais longo que combina com a página atual. */
 function hrefAtivo(pathname: string, itens: ItemNav[]) {
@@ -35,6 +43,7 @@ export function NavLateral({ itens }: { itens: ItemNav[] }) {
           >
             <Icone nome={i.icone} />
             {i.rotulo}
+            <Selo n={i.selo} />
           </Link>
         </li>
       ))}
@@ -57,6 +66,7 @@ export function NavInferior({ itens }: { itens: ItemNav[] }) {
           >
             <span className={styles.inferiorIcone}>
               <Icone nome={i.icone} tamanho={i.destaque ? 22 : 20} />
+              <Selo n={i.selo} />
             </span>
             <small>{i.rotulo}</small>
           </Link>

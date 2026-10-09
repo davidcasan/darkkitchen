@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { AbrirAtendimento } from "@/components/app/Atendimento";
 import {
   adicionarMetodoAction,
   metodoPadraoAction,
@@ -292,6 +293,14 @@ export default async function ContaCliente({ searchParams }: PageProps<"/cliente
           </FormAcao>
         </section>
         <section className="card">
+          <h2>Atendimento</h2>
+          <p className="muted small" style={{ marginBottom: 12 }}>
+            Dúvidas sobre créditos, pagamentos ou sua conta? Fale com o atendimento pelo chat. Para um pedido específico, use o
+            chat dentro da página do pedido.
+          </p>
+          <div style={{ marginBottom: 20 }}>
+            <AbrirAtendimento className="btn">Abrir o chat do atendimento</AbrirAtendimento>
+          </div>
           <h2>Sair</h2>
           <p className="muted small" style={{ marginBottom: 12 }}>
             Encerra a sessão neste navegador.

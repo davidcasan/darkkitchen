@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { AbrirAtendimento } from "@/components/app/Atendimento";
 import { notFound } from "next/navigation";
 import {
   aprovarQualidadeAction,
@@ -282,6 +283,7 @@ export default async function PedidoEquipe({ params, searchParams }: PageProps<"
             {escalar && <span className="tag">{p.tentativas_internas} reprovações internas</span>}
           </p>
         </div>
+        {u.papel === "admin" && <AbrirAtendimento>Atendimento com o cliente</AbrirAtendimento>}
       </div>
 
       <Confirmacao texto={confirmacao} />

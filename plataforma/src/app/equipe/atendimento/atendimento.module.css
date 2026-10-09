@@ -1,0 +1,105 @@
+.layout {
+  display: grid;
+  gap: 16px;
+}
+
+.lista {
+  padding: 8px;
+}
+
+.lista ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.item {
+  display: grid;
+  gap: 2px;
+  padding: 12px;
+  border-radius: 12px;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.item:hover {
+  background: var(--paper-2);
+}
+
+.item[aria-current="page"] {
+  background: var(--accent-soft);
+}
+
+.topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.selo {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 20px;
+  text-align: center;
+}
+
+.assunto {
+  color: var(--accent-ink);
+}
+
+.previa {
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.quando {
+  color: var(--muted);
+  font-size: 11.5px;
+}
+
+.conversa {
+  min-width: 0;
+}
+
+.nenhuma {
+  display: grid;
+  place-items: center;
+  min-height: 200px;
+}
+
+.voltar {
+  margin-bottom: 8px;
+}
+
+/* Celular: mostra a lista ou a conversa aberta, uma de cada vez. */
+@media (max-width: 959px) {
+  .layout[data-aberta="true"] .lista,
+  .layout[data-aberta="false"] .conversa {
+    display: none;
+  }
+}
+
+@media (min-width: 960px) {
+  .layout {
+    grid-template-columns: 320px minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .lista {
+    max-height: min(640px, 75dvh);
+    overflow-y: auto;
+  }
+
+  .voltar {
+    display: none;
+  }
+}

@@ -107,6 +107,7 @@
 }
 
 .inferiorIcone {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -293,4 +294,26 @@
     top: 50px;
     height: calc(100dvh - 50px);
   }
+}
+
+/* Contador no item do menu (mensagens não lidas). */
+.selo {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+  margin-left: auto;
+}
+
+.inferiorIcone .selo {
+  position: absolute;
+  top: -6px;
+  right: -12px;
+  margin: 0;
 }
