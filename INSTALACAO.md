@@ -10,8 +10,10 @@ Como Administrador:
 
 ```powershell
 winget install --id Git.Git -e
-winget install --id Cloudflare.cloudflared -e
 ```
+
+(Por SSH o winget falha; nesse caso, instale o Git pelo instalador de
+<https://git-scm.com/download/win> com `/VERYSILENT /NORESTART`.)
 
 **Node.js 24** (a mesma versão do desenvolvimento; a plataforma usa o banco SQLite que vem
 dentro do Node): baixe o instalador **v24.x** (Windows Installer .msi, 64-bit) em
@@ -22,10 +24,14 @@ Feche e abra o PowerShell de novo. Confira: `node -v` deve mostrar `v24.x`.
 ## 2. Projeto
 
 ```powershell
-git clone https://github.com/davidcasan/darkkitchen.git "E:\Vibecoding\Dark Kitchen Studio"
-cd "E:\Vibecoding\Dark Kitchen Studio\plataforma"
+mkdir C:\darkkitchen\bkp
+git clone https://github.com/davidcasan/darkkitchen.git C:\darkkitchen\projeto
+cd C:\darkkitchen\projeto\plataforma
 npm ci
 ```
+
+(No servidor atual: projeto em `C:\darkkitchen\projeto`, backup em `C:\darkkitchen\bkp`,
+Caddy em `C:\darkkitchen\caddy`.)
 
 (Se a máquina não tiver o disco E:, use outro caminho; o resto funciona igual.)
 
@@ -80,35 +86,33 @@ Isso cria duas tarefas no Agendador de Tarefas do Windows:
 | Dark Kitchen - Backup | Todo dia às 3h: cópia do banco e dos arquivos para `BACKUP_DESTINO` |
 
 Teste em alguns segundos: <http://localhost:3000>. O servidor só atende nesta máquina
-(endereço 127.0.0.1); o acesso de fora é pelo túnel do Cloudflare (passo 7).
+(endereço 127.0.0.1); o acesso de fora é pelo Caddy (passo 7).
 
 Registro (log) do servidor: `plataforma\logs\servidor-AAAA-MM-DD.log`.
 
-## 7. Endereço na internet (Cloudflare Tunnel)
+## 7. Endereço na internet (conexão direta + Caddy)
 
-Pré-requisito: o domínio `darkkitchen.art.br` administrado pelo Cloudflare (DNS), com os
-registros de e-mail da UOL copiados antes da troca (MX `mx.uhserver.com` e o SPF).
+Decisão de out/2026: **sem Cloudflare**. O domínio aponta direto para o IP público da casa, e o
+**Caddy** (em `C:\darkkitchen\caddy`) recebe as visitas nas portas 80/443, gera e renova o
+HTTPS sozinho (Let's Encrypt) e repassa para a plataforma (127.0.0.1:3000).
 
-```powershell
-cloudflared tunnel login                       # abre o navegador para autorizar
-cloudflared tunnel create darkkitchen
-cloudflared tunnel route dns darkkitchen app.darkkitchen.art.br
-```
+1. **Caddy:** baixe o `caddy.exe` (Windows amd64) em
+   <https://github.com/caddyserver/caddy/releases>, confira o SHA-512 com o `checksums.txt` e
+   coloque em `C:\darkkitchen\caddy\`. Copie `plataforma\scripts\Caddyfile` para a mesma pasta.
+   Como Administrador: `powershell -ExecutionPolicy Bypass -File scripts\instalar-caddy.ps1`
+   (serviço "Dark Kitchen - Caddy (HTTPS)", conta LocalService, **manual e parado**; firewall
+   das portas 80/443 só para o Caddy).
+2. **Do lado do dono:**
+   - IP público **fixo**, com as portas 80/443 de entrada **liberadas** pela operadora;
+   - no roteador: **redirecionar as portas 80 e 443** para o IP local do servidor e **reservar
+     esse IP** (reserva de DHCP);
+   - no painel da UOL Host: **registro A** `darkkitchen.art.br` e `www` → IP público, removendo
+     o redirecionamento antigo (**não mexer** nos registros MX/SPF do e-mail).
+3. **Ligar**, só depois do passo 2 (senão o Let's Encrypt bloqueia por tentativas falhas):
+   `Set-Service DarkKitchenCaddy -StartupType Automatic; Start-Service DarkKitchenCaddy`.
+   Confira `C:\darkkitchen\caddy\logs` e abra <https://darkkitchen.art.br>.
 
-Crie `C:\Users\<usuário>\.cloudflared\config.yml`:
-
-```yaml
-tunnel: darkkitchen
-credentials-file: C:\Users\<usuário>\.cloudflared\<ID-do-túnel>.json
-ingress:
-  - hostname: app.darkkitchen.art.br
-    service: http://127.0.0.1:3000
-  - service: http_status:404
-```
-
-Instale como serviço (como Administrador): `cloudflared service install`.
-Confira o `APP_URL=https://app.darkkitchen.art.br` no `.env.local` e rode o passo 8
-(atualizar) para recompilar com o endereço.
+Nunca redirecione no roteador a porta do SSH nem a 3000.
 
 ## 8. Atualizar para uma versão nova
 

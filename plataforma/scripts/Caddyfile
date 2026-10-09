@@ -1,0 +1,49 @@
+# Dark Kitchen Studio - Caddy (HTTPS e porta de entrada da internet).
+# No servidor fica em C:\darkkitchen\caddy\Caddyfile. O Caddy recebe as visitas nas portas
+# 80/443, gera e renova sozinho o certificado HTTPS (Let's Encrypt) e repassa para a
+# plataforma, que só escuta na própria máquina (127.0.0.1:3000).
+# Depois de mudar: C:\darkkitchen\caddy\caddy.exe validate --config C:\darkkitchen\caddy\Caddyfile
+# e reiniciar o serviço: Restart-Service DarkKitchenCaddy
+
+{
+	# Contato para avisos do Let's Encrypt (ex.: certificado perto de vencer sem renovar).
+	email contato@darkkitchen.art.br
+	# Certificados e dados do Caddy (o serviço roda com permissão mínima).
+	storage file_system C:/darkkitchen/caddy/dados
+}
+
+darkkitchen.art.br {
+	encode zstd gzip
+
+	# Uploads de vídeo grandes (entregas de até 2 GB).
+	request_body {
+		max_size 2GB
+	}
+
+	reverse_proxy 127.0.0.1:3000 {
+		# Ninguém de fora pode "inventar" o próprio IP: estes cabeçalhos só valem vindos
+		# de um proxy confiável (o IP real vai em X-Forwarded-For, preenchido pelo Caddy).
+		header_up -Cf-Connecting-Ip
+		header_up -X-Real-Ip
+	}
+
+	header {
+		# Só HTTPS daqui para a frente (o navegador lembra por 6 meses).
+		Strict-Transport-Security "max-age=15552000"
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+
+	log {
+		output file C:/darkkitchen/caddy/logs/acessos.log {
+			roll_size 10MiB
+			roll_keep 10
+		}
+	}
+}
+
+# www leva para o endereço principal.
+www.darkkitchen.art.br {
+	redir https://darkkitchen.art.br{uri} permanent
+}
