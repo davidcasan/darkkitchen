@@ -15,7 +15,8 @@ if (-not $node) { throw "Node.js nao encontrado. Instale o Node.js 24 e abra um 
 if (-not (Test-Path (Join-Path $raiz ".next\BUILD_ID"))) { throw "Falta compilar: rode 'npm run build' na pasta plataforma antes." }
 if (-not (Test-Path (Join-Path $raiz ".env.local"))) { throw "Falta o arquivo plataforma\.env.local (configuracao e senhas)." }
 
-$usuario = "$env:USERDOMAIN\$env:USERNAME"
+# Identidade real do usuario (via SSH, $env:USERDOMAIN vem como "WORKGROUP" e nao serve).
+$usuario = [Security.Principal.WindowsIdentity]::GetCurrent().Name
 $quem = New-ScheduledTaskPrincipal -UserId $usuario -LogonType S4U -RunLevel Limited
 
 # Servidor: ao ligar o Windows; se cair, a propria tarefa tenta de novo a cada minuto.
