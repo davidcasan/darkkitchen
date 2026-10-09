@@ -111,5 +111,23 @@ Existe um protótipo clicável em HTML (`briefing-motion.html`, publicado como a
 
 As horas são estimativas — recalibrar com o tempo real dos primeiros pedidos.
 
-## Próximo passo
-Fase 2 do código (login, perfis, banco). Em paralelo, no negócio: definir os pacotes mensais (créditos por plano, desconto no valor do crédito, se créditos acumulam ou expiram). Os planos no site (`src/domain/catalogo.ts`) são ilustrativos.
+## Próximo passo (out/2026): migrar para a máquina servidor
+A plataforma vai rodar num computador com **Windows 10** do dono, como servidor, exposto pela internet com **Cloudflare Tunnel fixo** (HTTPS, sem abrir portas). Atenção: o Windows 10 não recebe atualizações de segurança desde out/2025 (recomendado: Windows 11, ESU ou Ubuntu Server). Uma VPS Linux fica para depois, quando houver clientes pagando; o código não muda.
+
+**Etapa 1 — no código (Claude):**
+1. Modo produção sem contas de teste: com banco vazio, criar só o admin real (e-mail e senha definidos pelo dono), não o `seed.ts`.
+2. Limite de tentativas de login (hoje não existe).
+3. Configuração para o endereço definitivo (`serverActions.allowedOrigins`, `APP_URL`); hoje só o túnel provisório `*.trycloudflare.com` está liberado.
+4. Script de produção (`next build` + `next start`) rodando como serviço do Windows (sobe com a máquina, reinicia se cair).
+5. Backup diário automático do banco (`VACUUM INTO`) e de `data/arquivos` para pasta sincronizada (Google Drive/OneDrive), guardando 30 dias.
+6. Guia `INSTALACAO.md` com o passo a passo da máquina nova.
+
+**Etapa 2 — máquina servidor (dono):** Node.js 24 (mesma versão: v24.13.0), Git, cloudflared; clonar o repositório; copiar à mão `plataforma/.env.local` e, se mantiver os dados, `plataforma/data/`; desligar suspensão/hibernação.
+
+**Etapa 3 — domínio:** conta no Cloudflare; copiar os registros de e-mail da UOL (MX `mx.uhserver.com`, SPF `v=spf1 include:spf.whservidor.com ?all`) antes de trocar os DNS no Registro.br; criar o túnel fixo como serviço.
+
+**Etapa 4 — ir para o ar:** admin real e contas de teste desativadas; trocar a senha da noreply@ (exposta no chat); testes finais (cadastro, Pix de R$ 1,00, e-mail, recuperação de senha, celular no 4G); monitor UptimeRobot; Termos de uso e Política de privacidade (LGPD).
+
+**Decisões pendentes do dono:** (1) levar os dados atuais ou começar do zero; (2) endereço: `darkkitchen.art.br` ou `app.darkkitchen.art.br`; (3) e-mail do admin real; (4) destino do backup (Google Drive ou OneDrive).
+
+Conversa completa com o Claude Code (para retomar com `claude --resume`): cópia na pasta "Dark Kitchen - Claude" do OneDrive da máquina antiga, com LEIA-ME de como restaurar. Contém senhas: não compartilhar.
