@@ -1,0 +1,205 @@
+/* Dark Kitchen Studio: preto de carvão, brasa vermelha e laranja.
+   Interface só no escuro, como a identidade. */
+:root {
+  --bg: #0c0a09; /* carvão */
+  --paper: #161210; /* superfície de cartões */
+  --paper-2: #1f1916; /* superfície elevada / campos */
+  --ink: #f5eee9; /* texto principal, branco quente */
+  --muted: #a8998f; /* texto secundário */
+  --line: #2e2522; /* bordas */
+  --accent: #ff4d2e; /* brasa */
+  --accent-2: #ff8a3d; /* brasa clara (fim do degradê) */
+  --accent-soft: #2b1410; /* fundo de destaque */
+  --accent-ink: #ff8f66; /* texto de destaque sobre o escuro */
+  --on-accent: #140a06; /* texto sobre a brasa */
+  --key: #ffb547; /* âmbar: estados ativos, marcadores */
+  --key-ink: #1a0f02;
+  --danger: #ff6b6b;
+  --danger-soft: #331517;
+  --ok: #4fd1a0;
+  --chart-bar: #f2502c; /* validado sobre --paper (banda de luminosidade e contraste) */
+
+  --grad-brasa: linear-gradient(120deg, var(--accent) 0%, var(--accent-2) 100%);
+  --glow: 0 0 0 1px rgb(255 77 46 / 0.25), 0 18px 50px -18px rgb(255 77 46 / 0.55);
+
+  --radius-sm: 10px;
+  --radius: 18px;
+  --radius-lg: 26px;
+  --gutter: 16px;
+  --max: 1160px;
+
+  color-scheme: dark;
+}
+
+@media (min-width: 720px) {
+  :root {
+    --gutter: 28px;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+  scroll-padding-top: 84px;
+  background: var(--bg);
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body), system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display), var(--font-body), system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.08;
+  margin: 0;
+  text-wrap: balance;
+}
+
+p {
+  margin: 0;
+}
+
+a {
+  color: inherit;
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent-2);
+  outline-offset: 2px;
+}
+
+.container {
+  width: 100%;
+  max-width: calc(var(--max) + var(--gutter) * 2);
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+}
+
+/* ---------- Botões: pílulas ---------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 46px; /* alvo de toque confortável no celular */
+  padding: 0 22px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--paper-2);
+  color: var(--ink);
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.2s, transform 0.15s;
+}
+
+.btn:hover {
+  border-color: #4a3b35;
+  background: #261f1b;
+}
+
+.btn-primary {
+  background: var(--grad-brasa);
+  border-color: transparent;
+  color: var(--on-accent);
+  font-weight: 700;
+  box-shadow: var(--glow);
+}
+
+.btn-primary:hover {
+  background: var(--grad-brasa);
+  border-color: transparent;
+  box-shadow: 0 0 0 1px rgb(255 138 61 / 0.45), 0 22px 60px -16px rgb(255 77 46 / 0.75);
+  transform: translateY(-1px);
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--accent-ink);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+}
+
+.eyebrow::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 10px 2px rgb(255 77 46 / 0.7);
+}
+
+/* Texto em degradê de brasa, para palavras de destaque */
+.brasa {
+  background: var(--grad-brasa);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  html {
+    scroll-behavior: auto;
+  }
+}

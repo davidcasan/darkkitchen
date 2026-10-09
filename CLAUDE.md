@@ -1,6 +1,6 @@
-# Projeto: Quadro — plataforma de motion graphics sob demanda
+# Projeto: Dark Kitchen Studio — plataforma de motion graphics sob demanda
 
-Contexto trazido de uma conversa no claude.ai (out/2026). O nome "Quadro" é provisório.
+Contexto trazido de uma conversa no claude.ai (out/2026). Nome definido: **Dark Kitchen Studio** (antes "Quadro"); o app fica na pasta `plataforma/`.
 
 ## Conceito
 Plataforma online brasileira onde empresas pedem peças de motion graphics por um formulário de briefing e recebem a peça pronta, tudo online. Referências: Vidsy (internacional), Motion Brand e Motion Blink (Brasil).
@@ -12,6 +12,13 @@ Plataforma online brasileira onde empresas pedem peças de motion graphics por u
 - Cobrança por **créditos**, somente via planos mensais (a compra avulsa foi descartada em out/2026).
 - Fontes de margem: diferença entre preço do crédito e custo de produção; créditos não usados; reaproveitamento de templates e arquivos da marca; receita recorrente; upsell (créditos extras, adicionais); adaptações de formato baratas de produzir.
 - Fluxo: briefing estruturado → triagem (diretor de arte) → designer da rede (núcleo fixo + freelancers) → controle de qualidade (diretor de arte) → entrega e revisões → arquivos salvos no perfil da marca.
+
+## Identidade visual (out/2026)
+Conceito: "dark kitchen" de motion graphics, sem salão, da cozinha direto pro cliente; cozinha de churrasco, brasa, vermelho e preto. Referência: Suno (escuro, tipografia forte, simples e sofisticado).
+- Interface só no escuro. Tokens em `plataforma/src/app/globals.css`: carvão (`--bg` #0c0a09), brasa (`--accent` #ff4d2e → `--accent-2` #ff8a3d, degradê `--grad-brasa`), âmbar `--key` #ffb547. Texto sobre brasa é escuro (`--on-accent`) por contraste.
+- Fontes: Sora (títulos) e Manrope (texto). Marca: chama em SVG + "Dark Kitchen" + "Studio" (`src/components/Marca.tsx`).
+- Vocabulário de cozinha só em detalhes (Cardápio, Da comanda à entrega), sem sacrificar clareza.
+- Códigos de pedido: `DK-1001`, `DK-1002`… (os antigos `Q-` são convertidos pela migração em `db.ts`).
 
 ## Escopo da plataforma (definido out/2026)
 Sistema web rodando em servidor, com três áreas:
@@ -30,20 +37,21 @@ Sistema web rodando em servidor, com três áreas:
 - Ordem de construção: começar pelo que tem menor risco.
 
 ## Código
-App em `quadro/` — Next.js 16 (App Router, TypeScript), CSS Modules + tokens em `src/app/globals.css` e componentes visuais em `src/app/ui.css`. O Next 16 tem APIs novas: consultar `quadro/node_modules/next/dist/docs/` antes de usar algo. `cacheComponents` está desligado de propósito (áreas logadas são dinâmicas).
+App em `plataforma/` — Next.js 16 (App Router, TypeScript), CSS Modules + tokens em `src/app/globals.css` e componentes visuais em `src/app/ui.css`. O Next 16 tem APIs novas: consultar `plataforma/node_modules/next/dist/docs/` antes de usar algo. `cacheComponents` está desligado de propósito (áreas logadas são dinâmicas).
 - `src/domain/` — regras puras, sem banco nem tela: catálogo/planos, briefing (cálculo de créditos, validação por etapa), máquina de estados do pedido (`ACOES`, `podeExecutar`). Usado no navegador, no servidor e pelo futuro app.
-- `src/server/` — `db.ts` (SQLite nativo `node:sqlite`, arquivo `data/quadro.db`; só esta camada muda para ir a PostgreSQL), `auth.ts` (sessão por token: cookie httpOnly no navegador, `Bearer` na API), `services/*` (toda regra de negócio), `seed.ts` (dados de teste criados ao subir com banco vazio, via `src/instrumentation.ts`).
+- `src/server/` — `db.ts` (SQLite nativo `node:sqlite`, arquivo `data/dark-kitchen.db`; só esta camada muda para ir a PostgreSQL), `auth.ts` (sessão por token: cookie httpOnly no navegador, `Bearer` na API), `services/*` (toda regra de negócio), `seed.ts` (dados de teste criados ao subir com banco vazio, via `src/instrumentation.ts`).
 - `src/app/(site)/` site público · `src/app/cliente/` área do cliente · `src/app/equipe/` área da equipe · `src/app/actions/` Server Actions · `src/app/api/v1/` API REST (login, me, pedidos, créditos, upload/download de arquivos com Range).
 - Pagamento: `services/pagamentos.ts` tem a interface `Gateway`; hoje é simulado (aprova na hora). Para cobrar de verdade, implementar Asaas/Pagar.me e trocar a constante `GATEWAY`.
-- Arquivos enviados ficam em `quadro/data/arquivos` (fora do git). Renovação de assinatura é verificada ao acessar a área do cliente.
+- Arquivos enviados ficam em `plataforma/data/arquivos` (fora do git). Renovação de assinatura é verificada ao acessar a área do cliente.
 - Marcas: cada cliente tem várias marcas (`marcas`, `services/marcas.ts`), cada uma com logo, manual, cores e observações (`arquivos.marca_id`). Todo pedido pertence a uma marca (`pedidos.marca_id`); no briefing, a etapa Marca pergunta "para qual marca" (existente ou nova, criada ali mesmo). Logo e manual do pedido precisam ser da marca escolhida. Páginas `/cliente/marcas` e `/cliente/marcas/[id]`.
 - Preços (admin, `/equipe/precos`): o admin define o **valor-base do crédito (R$)**, os custos de produção, prazos/revisões, urgência e os planos (criar, ocultar; com assinantes não remove). Os créditos de cada atividade são CALCULADOS: créditos = custo ÷ (1 − impostos − meta de margem) ÷ valor do crédito, arredondado para cima (`tabelaCreditos` em `domain/precos.ts`); locução e roteiro são repasses com valor em R$ por duração (roteiro: até 30s / até 90s; locução: 30/60/90s) e usam a margem sobre repasses; peças têm preço por faixa de duração; revisão extra = custo do retrabalho. Não existe compra avulsa de créditos (decisão out/2026): créditos vêm só dos planos e de ajustes do admin. Ficam no banco (`configuracoes`, chave `precos`; padrão em `domain/precos.ts`) com histórico em `configuracoes_historico`. Todo o sistema lê de `services/precos.ts`. Cada pedido grava o detalhamento cobrado (`pedidos.creditos_detalhe`), então mudar preços não altera pedidos antigos.
 - Relatórios (admin, `/equipe/relatorios`, `services/relatorios.ts`): faturamento (mensalidades, avulsos, receita recorrente, gráfico de 12 meses), créditos (vendidos, consumidos, devolvidos, saldo em aberto), fluxo de jobs (no prazo, ajustes, aprovação de primeira), margem por tipo de peça e por designer. Receita do job = créditos × valor médio do crédito (pago ÷ vendidos). Custo = custo padrão (`domain/custos.ts`, função `custoPadrao`) com as premissas editáveis na seção Custos de produção da tela Preços (valor/hora, horas por peça e faixa, adicionais, locução, retrabalho, impostos e meta de margem); não há registro de horas reais.
 - Troca de plano (`services/assinaturas.ts`): para plano com mais créditos é IMEDIATA (cobra a diferença de preço e credita a diferença de créditos; renovação segue na mesma data). Para plano menor fica agendada em `assinaturas.plano_proximo` e é aplicada em `renovarSeVencida`; escolher o plano atual cancela o agendamento.
 - Conclusão do pedido: pelo cliente ("Aprovar peça"), pelo diretor (com motivo, ação `concluir`) ou automática após `DIAS_APROVACAO_AUTOMATICA` (5) dias úteis com o cliente, com lembrete 1 dia útil antes. A automática roda a cada hora (`instrumentation.ts`) e ao abrir as áreas logadas. A métrica de aprovação de primeira só conta aprovações do próprio cliente.
-- Comandos (em `quadro/`): `npm run dev` (http://localhost:3000), `npm run build`, `npm run lint`, `npm run db:reset` (apaga o banco; recriado com dados de teste ao subir).
+- Acesso pela internet em desenvolvimento: túnel do Cloudflare (`*.trycloudflare.com`) liberado em `next.config.ts` (`allowedDevOrigins` e `serverActions.allowedOrigins`); sem isso a página abre mas não responde a cliques. Atenção: com o túnel aberto, as contas de teste ficam acessíveis pela internet.
+- Comandos (em `plataforma/`): `npm run dev` (http://localhost:3000), `npm run build`, `npm run lint`, `npm run db:reset` (apaga o banco; recriado com dados de teste ao subir).
 - Contas de teste (senha `quadro123`): cliente@, designer@, senior@, diretor@, admin@teste.com.
-- Papéis (out/2026): cliente, designer, diretor de arte (triagem, atribuição, controle de qualidade, conclusão, cancelamento; o antigo "gerente de projetos" foi fundido aqui — `migrar()` em db.ts converte contas antigas) e admin. O admin pode tudo (`podeExecutar`), gerencia contas em `/equipe/contas` (criar, editar, senha temporária, remover/desativar, ajustar créditos) e usa "Acessar como" para agir na conta de qualquer usuário (sessão original guardada no cookie `quadro_admin`). Contas com histórico nunca são apagadas, só desativadas (`usuarios.ativo`).
+- Papéis (out/2026): cliente, designer, diretor de arte (triagem, atribuição, controle de qualidade, conclusão, cancelamento; o antigo "gerente de projetos" foi fundido aqui — `migrar()` em db.ts converte contas antigas) e admin. O admin pode tudo (`podeExecutar`), gerencia contas em `/equipe/contas` (criar, editar, senha temporária, remover/desativar, ajustar créditos) e usa "Acessar como" para agir na conta de qualquer usuário (sessão original guardada no cookie `dk_admin`). Contas com histórico nunca são apagadas, só desativadas (`usuarios.ativo`).
 
 **Princípios para o futuro app mobile:** lógica no servidor exposta como API (`/api/v1/...`), login por token, layout mobile-first, uploads pela API, créditos como extrato de transações, status do pedido como máquina de estados, avisos centralizados em `services/notificacoes.ts`.
 
