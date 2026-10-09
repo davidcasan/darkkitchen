@@ -4,6 +4,7 @@ import { PAPEIS } from "@/domain/pedido";
 import { exigirUsuario } from "@/server/auth";
 import { formatarDataHora } from "@/server/datas";
 import { resumoAcessos } from "@/server/services/acessos";
+import { resumoEmails } from "@/server/services/email";
 
 export const metadata: Metadata = { title: "Acessos" };
 
@@ -18,6 +19,7 @@ const diaLongo = (dia: string) =>
 export default async function Acessos() {
   await exigirUsuario(["admin"]);
   const r = resumoAcessos();
+  const em = resumoEmails();
 
   return (
     <>
@@ -143,6 +145,29 @@ export default async function Acessos() {
           )}
         </section>
       </div>
+
+      <section className="card" style={{ marginTop: 16 }}>
+        <h2>E-mails</h2>
+        {!em.configurado ? (
+          <p className="muted small">Envio de e-mails não configurado (arquivo .env.local do servidor).</p>
+        ) : (
+          <>
+            <p className="small">
+              {numero(em.enviados ?? 0)} enviados nos últimos 30 dias · {numero(em.pendentes ?? 0)} na fila · {numero(em.falhas ?? 0)}{" "}
+              {em.falhas === 1 ? "falha" : "falhas"}
+            </p>
+            {em.ultimoErro && (em.pendentes || em.falhas) ? (
+              <p className="alerta alerta-erro small" style={{ marginTop: 10 }}>
+                Último erro ({formatarDataHora(em.ultimoErro.criado_em)}): {em.ultimoErro.erro}
+              </p>
+            ) : null}
+          </>
+        )}
+        <p className="muted small" style={{ marginTop: 8 }}>
+          Cada aviso da plataforma também vai por e-mail, de noreply@darkkitchen.art.br (respostas vão para o sac@). Contas de teste não
+          recebem.
+        </p>
+      </section>
     </>
   );
 }

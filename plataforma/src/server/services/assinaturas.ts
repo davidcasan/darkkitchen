@@ -4,7 +4,7 @@ import type { Usuario } from "../auth";
 import { ErroNegocio, executar, transacao, um, varios } from "../db";
 import { adicionarMeses, agoraSql, deSql, formatarData, paraSql } from "../datas";
 import { lancar, saldo } from "./creditos";
-import { notificar, notificarPapel } from "./notificacoes";
+import { IMPORTANTE, notificar, notificarPapel } from "./notificacoes";
 import { pagaPorPix, tentarCobrar } from "./pagamentos";
 import { DIAS_PARA_PAGAR, codigoDaFatura } from "./pix";
 import { precos } from "./precos";
@@ -93,7 +93,7 @@ function encerrar(a: AssinaturaDe, aviso: string) {
     a.id,
   );
   cancelarPixPendentes(a.usuario_id, "renovar");
-  notificar(a.usuario_id, aviso, "/cliente/conta");
+  notificar(a.usuario_id, aviso, "/cliente/conta", IMPORTANTE);
 }
 
 // ---------- Pagamento: cartão na hora, Pix com confirmação do admin ----------
@@ -218,7 +218,7 @@ export function avisarPagamento(usuarioId: number, faturaId: number) {
   if (f.aviso_pago_em) return;
   const nome = um<{ nome: string }>("SELECT nome FROM usuarios WHERE id = ?", usuarioId)?.nome;
   executar("UPDATE faturas SET aviso_pago_em = datetime('now') WHERE id = ?", faturaId);
-  notificarPapel(["admin"], `${nome} avisou que pagou o Pix: ${f.descricao}. Confira e confirme.`, "/equipe/pagamentos");
+  notificarPapel(["admin"], `${nome} avisou que pagou o Pix: ${f.descricao}. Confira e confirme.`, "/equipe/pagamentos", IMPORTANTE);
 }
 
 /** Admin confirma que o Pix caiu: a fatura vira paga e o que ela libera é aplicado. */
@@ -241,7 +241,7 @@ export function confirmarPagamento(admin: Usuario, faturaId: number) {
       // Outra cobrança da mesma renovação (ex.: gerada de novo) não precisa mais ser paga.
       if (acao.tipo !== "upgrade") cancelarPixPendentes(f.usuario_id, acao.tipo);
     }
-    notificar(f.usuario_id, `Pagamento confirmado: ${f.descricao}. Os créditos já estão no seu saldo.`, "/cliente/creditos");
+    notificar(f.usuario_id, `Pagamento confirmado: ${f.descricao}. Os créditos já estão no seu saldo.`, "/cliente/creditos", IMPORTANTE);
   });
 }
 
@@ -254,7 +254,7 @@ export function cancelarCobranca(admin: Usuario, faturaId: number) {
   );
   if (!f) throw new ErroNegocio("Esta cobrança não está mais pendente.", 404);
   executar("UPDATE faturas SET status = 'cancelada' WHERE id = ?", faturaId);
-  notificar(f.usuario_id, `A cobrança "${f.descricao}" foi cancelada. Qualquer dúvida, fale com o atendimento.`, "/cliente/conta");
+  notificar(f.usuario_id, `A cobrança "${f.descricao}" foi cancelada. Qualquer dúvida, fale com o atendimento.`, "/cliente/conta", IMPORTANTE);
 }
 
 // ---------- Renovação ----------
@@ -288,6 +288,7 @@ function tentarRenovar(a: AssinaturaDe): { ok: true } | { ok: false; mensagem: s
         a.usuario_id,
         `A mensalidade do plano ${plano.nome} está disponível para pagamento por Pix. Pague até ${fimCarencia}: os créditos do novo mês entram assim que confirmarmos o pagamento.`,
         "/cliente/conta",
+        IMPORTANTE,
       );
     return { ok: false, mensagem: "Aguardando o pagamento do Pix." };
   }
@@ -296,7 +297,7 @@ function tentarRenovar(a: AssinaturaDe): { ok: true } | { ok: false; mensagem: s
   if (r.situacao === "pago") {
     cancelarPixPendentes(a.usuario_id, "renovar");
     if (a.inadimplente_desde)
-      notificar(a.usuario_id, `Pagamento aprovado. Seu plano ${plano.nome} está em dia e ${plano.creditosMes} créditos entraram no saldo.`, "/cliente/creditos");
+      notificar(a.usuario_id, `Pagamento aprovado. Seu plano ${plano.nome} está em dia e ${plano.creditosMes} créditos entraram no saldo.`, "/cliente/creditos", IMPORTANTE);
     return { ok: true };
   }
   const mensagem = r.situacao === "recusado" ? r.mensagem : "Pagamento pendente.";
@@ -315,6 +316,7 @@ function tentarRenovar(a: AssinaturaDe): { ok: true } | { ok: false; mensagem: s
       a.usuario_id,
       `Não conseguimos cobrar a renovação do plano ${plano.nome} (${mensagem}). Atualize a forma de pagamento até ${fimCarencia} para não perder a assinatura.`,
       "/cliente/conta",
+      IMPORTANTE,
     );
   return { ok: false, mensagem };
 }
@@ -334,6 +336,7 @@ function processar(a: AssinaturaDe) {
             ? `Você tem ${s} créditos que expiram em ${formatarData(a.periodo_fim)}, quando seu plano renova. Aproveite para fazer um pedido.`
             : `Sua assinatura termina em ${formatarData(a.periodo_fim)} e ${s} créditos não usados expiram nessa data.`,
           "/cliente/pedidos/novo",
+          IMPORTANTE,
         );
       executar("UPDATE assinaturas SET aviso_expiracao = ? WHERE id = ?", a.periodo_fim, a.id);
     }
@@ -467,6 +470,7 @@ export function iniciarNegociacaoPersonalizado(usuarioId: number, nome: string) 
     ["admin"],
     `${nome} criou uma conta e quer o plano Personalizado. Combine pelo chat e defina os valores na conta do cliente.`,
     `/equipe/atendimento?cliente=${usuarioId}`,
+    IMPORTANTE,
   );
 }
 
@@ -630,7 +634,7 @@ export function aplicarPersonalizado(
         a.plano_id === PLANO_PERSONALIZADO ? null : PLANO_PERSONALIZADO,
         a.id,
       );
-      notificar(clienteId, `Seu plano Personalizado (${valores}) começa na renovação de ${formatarData(a.periodo_fim)}.`, "/cliente/conta");
+      notificar(clienteId, `Seu plano Personalizado (${valores}) começa na renovação de ${formatarData(a.periodo_fim)}.`, "/cliente/conta", IMPORTANTE);
       return "renovacao";
     }
 
@@ -664,10 +668,11 @@ export function aplicarPersonalizado(
         clienteId,
         `Seu plano Personalizado foi liberado: ${valores}. Pague o Pix na sua área; os créditos entram assim que confirmarmos o pagamento.`,
         "/cliente",
+        IMPORTANTE,
       );
       return "aguardando_pix";
     }
-    notificar(clienteId, `Seu plano agora é o Personalizado: ${valores}. Os créditos já entraram no saldo.`, "/cliente/creditos");
+    notificar(clienteId, `Seu plano agora é o Personalizado: ${valores}. Os créditos já entraram no saldo.`, "/cliente/creditos", IMPORTANTE);
     return "agora";
   });
 }

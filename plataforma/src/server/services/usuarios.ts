@@ -8,6 +8,7 @@ import { assinar, iniciarNegociacaoPersonalizado } from "./assinaturas";
 import { pixDisponivel } from "./pix";
 import { CARTAO_ATIVO, adicionarMetodo } from "./pagamentos";
 import { criarMarca } from "./marcas";
+import { enfileirarEmail } from "./email";
 
 const CAMPOS = "id, papel, nome, email, empresa, senior";
 
@@ -52,6 +53,19 @@ export function cadastrarCliente(d: DadosCadastro): Usuario {
       d.empresa.trim() || null,
     ).id;
     criarMarca(id, d.empresa.trim() || nome);
+    enfileirarEmail({
+      para: email,
+      assunto: "Bem-vindo à Dark Kitchen Studio",
+      texto: personalizado
+        ? `Olá, ${nome.split(" ")[0]}! Sua conta foi criada.
+
+Para montar o seu plano Personalizado, conte pelo chat da sua área o que você precisa: tipos de peça, quantidade por mês e prazos. Combinamos os créditos e o valor com você e, quando o plano for liberado, aparece o QR Code do Pix.`
+        : `Olá, ${nome.split(" ")[0]}! Sua conta foi criada.
+
+Para ativar o plano, pague o Pix que está na sua área. Assim que confirmarmos o pagamento, os créditos entram e você já pode fazer o primeiro pedido.`,
+      link: "/cliente",
+      rotuloLink: "Entrar na minha área",
+    });
     if (personalizado) {
       // Sem cobrança agora: o plano é combinado pelo chat e pago por Pix depois que o admin liberar.
       adicionarMetodo(id, "pix");

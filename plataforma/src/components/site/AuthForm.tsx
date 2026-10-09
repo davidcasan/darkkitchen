@@ -124,6 +124,12 @@ export function AuthForm({
         </>
       )}
 
+      {!cadastro && (
+        <p className={styles.dica} style={{ margin: "-4px 0 0" }}>
+          <Link href="/esqueci-senha">Esqueci minha senha</Link>
+        </p>
+      )}
+
       <Enviar enviando={cadastro ? "Criando conta..." : "Entrando..."}>{cadastro ? (personalizado ? "Criar conta" : "Assinar e criar conta") : "Entrar"}</Enviar>
 
       {estado?.erro && (

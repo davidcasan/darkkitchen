@@ -26,7 +26,7 @@ import { ErroNegocio, executar, transacao, um, varios } from "../db";
 import type { Usuario } from "../auth";
 import { adicionarDiasUteis, agoraSql, deSql, paraSql } from "../datas";
 import { lancar, saldo } from "./creditos";
-import { notificar, notificarPapel } from "./notificacoes";
+import { IMPORTANTE, SEM_EMAIL, notificar, notificarPapel } from "./notificacoes";
 import type { Arquivo } from "./arquivos";
 import type { TipoPeca } from "@/domain/catalogo";
 import { precos } from "./precos";
@@ -252,7 +252,7 @@ export function criarPedido(cliente: Usuario, raw: unknown): PedidoResumo {
     );
     lancar(cliente.id, -total, "pedido", `Pedido ${codigo} · ${peca.nome}`, { pedidoId: id });
     registrarEvento(id, cliente.id, "criado", null, "triagem", { creditos: total });
-    notificarPapel(["diretor", "admin"], `Novo pedido ${codigo} aguardando triagem.`, `/equipe/pedidos/${id}`);
+    notificarPapel(["diretor", "admin"], `Novo pedido ${codigo} aguardando triagem.`, `/equipe/pedidos/${id}`, IMPORTANTE);
     return resumo(id)!;
   });
 }
@@ -372,7 +372,7 @@ export function atribuirDesigner(usuario: Usuario, pedidoId: number, designerId:
     const para = p.status === "triagem" ? "producao" : p.status;
     mudarStatus(p, para, { designer_id: d.id });
     registrarEvento(p.id, usuario.id, "atribuido", p.status, para, { designer: d.nome, anterior: p.designer_nome });
-    notificar(d.id, `Você recebeu o pedido ${p.codigo}: ${p.titulo}.`, linkEquipe(p.id));
+    notificar(d.id, `Você recebeu o pedido ${p.codigo}: ${p.titulo}.`, linkEquipe(p.id), IMPORTANTE);
     if (p.status === "triagem") notificar(p.cliente_id, `Seu pedido ${p.codigo} entrou em produção.`, linkCliente(p.id));
   });
 }
@@ -425,7 +425,7 @@ export function aprovarQualidade(usuario: Usuario, pedidoId: number, nota: strin
     executar("UPDATE versoes SET status = 'com_cliente' WHERE id = ?", v.id);
     mudarStatus(p, "revisao_cliente");
     registrarEvento(p.id, usuario.id, "qualidade_aprovada", p.status, "revisao_cliente", { versao: v.numero, nota: nota.trim() });
-    notificar(p.cliente_id, `Uma nova versão do pedido ${p.codigo} está pronta para sua revisão.`, linkCliente(p.id));
+    notificar(p.cliente_id, `Uma nova versão do pedido ${p.codigo} está pronta para sua revisão.`, linkCliente(p.id), IMPORTANTE);
     if (p.designer_id) notificar(p.designer_id, `Versão ${v.numero} do ${p.codigo} aprovada no controle de qualidade.`, linkEquipe(p.id));
   });
 }
@@ -456,13 +456,14 @@ export function reprovarQualidade(usuario: Usuario, pedidoId: number, d: Diagnos
       usuario.id,
       `Reprovado no controle de qualidade (${d.tipoErro}${onde ? ` · ${onde}` : ""}): ${d.texto.trim()}`,
     );
-    if (p.designer_id) notificar(p.designer_id, `Versão ${v.numero} do ${p.codigo} voltou com ajustes internos.`, linkEquipe(p.id));
+    if (p.designer_id) notificar(p.designer_id, `Versão ${v.numero} do ${p.codigo} voltou com ajustes internos.`, linkEquipe(p.id), IMPORTANTE);
     if (tentativas >= LIMITE_TENTATIVAS) {
       registrarEvento(p.id, null, "escalar", null, null, { tentativas });
       notificarPapel(
         ["diretor", "admin"],
         `O pedido ${p.codigo} foi reprovado ${tentativas} vezes no controle de qualidade. Considere um designer mais sênior.`,
         linkEquipe(p.id),
+        IMPORTANTE,
       );
     }
   });
@@ -497,6 +498,7 @@ export function concluirPorDiretor(usuario: Usuario, pedidoId: number, motivo: s
       p.cliente_id,
       `O pedido ${p.codigo} foi concluído pela equipe. Os arquivos finais estão liberados.`,
       linkCliente(p.id),
+      IMPORTANTE,
     );
     if (p.designer_id) notificar(p.designer_id, `O pedido ${p.codigo} foi concluído por ${usuario.nome}.`, linkEquipe(p.id));
   });
@@ -540,6 +542,7 @@ export function processarAprovacoesAutomaticas(): number {
           p.cliente_id,
           `O pedido ${p.codigo} foi aprovado automaticamente: não recebemos sua revisão em ${DIAS_APROVACAO_AUTOMATICA} dias úteis. Os arquivos finais estão liberados.`,
           linkCliente(p.id),
+          IMPORTANTE,
         );
         if (p.designer_id) notificar(p.designer_id, `O pedido ${p.codigo} foi aprovado automaticamente.`, linkEquipe(p.id));
         notificarPapel(["diretor"], `Pedido ${p.codigo} aprovado automaticamente por falta de resposta do cliente.`, linkEquipe(p.id));
@@ -552,6 +555,7 @@ export function processarAprovacoesAutomaticas(): number {
           p.cliente_id,
           `Falta 1 dia útil para revisar o pedido ${p.codigo}. Depois disso, a peça é aprovada automaticamente.`,
           linkCliente(p.id),
+          IMPORTANTE,
         );
       });
     }
@@ -609,8 +613,8 @@ export function clientePedirAjuste(
       custo,
     });
     const alvo = p.designer_id;
-    if (alvo) notificar(alvo, `O cliente pediu ajustes na versão ${v.numero} do ${p.codigo}.`, linkEquipe(p.id));
-    else notificarPapel(["diretor"], `Ajustes pedidos no ${p.codigo}, sem designer atribuído.`, linkEquipe(p.id));
+    if (alvo) notificar(alvo, `O cliente pediu ajustes na versão ${v.numero} do ${p.codigo}.`, linkEquipe(p.id), IMPORTANTE);
+    else notificarPapel(["diretor"], `Ajustes pedidos no ${p.codigo}, sem designer atribuído.`, linkEquipe(p.id), IMPORTANTE);
   });
 }
 
@@ -638,8 +642,9 @@ export function clienteRejeitar(usuario: Usuario, pedidoId: number, dados: { mot
       ["diretor", "admin"],
       `Rejeição total no ${p.codigo}. Converse com o cliente e ajuste o briefing antes de reatribuir.`,
       linkEquipe(p.id),
+      IMPORTANTE,
     );
-    if (p.designer_id) notificar(p.designer_id, `O pedido ${p.codigo} foi rejeitado pelo cliente e voltou para a triagem.`, linkEquipe(p.id));
+    if (p.designer_id) notificar(p.designer_id, `O pedido ${p.codigo} foi rejeitado pelo cliente e voltou para a triagem.`, linkEquipe(p.id), IMPORTANTE);
   });
 }
 
@@ -658,7 +663,7 @@ export function cancelarPedido(usuario: Usuario, pedidoId: number, erroPlataform
     if (devolver > 0) lancar(p.cliente_id, devolver, "estorno", `Cancelamento ${p.codigo}${integral ? "" : " (parcial)"}`, { pedidoId: p.id });
     registrarEvento(p.id, usuario.id, "cancelado", p.status, "cancelado", { devolvido: devolver, integral });
     if (usuario.id !== p.cliente_id)
-      notificar(p.cliente_id, `O pedido ${p.codigo} foi cancelado e ${devolver} créditos voltaram para você.`, linkCliente(p.id));
+      notificar(p.cliente_id, `O pedido ${p.codigo} foi cancelado e ${devolver} créditos voltaram para você.`, linkCliente(p.id), IMPORTANTE);
     else notificarPapel(["diretor"], `O cliente cancelou o pedido ${p.codigo}.`, linkEquipe(p.id));
   });
   return devolver;
@@ -692,8 +697,8 @@ export function comentar(
   );
   const marca = tempo !== null ? ` em ${formatarTempo(tempo)}` : "";
   if (!equipe) {
-    if (p.designer_id) notificar(p.designer_id, `Novo comentário do cliente${marca} no ${p.codigo}.`, linkEquipe(p.id));
-    else notificarPapel(["diretor"], `Novo comentário do cliente no ${p.codigo}.`, linkEquipe(p.id));
+    if (p.designer_id) notificar(p.designer_id, `Novo comentário do cliente${marca} no ${p.codigo}.`, linkEquipe(p.id), SEM_EMAIL);
+    else notificarPapel(["diretor"], `Novo comentário do cliente no ${p.codigo}.`, linkEquipe(p.id), SEM_EMAIL);
   } else if (!interno) {
     notificar(p.cliente_id, `A equipe respondeu no pedido ${p.codigo}.`, linkCliente(p.id));
   }

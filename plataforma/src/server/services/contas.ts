@@ -5,7 +5,7 @@ import { ErroNegocio, executar, transacao, um, varios } from "../db";
 import type { Usuario } from "../auth";
 import { hashSenha } from "../senha";
 import { lancar, saldo } from "./creditos";
-import { notificar } from "./notificacoes";
+import { IMPORTANTE, notificar } from "./notificacoes";
 import { criarMarca } from "./marcas";
 
 // Gerenciamento de contas (somente admin): clientes e colaboradores.
@@ -193,6 +193,7 @@ export function ajustarCreditos(admin: Usuario, clienteId: number, quantidade: n
       clienteId,
       q > 0 ? `Você recebeu ${q} créditos: ${motivo.trim()}.` : `${-q} créditos foram retirados do seu saldo: ${motivo.trim()}.`,
       "/cliente/creditos",
+      IMPORTANTE,
     );
   });
 }

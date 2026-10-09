@@ -30,4 +30,10 @@ export async function register() {
   };
   rodar();
   g.__dkTarefas = setInterval(rodar, 60 * 60 * 1000); // a cada hora
+
+  // Fila de e-mails: a cada 30 segundos (e logo depois de cada aviso).
+  const { processarFilaEmails } = await import("./server/services/email");
+  const enviarEmails = () => processarFilaEmails().catch((e) => console.error("[dark-kitchen] Falha na fila de e-mails:", e));
+  enviarEmails();
+  setInterval(enviarEmails, 30 * 1000);
 }

@@ -4,7 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { ErroNegocio, PASTA_ARQUIVOS, executar, transacao, um, varios } from "../db";
 import type { Usuario } from "../auth";
-import { notificar, notificarPapel } from "./notificacoes";
+import { IMPORTANTE, notificar, notificarPapel } from "./notificacoes";
 
 // Atendimento (SAC): chat entre o cliente e o admin, dentro da plataforma.
 // - Uma conversa por pedido e uma conversa geral por cliente (dúvidas que não são
@@ -201,12 +201,13 @@ export async function enviarMensagem(
     if (!mesmoLado) {
       const sufixo = c.pedidoId ? `pedido=${c.pedidoId}` : `cliente=${c.clienteId}`;
       if (doCliente)
-        notificarPapel(["admin"], `Nova mensagem de ${c.cliente_nome} no atendimento (${c.titulo}).`, `/equipe/atendimento?${sufixo}`);
+        notificarPapel(["admin"], `Nova mensagem de ${c.cliente_nome} no atendimento (${c.titulo}).`, `/equipe/atendimento?${sufixo}`, IMPORTANTE);
       else
         notificar(
           c.clienteId,
           `O atendimento respondeu: ${c.titulo}.`,
           c.pedidoId ? `/cliente/pedidos/${c.pedidoId}?chat=1` : "/cliente?chat=1",
+          IMPORTANTE,
         );
     }
     return id;

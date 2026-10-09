@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { alterarSenhaAction, sairAction } from "@/app/actions/conta";
 import { Enviar, FormAcao } from "@/components/app/FormAcao";
+import { PreferenciaEmail } from "@/components/app/PreferenciaEmail";
 import { EQUIPE, PAPEIS } from "@/domain/pedido";
 import { exigirUsuario } from "@/server/auth";
 
@@ -20,6 +21,7 @@ export default async function ContaEquipe() {
         </div>
       </div>
       <div className="grid-2">
+        <PreferenciaEmail usuarioId={u.id} />
         <section className="card">
           <h2>Alterar senha</h2>
           <FormAcao action={alterarSenhaAction}>

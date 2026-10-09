@@ -21,6 +21,7 @@ import { assinaturaDo, cobrancasPixDo, fimDaCarencia, planoDaAssinatura, simular
 import { CARTAO_ATIVO, gatewayEhSimulado, listarFaturas, listarMetodos } from "@/server/services/pagamentos";
 import { pixDisponivel } from "@/server/services/pix";
 import { CobrancaPix } from "@/components/app/CobrancaPix";
+import { PreferenciaEmail } from "@/components/app/PreferenciaEmail";
 
 export const metadata: Metadata = { title: "Conta" };
 
@@ -194,7 +195,9 @@ export default async function ContaCliente({ searchParams }: PageProps<"/cliente
                 <br />
                 <small className="muted">
                   {renova
-                    ? "Cobramos a mensalidade no cartão padrão a cada mês. Você pode desligar quando quiser."
+                    ? CARTAO_ATIVO
+                      ? "Cobramos a mensalidade no cartão padrão a cada mês. Você pode desligar quando quiser."
+                      : "Todo mês geramos o Pix da mensalidade e avisamos você. Você pode desligar quando quiser."
                     : `Ligue de novo até ${formatarData(assinatura.periodo_fim)} para continuar no plano, sem cobrança agora.`}
                 </small>
               </span>
@@ -304,6 +307,7 @@ export default async function ContaCliente({ searchParams }: PageProps<"/cliente
       </div>
 
       <div className="grid-2" style={{ marginTop: 16 }}>
+        <PreferenciaEmail usuarioId={u.id} />
         <section className="card">
           <h2>Alterar senha</h2>
           <FormAcao action={alterarSenhaAction}>

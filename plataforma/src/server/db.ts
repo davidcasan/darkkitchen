@@ -193,6 +193,31 @@ CREATE TABLE IF NOT EXISTS atendimento_exclusoes (
   conversa_inteira INTEGER NOT NULL DEFAULT 0,
   criado_em TEXT NOT NULL DEFAULT (datetime('now'))
 );
+-- Recuperação de senha: link de uso único, válido por pouco tempo. Só o resumo (hash)
+-- do código fica no banco, como nas sessões.
+CREATE TABLE IF NOT EXISTS senha_tokens (
+  token_hash TEXT PRIMARY KEY,
+  usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+  expira_em TEXT NOT NULL,
+  usado_em TEXT,
+  criado_em TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_senha_tokens_usuario ON senha_tokens(usuario_id, criado_em);
+-- E-mails a enviar (fila). Gravados na mesma transação do aviso; enviados em segundo plano.
+CREATE TABLE IF NOT EXISTS emails_fila (
+  id INTEGER PRIMARY KEY,
+  para TEXT NOT NULL,
+  assunto TEXT NOT NULL,
+  texto TEXT NOT NULL,
+  html TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pendente' CHECK (status IN ('pendente','enviado','falhou')),
+  tentativas INTEGER NOT NULL DEFAULT 0,
+  proxima_tentativa TEXT,
+  erro TEXT,
+  criado_em TEXT NOT NULL DEFAULT (datetime('now')),
+  enviado_em TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_emails_fila_status ON emails_fila(status, proxima_tentativa);
 -- Contador de acessos (admin): páginas vistas no site e na área do cliente, com um
 -- código de visitante anônimo que muda todo dia (sem IP), e os logins.
 CREATE TABLE IF NOT EXISTS acessos_visitas (
@@ -360,6 +385,9 @@ function migrar(d: DatabaseSync) {
   ];
   for (const [nome, tipo] of novasColunas)
     if (!colAssinatura.includes(nome)) d.exec(`ALTER TABLE assinaturas ADD COLUMN ${nome} ${tipo}`);
+  // E-mails (out/2026): o que cada pessoa quer receber ("todos", "importantes" ou "nenhum").
+  if (!colunas("usuarios").includes("email_avisos"))
+    d.exec("ALTER TABLE usuarios ADD COLUMN email_avisos TEXT NOT NULL DEFAULT 'todos'");
   // Pix (out/2026): assinatura "pendente" (aguardando o 1º pagamento ou a negociação do
   // plano Personalizado) e fatura "cancelada". O SQLite não altera CHECK: a tabela é
   // recriada com a regra nova e os mesmos dados (as colunas novas ficam no fim).
