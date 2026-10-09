@@ -4,10 +4,14 @@ import type { ItemNav } from "@/components/app/NavArea";
 import { adminOriginal, exigirUsuario } from "@/server/auth";
 import Link from "next/link";
 import { formatarData } from "@/server/datas";
-import { assinaturaDo, fimDaCarencia, processarAssinaturas } from "@/server/services/assinaturas";
+import { assinaturaDo, cobrancasPixDo, fimDaCarencia, processarAssinaturas } from "@/server/services/assinaturas";
+import { AreaPendente } from "./AreaPendente";
 import { saldo } from "@/server/services/creditos";
 import { contarNaoLidas } from "@/server/services/notificacoes";
 import { processarAprovacoesAutomaticas } from "@/server/services/pedidos";
+
+// Conta pendente (esperando pagamento ou negociação): só o início, com a cobrança e o chat.
+const ITENS_PENDENTE: ItemNav[] = [{ href: "/cliente", rotulo: "Início", icone: "inicio", movel: true }];
 
 const ITENS: ItemNav[] = [
   { href: "/cliente", rotulo: "Início", icone: "inicio", movel: true },
@@ -30,11 +34,13 @@ export default async function ClienteLayout({ children }: LayoutProps<"/cliente"
   }
   const creditos = saldo(usuario.id);
   const assinatura = assinaturaDo(usuario.id);
-  const pendente = assinatura?.status === "ativa" && assinatura.inadimplente_desde ? assinatura : null;
+  const contaPendente = assinatura?.status === "pendente";
+  const emCarencia = assinatura?.status === "ativa" && assinatura.inadimplente_desde ? assinatura : null;
+  const pixAberto = !contaPendente && cobrancasPixDo(usuario.id).length > 0;
   return (
     <AppShell
       usuario={usuario}
-      itens={ITENS}
+      itens={contaPendente ? ITENS_PENDENTE : ITENS}
       raiz="/cliente"
       naoLidas={contarNaoLidas(usuario.id)}
       comoAdmin={(await adminOriginal())?.nome}
@@ -44,14 +50,27 @@ export default async function ClienteLayout({ children }: LayoutProps<"/cliente"
         </span>
       }
     >
-      {pendente && (
-        <p className="alerta alerta-erro" role="alert" style={{ marginBottom: 16 }}>
-          Não conseguimos cobrar a renovação do seu plano. Regularize até {formatarData(fimDaCarencia(pendente)!)} para não perder a
-          assinatura. <Link href="/cliente/conta">Pagar agora</Link>
-        </p>
+      {contaPendente ? (
+        <AreaPendente usuario={usuario} assinatura={assinatura} />
+      ) : (
+        <>
+          {emCarencia && (
+            <p className="alerta alerta-erro" role="alert" style={{ marginBottom: 16 }}>
+              {pixAberto
+                ? `A mensalidade do seu plano está esperando o pagamento por Pix. Pague até ${formatarData(fimDaCarencia(emCarencia)!)} para não perder a assinatura.`
+                : `Não conseguimos cobrar a renovação do seu plano. Regularize até ${formatarData(fimDaCarencia(emCarencia)!)} para não perder a assinatura.`}{" "}
+              <Link href="/cliente/conta">Pagar agora</Link>
+            </p>
+          )}
+          {pixAberto && !emCarencia && (
+            <p className="alerta alerta-aviso" style={{ marginBottom: 16 }}>
+              Você tem um Pix aguardando pagamento. <Link href="/cliente/conta">Ver o QR Code</Link>
+            </p>
+          )}
+          {children}
+          <BotaoAtendimento visao="cliente" />
+        </>
       )}
-      {children}
-      <BotaoAtendimento visao="cliente" />
     </AppShell>
   );
 }

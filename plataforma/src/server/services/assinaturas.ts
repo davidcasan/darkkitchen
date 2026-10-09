@@ -4,8 +4,9 @@ import type { Usuario } from "../auth";
 import { ErroNegocio, executar, transacao, um, varios } from "../db";
 import { adicionarMeses, agoraSql, deSql, formatarData, paraSql } from "../datas";
 import { lancar, saldo } from "./creditos";
-import { notificar } from "./notificacoes";
-import { cobrar, tentarCobrar } from "./pagamentos";
+import { notificar, notificarPapel } from "./notificacoes";
+import { pagaPorPix, tentarCobrar } from "./pagamentos";
+import { DIAS_PARA_PAGAR, codigoDaFatura } from "./pix";
 import { precos } from "./precos";
 
 // Assinatura mensal (regras de out/2026):
@@ -14,11 +15,17 @@ import { precos } from "./precos";
 // - Créditos expiram no fim de cada período: o saldo que sobrar sai do extrato
 //   (tipo "expiracao") e os créditos do novo período entram. Aviso 2 dias antes.
 //   Sem assinatura ativa, o saldo expira no fim do mês do calendário.
-// - Cobrança da renovação recusada: o cliente entra em carência (CARENCIA_DIAS), sem
-//   novos créditos, com nova tentativa por dia e botão "Tentar pagar agora". Passada a
-//   carência sem pagamento, a assinatura termina.
-// - Upgrade é imediato (paga a diferença, recebe a diferença de créditos); downgrade
-//   fica agendado para a próxima renovação.
+// - Pagamento pela forma padrão do cliente:
+//   · Cartão (simulado): cobra na hora e libera na hora. Recusado na renovação: carência
+//     (CARENCIA_DIAS) com nova tentativa por dia e botão "Tentar pagar agora".
+//   · Pix: gera uma fatura pendente com QR Code. Nada é liberado até o admin confirmar
+//     que o dinheiro caiu (Pagamentos). Na renovação, a cobrança do mês fica disponível
+//     por CARENCIA_DIAS; sem confirmação até lá, a assinatura termina.
+//   O que liberar na confirmação fica na própria fatura (coluna "acao").
+// - Assinatura "pendente": conta nova esperando o 1º pagamento por Pix ou a negociação do
+//   plano Personalizado. A área do cliente mostra só a cobrança e o chat.
+// - Upgrade: com cartão, imediato; com Pix, os créditos extras entram na confirmação.
+//   Downgrade fica agendado para a próxima renovação.
 // - Plano Personalizado: sem valor fixo; o admin combina créditos e valor por mês com
 //   o cliente e aplica na conta dele (agora ou na próxima renovação).
 // Tudo isso roda em processarAssinaturas (a cada hora, em instrumentation.ts) e,
@@ -31,24 +38,26 @@ const DIA_MS = 24 * 60 * 60 * 1000;
 export interface Assinatura {
   id: number;
   plano_id: string;
-  status: "ativa" | "cancelada";
+  status: "ativa" | "cancelada" | "pendente";
   periodo_inicio: string;
   periodo_fim: string;
   plano_proximo: string | null; // troca para plano menor, aplicada na próxima renovação
   renovacao_automatica: number; // 1 = renova; 0 = termina no fim do período
-  inadimplente_desde: string | null; // renovação recusada; em carência desde esta data
+  inadimplente_desde: string | null; // renovação não paga; em carência desde esta data
   tentativas_cobranca: number;
-  proxima_tentativa: string | null;
+  proxima_tentativa: string | null; // só cartão: próxima tentativa automática
   aviso_expiracao: string | null;
   personalizado_preco: number | null; // valores do plano Personalizado combinados com o cliente
   personalizado_creditos: number | null;
 }
 
+type AssinaturaDe = Assinatura & { usuario_id: number };
+
 const CAMPOS =
   "id, usuario_id, plano_id, status, periodo_inicio, periodo_fim, plano_proximo, renovacao_automatica, inadimplente_desde, tentativas_cobranca, proxima_tentativa, aviso_expiracao, personalizado_preco, personalizado_creditos";
 
 export const assinaturaDo = (usuarioId: number) =>
-  um<Assinatura & { usuario_id: number }>(`SELECT ${CAMPOS} FROM assinaturas WHERE usuario_id = ?`, usuarioId);
+  um<AssinaturaDe>(`SELECT ${CAMPOS} FROM assinaturas WHERE usuario_id = ?`, usuarioId);
 
 /**
  * Plano de uma assinatura: o da tabela ou, para o Personalizado, o montado com os
@@ -66,7 +75,7 @@ export function planoDaAssinatura(
   return planoPorId(precos(), id);
 }
 
-/** Fim da carência de uma assinatura com cobrança recusada. */
+/** Fim da carência de uma assinatura com a renovação não paga. */
 export const fimDaCarencia = (a: Pick<Assinatura, "inadimplente_desde">) =>
   a.inadimplente_desde ? paraSql(new Date(deSql(a.inadimplente_desde).getTime() + CARENCIA_DIAS * DIA_MS)) : null;
 
@@ -77,50 +86,223 @@ function expirarSaldo(usuarioId: number, descricao: string) {
   return Math.max(0, s);
 }
 
-function encerrar(a: Assinatura & { usuario_id: number }, aviso: string) {
+function encerrar(a: AssinaturaDe, aviso: string) {
   executar(
     `UPDATE assinaturas SET status = 'cancelada', plano_proximo = NULL, renovacao_automatica = 1,
        inadimplente_desde = NULL, tentativas_cobranca = 0, proxima_tentativa = NULL WHERE id = ?`,
     a.id,
   );
+  cancelarPixPendentes(a.usuario_id, "renovar");
   notificar(a.usuario_id, aviso, "/cliente/conta");
 }
 
+// ---------- Pagamento: cartão na hora, Pix com confirmação do admin ----------
+
+/** O que liberar quando o pagamento for aprovado (cartão) ou confirmado (Pix). */
+export type Acao =
+  | { tipo: "ativar"; planoId: string; manterSaldo?: boolean } // começa um período novo
+  | { tipo: "renovar"; planoId: string } // renovação depois do fim do período
+  | { tipo: "upgrade"; planoId: string; creditos: number }; // créditos extras de um plano maior
+
+type Pagamento = { situacao: "pago" } | { situacao: "aguardando_pix"; faturaId: number } | { situacao: "recusado"; mensagem: string };
+
+/** Fatura pendente de Pix, com o código copia e cola e o que liberar na confirmação. */
+function criarCobrancaPix(usuarioId: number, valorReais: number, descricao: string, acao: Acao) {
+  const faturaId = executar(
+    `INSERT INTO faturas (usuario_id, descricao, valor_centavos, status, metodo, vence_em, acao)
+     VALUES (?, ?, ?, 'pendente', 'Pix', ?, ?)`,
+    usuarioId,
+    descricao,
+    Math.round(valorReais * 100),
+    paraSql(new Date(Date.now() + DIAS_PARA_PAGAR * DIA_MS)),
+    JSON.stringify(acao),
+  ).id;
+  executar("UPDATE faturas SET pix_payload = ? WHERE id = ?", codigoDaFatura(faturaId, valorReais), faturaId);
+  notificarPapel(["admin"], `Pix aguardando confirmação: ${descricao} (${valorReais.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}).`, "/equipe/pagamentos");
+  return faturaId;
+}
+
+function cancelarPixPendentes(usuarioId: number, tipo?: Acao["tipo"]) {
+  executar(
+    `UPDATE faturas SET status = 'cancelada' WHERE usuario_id = ? AND status = 'pendente' AND acao IS NOT NULL
+       ${tipo ? "AND json_extract(acao, '$.tipo') = ?" : ""}`,
+    ...(tipo ? [usuarioId, tipo] : [usuarioId]),
+  );
+}
+
+/** Cobra pela forma padrão do cliente. Cartão: cobra e libera. Pix: deixa a cobrança pendente. */
+function pagar(usuarioId: number, valorReais: number, descricao: string, acao: Acao): Pagamento {
+  if (pagaPorPix(usuarioId))
+    return { situacao: "aguardando_pix", faturaId: criarCobrancaPix(usuarioId, valorReais, descricao, acao) };
+  const r = tentarCobrar(usuarioId, valorReais, descricao);
+  if (!r.aprovado) return { situacao: "recusado", mensagem: r.mensagem };
+  executarAcao(usuarioId, acao, r.faturaId);
+  return { situacao: "pago" };
+}
+
+/** Libera o que foi pago: créditos e período da assinatura. */
+function executarAcao(usuarioId: number, acao: Acao, faturaId?: number) {
+  const a = assinaturaDo(usuarioId);
+  if (!a) throw new ErroNegocio("Assinatura não encontrada.");
+  const plano = planoDaAssinatura(a, acao.planoId);
+  if (!plano) throw new ErroNegocio("O plano desta cobrança não existe mais.");
+
+  if (acao.tipo === "upgrade") {
+    lancar(usuarioId, acao.creditos, "assinatura", `Upgrade para o plano ${plano.nome}`, { faturaId });
+    executar("UPDATE assinaturas SET plano_id = ?, plano_proximo = NULL WHERE id = ?", plano.id, a.id);
+    return;
+  }
+
+  const agora = new Date();
+  let inicio = agora;
+  if (acao.tipo === "renovar" && a.status === "ativa" && !a.inadimplente_desde) {
+    // Em dia: o novo período emenda no anterior (a não ser que o servidor tenha ficado parado).
+    const fimAnterior = deSql(a.periodo_fim);
+    if (adicionarMeses(fimAnterior, 1) > agora) inicio = fimAnterior;
+  }
+  if (acao.tipo === "ativar" && !acao.manterSaldo) expirarSaldo(usuarioId, "Créditos anteriores à nova assinatura");
+  lancar(usuarioId, plano.creditosMes, "assinatura", `Créditos do plano ${plano.nome}`, { faturaId });
+  executar(
+    `UPDATE assinaturas SET plano_id = ?, status = 'ativa', periodo_inicio = ?, periodo_fim = ?, plano_proximo = NULL,
+       inadimplente_desde = NULL, tentativas_cobranca = 0, proxima_tentativa = NULL, aviso_expiracao = NULL,
+       renovacao_automatica = CASE WHEN status = 'ativa' THEN renovacao_automatica ELSE 1 END
+     WHERE id = ?`,
+    plano.id,
+    paraSql(inicio),
+    paraSql(adicionarMeses(inicio, 1)),
+    a.id,
+  );
+}
+
+// ---------- Cobranças Pix: cliente vê, avisa que pagou; admin confirma ou cancela ----------
+
+export interface CobrancaPix {
+  id: number;
+  usuario_id: number;
+  descricao: string;
+  valor_centavos: number;
+  pix_payload: string;
+  vence_em: string | null;
+  criado_em: string;
+  aviso_pago_em: string | null;
+  acao: string;
+}
+
+export const cobrancasPixDo = (usuarioId: number) =>
+  varios<CobrancaPix>(
+    `SELECT id, usuario_id, descricao, valor_centavos, pix_payload, vence_em, criado_em, aviso_pago_em, acao
+     FROM faturas WHERE usuario_id = ? AND status = 'pendente' AND pix_payload IS NOT NULL ORDER BY id`,
+    usuarioId,
+  );
+
+export const cobrancasPixPendentes = () =>
+  varios<CobrancaPix & { cliente_nome: string; cliente_email: string; empresa: string | null }>(
+    `SELECT f.id, f.usuario_id, f.descricao, f.valor_centavos, f.pix_payload, f.vence_em, f.criado_em, f.aviso_pago_em, f.acao,
+            u.nome cliente_nome, u.email cliente_email, u.empresa
+     FROM faturas f JOIN usuarios u ON u.id = f.usuario_id
+     WHERE f.status = 'pendente' AND f.pix_payload IS NOT NULL
+     ORDER BY (f.aviso_pago_em IS NULL), f.id`,
+  );
+
+export const contarPixPendentes = () =>
+  um<{ n: number }>("SELECT COUNT(*) n FROM faturas WHERE status = 'pendente' AND pix_payload IS NOT NULL")?.n ?? 0;
+
+/** Cliente avisa que já pagou o Pix (o admin recebe um aviso para conferir). */
+export function avisarPagamento(usuarioId: number, faturaId: number) {
+  const f = um<{ descricao: string; aviso_pago_em: string | null }>(
+    "SELECT descricao, aviso_pago_em FROM faturas WHERE id = ? AND usuario_id = ? AND status = 'pendente' AND pix_payload IS NOT NULL",
+    faturaId,
+    usuarioId,
+  );
+  if (!f) throw new ErroNegocio("Cobrança não encontrada.", 404);
+  if (f.aviso_pago_em) return;
+  const nome = um<{ nome: string }>("SELECT nome FROM usuarios WHERE id = ?", usuarioId)?.nome;
+  executar("UPDATE faturas SET aviso_pago_em = datetime('now') WHERE id = ?", faturaId);
+  notificarPapel(["admin"], `${nome} avisou que pagou o Pix: ${f.descricao}. Confira e confirme.`, "/equipe/pagamentos");
+}
+
+/** Admin confirma que o Pix caiu: a fatura vira paga e o que ela libera é aplicado. */
+export function confirmarPagamento(admin: Usuario, faturaId: number) {
+  if (admin.papel !== "admin") throw new ErroNegocio("Somente o admin confirma pagamentos.", 403);
+  return transacao(() => {
+    const f = um<{ usuario_id: number; descricao: string; acao: string | null }>(
+      "SELECT usuario_id, descricao, acao FROM faturas WHERE id = ? AND status = 'pendente'",
+      faturaId,
+    );
+    if (!f) throw new ErroNegocio("Esta cobrança não está mais pendente.", 404);
+    executar(
+      "UPDATE faturas SET status = 'paga', confirmada_em = datetime('now'), confirmada_por = ?, referencia_gateway = 'pix-manual' WHERE id = ?",
+      admin.id,
+      faturaId,
+    );
+    if (f.acao) {
+      const acao = JSON.parse(f.acao) as Acao;
+      executarAcao(f.usuario_id, acao, faturaId);
+      // Outra cobrança da mesma renovação (ex.: gerada de novo) não precisa mais ser paga.
+      if (acao.tipo !== "upgrade") cancelarPixPendentes(f.usuario_id, acao.tipo);
+    }
+    notificar(f.usuario_id, `Pagamento confirmado: ${f.descricao}. Os créditos já estão no seu saldo.`, "/cliente/creditos");
+  });
+}
+
+/** Admin cancela uma cobrança Pix (ex.: gerada por engano). Nada é liberado. */
+export function cancelarCobranca(admin: Usuario, faturaId: number) {
+  if (admin.papel !== "admin") throw new ErroNegocio("Somente o admin cancela cobranças.", 403);
+  const f = um<{ usuario_id: number; descricao: string }>(
+    "SELECT usuario_id, descricao FROM faturas WHERE id = ? AND status = 'pendente'",
+    faturaId,
+  );
+  if (!f) throw new ErroNegocio("Esta cobrança não está mais pendente.", 404);
+  executar("UPDATE faturas SET status = 'cancelada' WHERE id = ?", faturaId);
+  notificar(f.usuario_id, `A cobrança "${f.descricao}" foi cancelada. Qualquer dúvida, fale com o atendimento.`, "/cliente/conta");
+}
+
+// ---------- Renovação ----------
+
 /**
- * Cobra a renovação. Aprovada: novo período com os créditos do plano (ou do plano
- * agendado). Recusada: entra ou continua em carência; vencida a carência, encerra.
+ * Cobra a renovação. Cartão aprovado: novo período com os créditos do plano (ou do plano
+ * agendado). Pix: deixa a cobrança do mês pendente. Cartão recusado: entra ou continua em
+ * carência; vencida a carência, encerra.
  */
-function tentarRenovar(a: Assinatura & { usuario_id: number }): { ok: true } | { ok: false; mensagem: string } {
+function tentarRenovar(a: AssinaturaDe): { ok: true } | { ok: false; mensagem: string } {
   const plano = planoDaAssinatura(a, a.plano_proximo) ?? planoDaAssinatura(a);
   if (!plano) {
     encerrar(a, "Sua assinatura terminou porque o plano não existe mais. Escolha um novo plano em Conta.");
     return { ok: false, mensagem: "Plano indisponível." };
   }
   const agora = new Date();
-  const r = tentarCobrar(a.usuario_id, plano.precoMes, `Plano ${plano.nome} · mensalidade`);
-  if (r.aprovado) {
-    lancar(a.usuario_id, plano.creditosMes, "assinatura", `Créditos do plano ${plano.nome}`, { faturaId: r.faturaId });
-    // Em dia: o novo período emenda no anterior. Pago na carência (ou com o servidor
-    // parado por mais de um período): o novo período começa no pagamento.
-    const fimAnterior = deSql(a.periodo_fim);
-    const inicio = a.inadimplente_desde || adicionarMeses(fimAnterior, 1) <= agora ? agora : fimAnterior;
+  const desde = a.inadimplente_desde ?? paraSql(agora);
+  const fimCarencia = formatarData(fimDaCarencia({ inadimplente_desde: desde })!);
+
+  // Pix: uma cobrança por renovação (se já existe, só espera a confirmação).
+  if (pagaPorPix(a.usuario_id)) {
+    const jaTem = cobrancasPixDo(a.usuario_id).some((c) => (JSON.parse(c.acao) as Acao).tipo === "renovar");
+    if (!jaTem) pagar(a.usuario_id, plano.precoMes, `Plano ${plano.nome} · mensalidade`, { tipo: "renovar", planoId: plano.id });
     executar(
-      `UPDATE assinaturas SET plano_id = ?, plano_proximo = NULL, periodo_inicio = ?, periodo_fim = ?,
-         inadimplente_desde = NULL, tentativas_cobranca = 0, proxima_tentativa = NULL WHERE id = ?`,
-      plano.id,
-      paraSql(inicio),
-      paraSql(adicionarMeses(inicio, 1)),
+      "UPDATE assinaturas SET inadimplente_desde = ?, proxima_tentativa = NULL WHERE id = ?",
+      desde,
       a.id,
     );
+    if (!a.inadimplente_desde)
+      notificar(
+        a.usuario_id,
+        `A mensalidade do plano ${plano.nome} está disponível para pagamento por Pix. Pague até ${fimCarencia}: os créditos do novo mês entram assim que confirmarmos o pagamento.`,
+        "/cliente/conta",
+      );
+    return { ok: false, mensagem: "Aguardando o pagamento do Pix." };
+  }
+
+  const r = pagar(a.usuario_id, plano.precoMes, `Plano ${plano.nome} · mensalidade`, { tipo: "renovar", planoId: plano.id });
+  if (r.situacao === "pago") {
+    cancelarPixPendentes(a.usuario_id, "renovar");
     if (a.inadimplente_desde)
       notificar(a.usuario_id, `Pagamento aprovado. Seu plano ${plano.nome} está em dia e ${plano.creditosMes} créditos entraram no saldo.`, "/cliente/creditos");
     return { ok: true };
   }
-
-  const desde = a.inadimplente_desde ?? paraSql(agora);
+  const mensagem = r.situacao === "recusado" ? r.mensagem : "Pagamento pendente.";
   if (agora.getTime() - deSql(desde).getTime() >= CARENCIA_DIAS * DIA_MS) {
     encerrar(a, `Sua assinatura do plano ${plano.nome} terminou porque não conseguimos cobrar a renovação. Você pode assinar de novo em Conta.`);
-    return { ok: false, mensagem: r.mensagem };
+    return { ok: false, mensagem };
   }
   executar(
     "UPDATE assinaturas SET inadimplente_desde = ?, tentativas_cobranca = tentativas_cobranca + 1, proxima_tentativa = ? WHERE id = ?",
@@ -131,14 +313,14 @@ function tentarRenovar(a: Assinatura & { usuario_id: number }): { ok: true } | {
   if (!a.inadimplente_desde)
     notificar(
       a.usuario_id,
-      `Não conseguimos cobrar a renovação do plano ${plano.nome} (${r.mensagem}). Atualize a forma de pagamento até ${formatarData(fimDaCarencia({ inadimplente_desde: desde })!)} para não perder a assinatura.`,
+      `Não conseguimos cobrar a renovação do plano ${plano.nome} (${mensagem}). Atualize a forma de pagamento até ${fimCarencia} para não perder a assinatura.`,
       "/cliente/conta",
     );
-  return { ok: false, mensagem: r.mensagem };
+  return { ok: false, mensagem };
 }
 
 /** Processa uma assinatura ativa: aviso de expiração, fim de período, renovação e carência. */
-function processar(a: Assinatura & { usuario_id: number }) {
+function processar(a: AssinaturaDe) {
   const agora = agoraSql();
   if (!a.inadimplente_desde && a.periodo_fim > agora) {
     // Ainda no período: avisa uma vez quando faltam até 2 dias para os créditos expirarem.
@@ -167,8 +349,14 @@ function processar(a: Assinatura & { usuario_id: number }) {
     tentarRenovar(a);
     return;
   }
-  // Em carência: nova tentativa quando chega a hora.
-  if (a.proxima_tentativa && a.proxima_tentativa <= agora) tentarRenovar(a);
+  // Em carência. Cartão: nova tentativa quando chega a hora. Pix: espera a confirmação
+  // do admin até o fim da carência.
+  if (a.proxima_tentativa) {
+    if (a.proxima_tentativa <= agora) tentarRenovar(a);
+  } else if (fimDaCarencia(a)! <= agora) {
+    const plano = planoDaAssinatura(a, a.plano_proximo) ?? planoDaAssinatura(a);
+    encerrar(a, `Sua assinatura do plano ${plano?.nome ?? ""} terminou porque o Pix da renovação não foi pago a tempo. Você pode assinar de novo em Conta.`);
+  }
 }
 
 const EXPIRACAO_FIM_DO_MES = "Créditos expirados no fim do mês (sem assinatura ativa)";
@@ -202,18 +390,23 @@ function expirarSemAssinatura(usuarioId?: number) {
 export function processarAssinaturas(usuarioId?: number) {
   const agora = agoraSql();
   const avisoAte = paraSql(new Date(Date.now() + AVISO_EXPIRACAO_DIAS * DIA_MS));
-  const pendentes = varios<Assinatura & { usuario_id: number }>(
+  const carenciaDesde = paraSql(new Date(Date.now() - CARENCIA_DIAS * DIA_MS));
+  const pendentes = varios<AssinaturaDe>(
     `SELECT ${CAMPOS} FROM assinaturas
      WHERE status = 'ativa' AND (? IS NULL OR usuario_id = ?)
-       AND (periodo_fim <= ? OR (inadimplente_desde IS NOT NULL AND proxima_tentativa <= ?)
+       AND (periodo_fim <= ?
+            OR (inadimplente_desde IS NOT NULL AND (proxima_tentativa <= ? OR (proxima_tentativa IS NULL AND inadimplente_desde <= ?)))
             OR (periodo_fim <= ? AND aviso_expiracao IS NOT periodo_fim))`,
     usuarioId ?? null,
     usuarioId ?? null,
     agora,
     agora,
+    carenciaDesde,
     avisoAte,
   );
-  for (const a of pendentes) {
+  // Em carência por Pix e ainda no prazo: nada a fazer agora (só espera a confirmação).
+  const aProcessar = pendentes.filter((a) => !(a.inadimplente_desde && !a.proxima_tentativa && fimDaCarencia(a)! > agora));
+  for (const a of aProcessar) {
     // Cada assinatura em sua transação: um erro numa não trava as outras.
     try {
       transacao(() => processar(a));
@@ -222,39 +415,70 @@ export function processarAssinaturas(usuarioId?: number) {
     }
   }
   transacao(() => expirarSemAssinatura(usuarioId));
-  return pendentes.length;
+  return aProcessar.length;
 }
 
-/** Primeira assinatura (no cadastro) ou nova assinatura depois que a anterior terminou. */
-export function assinar(usuarioId: number, planoId: string) {
+// ---------- Assinar, renovação, troca de plano ----------
+
+export type ResultadoAssinar = "ativa" | "aguardando_pix";
+
+/**
+ * Assinatura de um plano comum: no cadastro ou depois que a anterior terminou.
+ * Cartão: cobra e ativa na hora. Pix: a assinatura fica pendente até o admin confirmar.
+ */
+export function assinar(usuarioId: number, planoId: string): ResultadoAssinar {
   const plano = planoPorId(precos(), planoId);
   if (!plano?.ativo) throw new ErroNegocio("Este plano não está disponível.");
   return transacao(() => {
     const atual = assinaturaDo(usuarioId);
     if (atual?.status === "ativa") throw new ErroNegocio("Você já tem uma assinatura ativa.");
-    // Saldo antigo (de quem estava sem assinatura) não passa para o novo período.
-    expirarSaldo(usuarioId, "Créditos anteriores à nova assinatura");
-    const faturaId = cobrar(usuarioId, plano.precoMes, `Plano ${plano.nome} · mensalidade`);
-    lancar(usuarioId, plano.creditosMes, "assinatura", `Créditos do plano ${plano.nome}`, { faturaId });
-    const inicio = new Date();
-    const periodo = [paraSql(inicio), paraSql(adicionarMeses(inicio, 1))];
     if (atual) {
+      cancelarPixPendentes(usuarioId, "ativar");
       executar(
-        `UPDATE assinaturas SET plano_id = ?, status = 'ativa', periodo_inicio = ?, periodo_fim = ?, plano_proximo = NULL,
-           renovacao_automatica = 1, inadimplente_desde = NULL, tentativas_cobranca = 0, proxima_tentativa = NULL,
-           aviso_expiracao = NULL WHERE id = ?`,
+        `UPDATE assinaturas SET plano_id = ?, status = 'pendente', plano_proximo = NULL, inadimplente_desde = NULL,
+           tentativas_cobranca = 0, proxima_tentativa = NULL WHERE id = ?`,
         planoId,
-        ...periodo,
         atual.id,
       );
     } else {
       executar(
-        "INSERT INTO assinaturas (usuario_id, plano_id, status, periodo_inicio, periodo_fim) VALUES (?, ?, 'ativa', ?, ?)",
+        "INSERT INTO assinaturas (usuario_id, plano_id, status, periodo_inicio, periodo_fim) VALUES (?, ?, 'pendente', datetime('now'), datetime('now'))",
         usuarioId,
         planoId,
-        ...periodo,
       );
     }
+    const r = pagar(usuarioId, plano.precoMes, `Plano ${plano.nome} · mensalidade`, { tipo: "ativar", planoId });
+    if (r.situacao === "recusado") throw new ErroNegocio(r.mensagem, 402);
+    return r.situacao === "pago" ? "ativa" : "aguardando_pix";
+  });
+}
+
+/**
+ * Cadastro com o plano Personalizado: a conta fica pendente, sem cobrança, enquanto o
+ * cliente combina créditos e valor com o atendimento pelo chat.
+ */
+export function iniciarNegociacaoPersonalizado(usuarioId: number, nome: string) {
+  executar(
+    "INSERT INTO assinaturas (usuario_id, plano_id, status, periodo_inicio, periodo_fim) VALUES (?, ?, 'pendente', datetime('now'), datetime('now'))",
+    usuarioId,
+    PLANO_PERSONALIZADO,
+  );
+  notificarPapel(
+    ["admin"],
+    `${nome} criou uma conta e quer o plano Personalizado. Combine pelo chat e defina os valores na conta do cliente.`,
+    `/equipe/atendimento?cliente=${usuarioId}`,
+  );
+}
+
+/** Conta pendente com plano comum e sem cobrança aberta: gera o Pix de novo. */
+export function gerarPixDeNovo(usuarioId: number) {
+  return transacao(() => {
+    const a = assinaturaDo(usuarioId);
+    if (a?.status !== "pendente") throw new ErroNegocio("Não há assinatura aguardando pagamento.");
+    if (cobrancasPixDo(usuarioId).length) throw new ErroNegocio("Já existe um Pix aguardando pagamento.");
+    const plano = planoDaAssinatura(a);
+    if (!plano) throw new ErroNegocio("O valor do seu plano ainda está sendo combinado com o atendimento.");
+    criarCobrancaPix(usuarioId, plano.precoMes, `Plano ${plano.nome} · mensalidade`, { tipo: "ativar", planoId: plano.id });
   });
 }
 
@@ -278,22 +502,26 @@ export function definirRenovacao(usuarioId: number, ligada: boolean) {
   });
 }
 
-/** Nova tentativa de cobrança, pedida pelo cliente durante a carência. */
+/** "Tentar pagar agora" na carência: cobra no cartão padrão (ou gera o Pix, se ainda não houver). */
 export function pagarRenovacaoAgora(usuarioId: number) {
   const r = transacao(() => {
     const a = assinaturaDo(usuarioId);
     if (a?.status !== "ativa" || !a.inadimplente_desde) throw new ErroNegocio("Não há cobrança pendente.");
+    if (pagaPorPix(usuarioId) && cobrancasPixDo(usuarioId).length)
+      throw new ErroNegocio("Pague o Pix que está na sua Conta. Assim que confirmarmos, os créditos entram.");
     return tentarRenovar(a);
   });
   // A fatura recusada fica registrada; o erro só sai depois de gravar.
-  if (!r.ok) throw new ErroNegocio(`${r.mensagem} Tente outra forma de pagamento.`, 402);
+  if (!r.ok && !pagaPorPix(usuarioId)) throw new ErroNegocio(`${r.mensagem} Tente outra forma de pagamento.`, 402);
 }
 
 export type ResultadoTroca =
   | { tipo: "upgrade"; plano: string; cobrado: number; creditos: number }
+  | { tipo: "upgrade_pix"; plano: string; valor: number; creditos: number }
   | { tipo: "agendada"; plano: string; em: string }
   | { tipo: "cancelou_agendamento"; plano: string }
-  | { tipo: "assinou"; plano: string };
+  | { tipo: "assinou"; plano: string }
+  | { tipo: "assinou_pix"; plano: string };
 
 /** Como a troca para um plano funcionaria (para a tela mostrar antes de confirmar). */
 export function simularTroca(atual: Plano | undefined, novoId: string) {
@@ -306,11 +534,11 @@ export function simularTroca(atual: Plano | undefined, novoId: string) {
 
 /**
  * Troca de plano.
- * - Para um plano com MAIS créditos (upgrade): imediata. Cobra a diferença de preço,
- *   credita a diferença de créditos agora, e a renovação segue na mesma data com o novo plano.
- *   Sem proporcional por dias; os créditos extras expiram junto com os do período.
+ * - Para um plano com MAIS créditos (upgrade): cobra a diferença de preço e credita a
+ *   diferença de créditos (cartão: na hora; Pix: na confirmação). A renovação segue na mesma
+ *   data com o novo plano. Sem proporcional por dias; os créditos extras expiram junto.
  * - Para um plano com MENOS créditos: agendada para a próxima renovação, sem reembolso.
- * - Sem assinatura ativa: assina o plano escolhido (cobra e começa um período novo).
+ * - Sem assinatura ativa: assina o plano escolhido.
  */
 export function trocarPlano(usuarioId: number, planoId: string): ResultadoTroca {
   const atual = assinaturaDo(usuarioId);
@@ -328,8 +556,8 @@ export function trocarPlano(usuarioId: number, planoId: string): ResultadoTroca 
         : "Este plano não está disponível.",
     );
   if (!atual || atual.status !== "ativa") {
-    assinar(usuarioId, planoId);
-    return { tipo: "assinou", plano: novo.nome };
+    const r = assinar(usuarioId, planoId);
+    return { tipo: r === "ativa" ? "assinou" : "assinou_pix", plano: novo.nome };
   }
   if (atual.inadimplente_desde)
     throw new ErroNegocio("A renovação do seu plano está com pagamento pendente. Regularize o pagamento antes de trocar de plano.");
@@ -341,19 +569,18 @@ export function trocarPlano(usuarioId: number, planoId: string): ResultadoTroca 
 
   const simulacao = simularTroca(planoDaAssinatura(atual), novo.id);
   if (simulacao?.tipo === "upgrade") {
-    const r = transacao(() => {
-      let faturaId: number | undefined;
-      if (simulacao.cobrar > 0) {
-        const c = tentarCobrar(usuarioId, simulacao.cobrar, `Upgrade para o plano ${novo.nome} (diferença do período)`);
-        if (!c.aprovado) return c;
-        faturaId = c.faturaId;
-      }
-      lancar(usuarioId, simulacao.creditos, "assinatura", `Upgrade para o plano ${novo.nome}`, { faturaId });
-      executar("UPDATE assinaturas SET plano_id = ?, plano_proximo = NULL WHERE id = ?", novo.id, atual.id);
-      return null;
+    if (cobrancasPixDo(usuarioId).some((c) => (JSON.parse(c.acao) as Acao).tipo === "upgrade"))
+      throw new ErroNegocio("Já existe um Pix de upgrade aguardando pagamento. Pague ou fale com o atendimento.");
+    const acao: Acao = { tipo: "upgrade", planoId: novo.id, creditos: simulacao.creditos };
+    const descricao = `Upgrade para o plano ${novo.nome} (diferença do período)`;
+    const r = transacao((): Pagamento => {
+      if (simulacao.cobrar > 0) return pagar(usuarioId, simulacao.cobrar, descricao, acao);
+      executarAcao(usuarioId, acao); // diferença zero: nada a cobrar
+      return { situacao: "pago" };
     });
-    // A fatura recusada fica registrada; o erro só sai depois de gravar.
-    if (r) throw new ErroNegocio(r.mensagem, 402);
+    if (r.situacao === "recusado") throw new ErroNegocio(r.mensagem, 402);
+    if (r.situacao === "aguardando_pix")
+      return { tipo: "upgrade_pix", plano: novo.nome, valor: simulacao.cobrar, creditos: simulacao.creditos };
     return { tipo: "upgrade", plano: novo.nome, cobrado: simulacao.cobrar, creditos: simulacao.creditos };
   }
 
@@ -366,9 +593,11 @@ export function trocarPlano(usuarioId: number, planoId: string): ResultadoTroca 
 /**
  * Admin aplica o plano Personalizado na conta de um cliente, com os créditos e o valor
  * combinados.
- * - Sem assinatura ativa: assina na hora (cobra e lança os créditos; período começa hoje).
- * - "agora": cobra o valor e lança os créditos já; o período recomeça hoje e o saldo
- *   que o cliente tinha continua valendo até o novo fim.
+ * - Sem assinatura ativa (inclusive a conta pendente de quem se cadastrou pelo
+ *   Personalizado): gera a cobrança do 1º mês. Cartão: ativa na hora. Pix: o cliente vê o
+ *   QR Code e os créditos entram quando o admin confirmar.
+ * - "agora": cobra o valor do mês já; os créditos entram (cartão: na hora; Pix: na
+ *   confirmação), o período recomeça e o saldo que o cliente tinha continua valendo.
  * - "renovacao": vale a partir da próxima renovação (se já estiver no Personalizado,
  *   só atualiza os valores, que passam a valer na próxima cobrança).
  */
@@ -376,7 +605,7 @@ export function aplicarPersonalizado(
   admin: Usuario,
   clienteId: number,
   dados: { precoMes: number; creditosMes: number; quando: "agora" | "renovacao" },
-) {
+): "renovacao" | "agora" | "aguardando_pix" {
   if (admin.papel !== "admin") throw new ErroNegocio("Somente o admin define o plano Personalizado.", 403);
   const { precoMes, creditosMes, quando } = dados;
   if (!(precoMes > 0) || precoMes > 1_000_000) throw new ErroNegocio("Informe o valor por mês, em reais.");
@@ -385,7 +614,7 @@ export function aplicarPersonalizado(
   const cliente = um<{ id: number }>("SELECT id FROM usuarios WHERE id = ? AND papel = 'cliente' AND ativo = 1", clienteId);
   if (!cliente) throw new ErroNegocio("Cliente não encontrado.", 404);
   const plano = planoPersonalizado(precoMes, creditosMes);
-  const valores = `${plano.creditosMes} créditos por R$ ${plano.precoMes.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}/mês`;
+  const valores = `${plano.creditosMes} créditos por ${plano.precoMes.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}/mês`;
 
   return transacao(() => {
     const a = assinaturaDo(clienteId);
@@ -401,43 +630,44 @@ export function aplicarPersonalizado(
         a.plano_id === PLANO_PERSONALIZADO ? null : PLANO_PERSONALIZADO,
         a.id,
       );
-      notificar(
-        clienteId,
-        `Seu plano Personalizado (${valores}) começa na renovação de ${formatarData(a.periodo_fim)}.`,
-        "/cliente/conta",
-      );
-      return "renovacao" as const;
+      notificar(clienteId, `Seu plano Personalizado (${valores}) começa na renovação de ${formatarData(a.periodo_fim)}.`, "/cliente/conta");
+      return "renovacao";
     }
 
-    // Agora (ou assinatura nova): cobra, lança os créditos e começa um período.
-    if (!ativa) expirarSaldo(clienteId, "Créditos anteriores à nova assinatura");
-    const faturaId = cobrar(clienteId, precoMes, "Plano Personalizado · mensalidade");
-    lancar(clienteId, creditosMes, "assinatura", "Créditos do plano Personalizado", { faturaId });
-    const inicio = new Date();
-    const periodo = [paraSql(inicio), paraSql(adicionarMeses(inicio, 1))];
+    // Agora, ou assinatura nova: guarda os valores e cobra o 1º mês.
     if (a) {
       executar(
-        `UPDATE assinaturas SET plano_id = ?, status = 'ativa', periodo_inicio = ?, periodo_fim = ?, plano_proximo = NULL,
-           personalizado_preco = ?, personalizado_creditos = ?, inadimplente_desde = NULL, tentativas_cobranca = 0,
-           proxima_tentativa = NULL, aviso_expiracao = NULL${ativa ? "" : ", renovacao_automatica = 1"} WHERE id = ?`,
-        PLANO_PERSONALIZADO,
-        ...periodo,
-        precoMes,
-        creditosMes,
-        a.id,
+        `UPDATE assinaturas SET personalizado_preco = ?, personalizado_creditos = ?
+           ${ativa ? "" : ", plano_id = ?, status = 'pendente', plano_proximo = NULL, inadimplente_desde = NULL, proxima_tentativa = NULL"}
+         WHERE id = ?`,
+        ...(ativa ? [precoMes, creditosMes, a.id] : [precoMes, creditosMes, PLANO_PERSONALIZADO, a.id]),
       );
     } else {
       executar(
         `INSERT INTO assinaturas (usuario_id, plano_id, status, periodo_inicio, periodo_fim, personalizado_preco, personalizado_creditos)
-         VALUES (?, ?, 'ativa', ?, ?, ?, ?)`,
+         VALUES (?, ?, 'pendente', datetime('now'), datetime('now'), ?, ?)`,
         clienteId,
         PLANO_PERSONALIZADO,
-        ...periodo,
         precoMes,
         creditosMes,
       );
     }
+    cancelarPixPendentes(clienteId, "ativar");
+    const r = pagar(clienteId, precoMes, "Plano Personalizado · mensalidade", {
+      tipo: "ativar",
+      planoId: PLANO_PERSONALIZADO,
+      manterSaldo: ativa,
+    });
+    if (r.situacao === "recusado") throw new ErroNegocio(`Cobrança recusada no cartão do cliente: ${r.mensagem}`, 402);
+    if (r.situacao === "aguardando_pix") {
+      notificar(
+        clienteId,
+        `Seu plano Personalizado foi liberado: ${valores}. Pague o Pix na sua área; os créditos entram assim que confirmarmos o pagamento.`,
+        "/cliente",
+      );
+      return "aguardando_pix";
+    }
     notificar(clienteId, `Seu plano agora é o Personalizado: ${valores}. Os créditos já entraram no saldo.`, "/cliente/creditos");
-    return "agora" as const;
+    return "agora";
   });
 }

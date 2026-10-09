@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS assinaturas (
   id INTEGER PRIMARY KEY,
   usuario_id INTEGER NOT NULL UNIQUE REFERENCES usuarios(id) ON DELETE CASCADE,
   plano_id TEXT NOT NULL,
-  status TEXT NOT NULL CHECK (status IN ('ativa','cancelada')),
+  status TEXT NOT NULL CHECK (status IN ('ativa','cancelada','pendente')),
   periodo_inicio TEXT NOT NULL,
   periodo_fim TEXT NOT NULL,
   criado_em TEXT NOT NULL DEFAULT (datetime('now'))
@@ -66,7 +66,7 @@ CREATE TABLE IF NOT EXISTS faturas (
   usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
   descricao TEXT NOT NULL,
   valor_centavos INTEGER NOT NULL,
-  status TEXT NOT NULL CHECK (status IN ('paga','pendente','falhou')),
+  status TEXT NOT NULL CHECK (status IN ('paga','pendente','falhou','cancelada')),
   metodo TEXT NOT NULL,
   referencia_gateway TEXT,
   criado_em TEXT NOT NULL DEFAULT (datetime('now'))
@@ -193,6 +193,27 @@ CREATE TABLE IF NOT EXISTS atendimento_exclusoes (
   conversa_inteira INTEGER NOT NULL DEFAULT 0,
   criado_em TEXT NOT NULL DEFAULT (datetime('now'))
 );
+-- Contador de acessos (admin): páginas vistas no site e na área do cliente, com um
+-- código de visitante anônimo que muda todo dia (sem IP), e os logins.
+CREATE TABLE IF NOT EXISTS acessos_visitas (
+  id INTEGER PRIMARY KEY,
+  dia TEXT NOT NULL, -- AAAA-MM-DD, fuso de Brasília
+  area TEXT NOT NULL CHECK (area IN ('site','cliente')),
+  caminho TEXT NOT NULL,
+  visitante TEXT NOT NULL,
+  criado_em TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_acessos_visitas_dia ON acessos_visitas(dia);
+CREATE INDEX IF NOT EXISTS idx_acessos_visitas_visitante ON acessos_visitas(visitante, caminho, criado_em);
+CREATE TABLE IF NOT EXISTS acessos_logins (
+  id INTEGER PRIMARY KEY,
+  usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+  papel TEXT NOT NULL,
+  origem TEXT NOT NULL CHECK (origem IN ('site','cadastro','app')),
+  dia TEXT NOT NULL,
+  criado_em TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_acessos_logins_dia ON acessos_logins(dia);
 -- Até qual mensagem cada pessoa já leu, por conversa (pedido 0 = conversa geral).
 CREATE TABLE IF NOT EXISTS atendimento_leituras (
   usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
@@ -339,6 +360,39 @@ function migrar(d: DatabaseSync) {
   ];
   for (const [nome, tipo] of novasColunas)
     if (!colAssinatura.includes(nome)) d.exec(`ALTER TABLE assinaturas ADD COLUMN ${nome} ${tipo}`);
+  // Pix (out/2026): assinatura "pendente" (aguardando o 1º pagamento ou a negociação do
+  // plano Personalizado) e fatura "cancelada". O SQLite não altera CHECK: a tabela é
+  // recriada com a regra nova e os mesmos dados (as colunas novas ficam no fim).
+  const ampliarCheck = (tabela: string, antigo: string, novo: string) => {
+    const sql = (d.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?").get(tabela) as { sql: string }).sql;
+    if (!sql.includes(antigo)) return;
+    const nova = sql.replace(antigo, novo).replace(/^CREATE TABLE (IF NOT EXISTS )?("?)[A-Za-z_]+\2/, `CREATE TABLE ${tabela}_nova`);
+    if (!nova.startsWith(`CREATE TABLE ${tabela}_nova`)) throw new Error(`Migração: não consegui recriar a tabela ${tabela}.`);
+    d.exec("PRAGMA foreign_keys = OFF; BEGIN");
+    try {
+      d.exec(`${nova}; INSERT INTO ${tabela}_nova SELECT * FROM ${tabela}; DROP TABLE ${tabela};
+        ALTER TABLE ${tabela}_nova RENAME TO ${tabela};`);
+      d.exec("COMMIT");
+    } catch (e) {
+      d.exec("ROLLBACK"); // nada muda se algo der errado
+      throw e;
+    } finally {
+      d.exec("PRAGMA foreign_keys = ON");
+    }
+  };
+  ampliarCheck("assinaturas", "CHECK (status IN ('ativa','cancelada'))", "CHECK (status IN ('ativa','cancelada','pendente'))");
+  ampliarCheck("faturas", "CHECK (status IN ('paga','pendente','falhou'))", "CHECK (status IN ('paga','pendente','falhou','cancelada'))");
+  const colFatura = colunas("faturas");
+  for (const [nome, tipo] of [
+    ["pix_payload", "TEXT"], // código Pix copia e cola (o QR Code é gerado dele)
+    ["vence_em", "TEXT"],
+    ["acao", "TEXT"], // JSON: o que liberar quando o pagamento for confirmado
+    ["confirmada_em", "TEXT"],
+    ["confirmada_por", "INTEGER REFERENCES usuarios(id)"],
+    ["aviso_pago_em", "TEXT"], // cliente avisou que pagou
+  ])
+    if (!colFatura.includes(nome)) d.exec(`ALTER TABLE faturas ADD COLUMN ${nome} ${tipo}`);
+  d.exec("CREATE INDEX IF NOT EXISTS idx_faturas_status ON faturas(status)");
   // Atendimento (out/2026): o admin passa a poder apagar mensagens e conversas, e
   // as mensagens podem levar uma imagem.
   d.exec("DROP TRIGGER IF EXISTS atendimento_sem_exclusao");

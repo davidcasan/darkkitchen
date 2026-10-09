@@ -95,7 +95,10 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* O rótulo pode passar da largura da coluna (centralizado), para não cortar "12" em colunas estreitas. */
 .eixo span {
-  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  overflow: visible;
   white-space: nowrap;
 }

@@ -17,12 +17,14 @@ import { PLANO_PERSONALIZADO } from "@/domain/precos";
 import { precos } from "@/server/services/precos";
 import { exigirUsuario } from "@/server/auth";
 import { formatarData } from "@/server/datas";
-import { assinaturaDo, fimDaCarencia, planoDaAssinatura, simularTroca } from "@/server/services/assinaturas";
-import { gatewayEhSimulado, listarFaturas, listarMetodos } from "@/server/services/pagamentos";
+import { assinaturaDo, cobrancasPixDo, fimDaCarencia, planoDaAssinatura, simularTroca } from "@/server/services/assinaturas";
+import { CARTAO_ATIVO, gatewayEhSimulado, listarFaturas, listarMetodos } from "@/server/services/pagamentos";
+import { pixDisponivel } from "@/server/services/pix";
+import { CobrancaPix } from "@/components/app/CobrancaPix";
 
 export const metadata: Metadata = { title: "Conta" };
 
-const STATUS_FATURA = { paga: "Paga", pendente: "Pendente", falhou: "Recusada" };
+const STATUS_FATURA = { paga: "Paga", pendente: "Aguardando pagamento", falhou: "Recusada", cancelada: "Cancelada" };
 
 export default async function ContaCliente({ searchParams }: PageProps<"/cliente/conta">) {
   const u = await exigirUsuario(["cliente"]);
@@ -36,6 +38,8 @@ export default async function ContaCliente({ searchParams }: PageProps<"/cliente
   const planos = [...(noPersonalizado && plano ? [plano] : []), ...tabela.planos.filter((p) => p.ativo || p.id === plano?.id)];
   const renova = ativa && assinatura.renovacao_automatica === 1;
   const pendente = ativa && !!assinatura.inadimplente_desde;
+  const cobrancasPix = cobrancasPixDo(u.id);
+  const temPix = pixDisponivel();
   const proximo = planoDaAssinatura(assinatura, assinatura?.plano_proximo);
   const metodos = listarMetodos(u.id);
   const faturas = listarFaturas(u.id);
@@ -56,11 +60,22 @@ export default async function ContaCliente({ searchParams }: PageProps<"/cliente
 
       <Confirmacao texto={ok === "pago" ? "Pagamento aprovado. Seu plano está em dia e os créditos do novo período entraram no saldo." : null} />
 
-      {gatewayEhSimulado() && (
+      {CARTAO_ATIVO && gatewayEhSimulado() && (
         <p className="alerta alerta-aviso" style={{ marginBottom: 16 }}>
-          Modo de teste: pagamentos são simulados, sem cobrança real. Todo cartão é aprovado na hora, exceto o de final 0000, que é
-          sempre recusado (para testar cobrança recusada).
+          Fase de testes: o cartão é simulado (aprovado na hora, sem cobrança real; o de final 0000 é sempre recusado). O Pix é
+          real: os créditos entram depois que confirmamos o pagamento.
         </p>
+      )}
+
+      {cobrancasPix.length > 0 && (
+        <section className="card" style={{ marginBottom: 16 }}>
+          <h2>Pix aguardando pagamento</h2>
+          <div className="stack">
+            {cobrancasPix.map((c) => (
+              <CobrancaPix key={c.id} cobranca={c} />
+            ))}
+          </div>
+        </section>
       )}
 
       <section className="card">
@@ -81,7 +96,7 @@ export default async function ContaCliente({ searchParams }: PageProps<"/cliente
                 ? `Plano ${plano?.nome}: ${plano?.creditosMes} créditos por ${formatarReais(plano?.precoMes ?? 0)}/mês. Renova automaticamente em ${formatarData(assinatura.periodo_fim)}; os créditos não usados expiram nessa data.`
                 : `Plano ${plano?.nome}: a assinatura termina em ${formatarData(assinatura.periodo_fim)}, sem nova cobrança. Os créditos não usados expiram nessa data.`}
         </p>
-        {pendente && (
+        {pendente && cobrancasPix.length === 0 && (
           <div className="alerta alerta-aviso" style={{ marginBottom: 16 }}>
           <FormAcao action={pagarRenovacaoAction}>
             <p style={{ margin: "0 0 10px" }}>
@@ -194,57 +209,68 @@ export default async function ContaCliente({ searchParams }: PageProps<"/cliente
 
       <div className="grid-2" style={{ marginTop: 16 }}>
         <section className="card">
-          <h2>Formas de pagamento</h2>
-          <ul className="lista" style={{ marginBottom: 16 }}>
-            {metodos.map((m) => (
-              <li key={m.id} className="row-between" style={{ padding: "10px 0" }}>
-                <span>
-                  {m.descricao} {m.padrao === 1 && <span className="badge">Padrão</span>}
-                </span>
-                <span className="row">
-                  {m.padrao !== 1 && (
-                    <FormAcao action={metodoPadraoAction}>
-                      <input type="hidden" name="metodo" value={m.id} />
-                      <Enviar className="link small" enviando="...">
-                        Tornar padrão
-                      </Enviar>
-                    </FormAcao>
-                  )}
-                  {metodos.length > 1 && (
-                    <FormAcao action={removerMetodoAction} confirmar="Remover esta forma de pagamento?">
-                      <input type="hidden" name="metodo" value={m.id} />
-                      <Enviar className="link small" enviando="...">
-                        Remover
-                      </Enviar>
-                    </FormAcao>
-                  )}
-                </span>
-              </li>
-            ))}
-          </ul>
-          <details>
-            <summary className="link">+ Adicionar forma de pagamento</summary>
-            <FormAcao action={adicionarMetodoAction}>
-              <div className="field" style={{ marginTop: 12 }}>
-                <span className="label">Tipo</span>
-                <div className="chips">
-                  <label className="chip">
-                    <input type="radio" name="tipo" value="cartao" defaultChecked /> Cartão de crédito
-                  </label>
-                  <label className="chip">
-                    <input type="radio" name="tipo" value="pix" /> Pix
-                  </label>
+          <h2>{CARTAO_ATIVO ? "Formas de pagamento" : "Pagamento"}</h2>
+          {!CARTAO_ATIVO ? (
+            <p className="muted small">
+              Os pagamentos são por <b>Pix</b>: a cada cobrança (mensalidade ou troca de plano) aparece aqui um QR Code. Depois de
+              pagar, clique em &quot;Já paguei&quot;; os créditos entram assim que confirmarmos o pagamento.
+            </p>
+          ) : (
+            <>
+            <ul className="lista" style={{ marginBottom: 16 }}>
+              {metodos.map((m) => (
+                <li key={m.id} className="row-between" style={{ padding: "10px 0" }}>
+                  <span>
+                    {m.descricao} {m.padrao === 1 && <span className="badge">Padrão</span>}
+                  </span>
+                  <span className="row">
+                    {m.padrao !== 1 && (
+                      <FormAcao action={metodoPadraoAction}>
+                        <input type="hidden" name="metodo" value={m.id} />
+                        <Enviar className="link small" enviando="...">
+                          Tornar padrão
+                        </Enviar>
+                      </FormAcao>
+                    )}
+                    {metodos.length > 1 && (
+                      <FormAcao action={removerMetodoAction} confirmar="Remover esta forma de pagamento?">
+                        <input type="hidden" name="metodo" value={m.id} />
+                        <Enviar className="link small" enviando="...">
+                          Remover
+                        </Enviar>
+                      </FormAcao>
+                    )}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <details>
+              <summary className="link">+ Adicionar forma de pagamento</summary>
+              <FormAcao action={adicionarMetodoAction}>
+                <div className="field" style={{ marginTop: 12 }}>
+                  <span className="label">Tipo</span>
+                  <div className="chips">
+                    <label className="chip">
+                      <input type="radio" name="tipo" value="cartao" defaultChecked /> Cartão de crédito
+                    </label>
+                    {temPix && (
+                      <label className="chip">
+                        <input type="radio" name="tipo" value="pix" /> Pix
+                      </label>
+                    )}
+                  </div>
                 </div>
-              </div>
-              <div className="field">
-                <label className="label" htmlFor="final">
-                  Últimos 4 dígitos do cartão <span className="opt">(simulação: final 0000 é sempre recusado)</span>
-                </label>
-                <input id="final" name="final" className="txt" inputMode="numeric" maxLength={4} placeholder="0000" />
-              </div>
-              <Enviar className="btn btn-sm">Adicionar</Enviar>
-            </FormAcao>
-          </details>
+                <div className="field">
+                  <label className="label" htmlFor="final">
+                    Últimos 4 dígitos do cartão <span className="opt">(simulação: final 0000 é sempre recusado)</span>
+                  </label>
+                  <input id="final" name="final" className="txt" inputMode="numeric" maxLength={4} placeholder="0000" />
+                </div>
+                <Enviar className="btn btn-sm">Adicionar</Enviar>
+              </FormAcao>
+            </details>
+            </>
+          )}
         </section>
 
         <section className="card">

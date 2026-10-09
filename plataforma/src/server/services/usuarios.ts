@@ -1,11 +1,12 @@
 import "server-only";
-import { planoPorId } from "@/domain/precos";
+import { PLANO_PERSONALIZADO, planoPorId } from "@/domain/precos";
 import { precos } from "./precos";
 import { ErroNegocio, executar, transacao, um, varios } from "../db";
 import type { Usuario } from "../auth";
 import { hashSenha, verificarSenha } from "../senha";
-import { assinar } from "./assinaturas";
-import { adicionarMetodo } from "./pagamentos";
+import { assinar, iniciarNegociacaoPersonalizado } from "./assinaturas";
+import { pixDisponivel } from "./pix";
+import { CARTAO_ATIVO, adicionarMetodo } from "./pagamentos";
 import { criarMarca } from "./marcas";
 
 const CAMPOS = "id, papel, nome, email, empresa, senior";
@@ -35,7 +36,11 @@ export function cadastrarCliente(d: DadosCadastro): Usuario {
   if (nome.length < 2) throw new ErroNegocio("Informe seu nome.");
   if (!/^\S+@\S+\.\S+$/.test(email)) throw new ErroNegocio("Digite um e-mail válido.");
   if (d.senha.length < 8) throw new ErroNegocio("A senha precisa ter pelo menos 8 caracteres.");
-  if (!planoPorId(precos(), d.planoId)?.ativo) throw new ErroNegocio("Escolha um plano.");
+  const personalizado = d.planoId === PLANO_PERSONALIZADO;
+  if (!personalizado && !planoPorId(precos(), d.planoId)?.ativo) throw new ErroNegocio("Escolha um plano.");
+  if (!CARTAO_ATIVO) d = { ...d, metodo: "pix" }; // por enquanto, só Pix
+  if (!personalizado && d.metodo === "pix" && !pixDisponivel())
+    throw new ErroNegocio("O pagamento por Pix ainda não está disponível. Escolha o cartão ou fale com a gente.");
   if (um("SELECT id FROM usuarios WHERE email = ?", email)) throw new ErroNegocio("Já existe uma conta com esse e-mail.");
 
   return transacao(() => {
@@ -47,8 +52,14 @@ export function cadastrarCliente(d: DadosCadastro): Usuario {
       d.empresa.trim() || null,
     ).id;
     criarMarca(id, d.empresa.trim() || nome);
-    adicionarMetodo(id, d.metodo, d.cartaoFinal);
-    assinar(id, d.planoId);
+    if (personalizado) {
+      // Sem cobrança agora: o plano é combinado pelo chat e pago por Pix depois que o admin liberar.
+      adicionarMetodo(id, "pix");
+      iniciarNegociacaoPersonalizado(id, nome);
+    } else {
+      adicionarMetodo(id, d.metodo, d.cartaoFinal);
+      assinar(id, d.planoId);
+    }
     return um<Usuario>(`SELECT ${CAMPOS} FROM usuarios WHERE id = ?`, id)!;
   });
 }

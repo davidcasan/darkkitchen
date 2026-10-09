@@ -31,6 +31,17 @@ const GATEWAY: Gateway = gatewaySimulado;
 
 export const gatewayEhSimulado = () => GATEWAY.nome === "simulado";
 
+/**
+ * Cartão desligado (out/2026): por enquanto a contratação é só por Pix (QR Code, com
+ * confirmação manual do admin). Toda cobrança vai para o Pix, mesmo de quem tem cartão
+ * cadastrado, e as telas não oferecem cartão. Para voltar a aceitar cartão: implementar
+ * um gateway real (Asaas, Pagar.me) e trocar para true.
+ */
+export const CARTAO_ATIVO = false;
+
+/** A cobrança deste cliente vai para o Pix? */
+export const pagaPorPix = (usuarioId: number) => !CARTAO_ATIVO || metodoPadrao(usuarioId)?.tipo === "pix";
+
 export interface MetodoPagamento {
   id: number;
   tipo: "cartao" | "pix";
@@ -42,7 +53,7 @@ export interface Fatura {
   id: number;
   descricao: string;
   valor_centavos: number;
-  status: "paga" | "pendente" | "falhou";
+  status: "paga" | "pendente" | "falhou" | "cancelada";
   metodo: string;
   criado_em: string;
 }

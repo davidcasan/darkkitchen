@@ -214,9 +214,9 @@ export default function Home() {
             <h3>Personalizado</h3>
             <p className={styles.planResumo}>Para quem tem um volume ou uma rotina diferente. Montamos o plano com você.</p>
             <p className={styles.credits}>Créditos e valor de acordo com a sua necessidade</p>
-            <a href={mailto(EMAIL_CONTATO, "Plano Personalizado")} className="btn">
-              Fale com a gente
-            </a>
+            <Link href="/cadastro?plano=personalizado" className="btn">
+              Montar meu plano
+            </Link>
           </article>
         </div>
       </section>

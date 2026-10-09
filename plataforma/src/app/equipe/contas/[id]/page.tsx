@@ -140,6 +140,19 @@ export default async function ContaDetalhe({ params, searchParams }: PageProps<"
                     {proximo && ` Na renovação muda para ${proximo.nome} (${proximo.creditosMes} créditos por ${formatarReais(proximo.precoMes)}).`}
                     {assinatura.inadimplente_desde && " Pagamento da renovação pendente."}
                   </>
+                ) : assinatura?.status === "pendente" ? (
+                  plano ? (
+                    <>
+                      <b>{plano.nome}</b>: {plano.creditosMes} créditos por {formatarReais(plano.precoMes)}/mês. Aguardando o
+                      1º pagamento (veja em <Link href="/equipe/pagamentos">Pagamentos</Link>).
+                    </>
+                  ) : (
+                    <>
+                      <b>Personalizado em negociação.</b> Combine pelo{" "}
+                      <Link href={`/equipe/atendimento?cliente=${c.id}`}>chat</Link> e defina os valores abaixo: o cliente
+                      recebe o Pix para pagar.
+                    </>
+                  )
                 ) : (
                   "Sem assinatura ativa."
                 )}

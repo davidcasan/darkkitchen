@@ -5,6 +5,8 @@ import styles from "@/components/site/AuthForm.module.css";
 import { areaDo, usuarioAtual } from "@/server/auth";
 import { planosAtivos } from "@/domain/precos";
 import { precos } from "@/server/services/precos";
+import { pixDisponivel } from "@/server/services/pix";
+import { CARTAO_ATIVO } from "@/server/services/pagamentos";
 
 export const metadata: Metadata = { title: "Criar conta" };
 
@@ -21,6 +23,8 @@ export default async function CadastroPage({ searchParams }: PageProps<"/cadastr
           modo="cadastro"
           planoInicial={typeof plano === "string" ? plano : undefined}
           planos={planosAtivos(precos())}
+          pix={pixDisponivel()}
+          cartao={CARTAO_ATIVO}
         />
       </div>
     </section>

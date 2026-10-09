@@ -12,7 +12,8 @@ import {
   redefinirSenha,
   removerConta,
 } from "@/server/services/contas";
-import { aplicarPersonalizado } from "@/server/services/assinaturas";
+import { aplicarPersonalizado, cancelarCobranca, confirmarPagamento } from "@/server/services/assinaturas";
+import { salvarConfigPix } from "@/server/services/pix";
 import { salvarPrecos } from "@/server/services/precos";
 import { usuarioPorId } from "@/server/services/usuarios";
 
@@ -73,7 +74,7 @@ export async function reativarContaAction(_: Estado, fd: FormData): Promise<Esta
 
 export async function personalizadoAction(_: Estado, fd: FormData): Promise<Estado> {
   const u = await admin();
-  const saida: { quando?: "agora" | "renovacao" } = {};
+  const saida: { quando?: "agora" | "renovacao" | "aguardando_pix" } = {};
   const r = await rodar(() => {
     saida.quando = aplicarPersonalizado(u, campoNumero(fd, "id"), {
       precoMes: Number(campo(fd, "preco").replace(",", ".")),
@@ -86,8 +87,28 @@ export async function personalizadoAction(_: Estado, fd: FormData): Promise<Esta
     ok:
       saida.quando === "renovacao"
         ? "Plano Personalizado agendado: começa na próxima renovação do cliente. Ele foi avisado."
-        : "Plano Personalizado aplicado: cobrança feita, créditos lançados e novo período iniciado hoje. O cliente foi avisado.",
+        : saida.quando === "aguardando_pix"
+          ? "Plano Personalizado liberado: o cliente já vê o QR Code do Pix. Os créditos entram quando você confirmar o pagamento em Pagamentos."
+          : "Plano Personalizado aplicado: cobrança feita no cartão, créditos lançados e novo período iniciado hoje. O cliente foi avisado.",
   };
+}
+
+export async function confirmarPagamentoAction(_: Estado, fd: FormData): Promise<Estado> {
+  const u = await admin();
+  return rodar(() => confirmarPagamento(u, campoNumero(fd, "fatura")), "Pagamento confirmado. Os créditos foram liberados e o cliente foi avisado.");
+}
+
+export async function cancelarCobrancaAction(_: Estado, fd: FormData): Promise<Estado> {
+  const u = await admin();
+  return rodar(() => cancelarCobranca(u, campoNumero(fd, "fatura")), "Cobrança cancelada. O cliente foi avisado.");
+}
+
+export async function salvarPixAction(_: Estado, fd: FormData): Promise<Estado> {
+  const u = await admin();
+  return rodar(
+    () => salvarConfigPix(u, { chave: campo(fd, "chave"), nome: campo(fd, "nome"), cidade: campo(fd, "cidade") }),
+    "Dados do Pix salvos. Os próximos QR Codes já usam estes dados.",
+  );
 }
 
 export async function ajustarCreditosAction(_: Estado, fd: FormData): Promise<Estado> {

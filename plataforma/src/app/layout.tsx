@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Manrope, Sora } from "next/font/google";
 import "./globals.css";
 import "./ui.css";
+import { ContadorAcessos } from "@/components/ContadorAcessos";
 
 const display = Sora({
   variable: "--font-display",
@@ -38,6 +39,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="pt-BR" className={`${display.variable} ${body.variable}`} data-scroll-behavior="smooth">
       <body>
         {children}
+        <ContadorAcessos />
       </body>
     </html>
   );

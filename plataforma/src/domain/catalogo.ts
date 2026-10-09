@@ -43,5 +43,13 @@ export const PECAS: Peca[] = [
   },
 ];
 
-export const formatarReais = (valor: number) =>
-  valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+/** Valores inteiros sem centavos (R$ 1.000); com centavos, mostra os centavos (R$ 2.750,50). */
+export const formatarReais = (valor: number) => {
+  const inteiro = Math.round(valor * 100) % 100 === 0;
+  return valor.toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    minimumFractionDigits: inteiro ? 0 : 2,
+    maximumFractionDigits: inteiro ? 0 : 2,
+  });
+};

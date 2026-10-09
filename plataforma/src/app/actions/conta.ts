@@ -4,14 +4,17 @@ import { redirect } from "next/navigation";
 import { type Estado, campo, rodar } from "@/server/acao";
 import { areaDo, encerrarSessaoWeb, exigirUsuario, iniciarSessaoWeb } from "@/server/auth";
 import { ErroNegocio } from "@/server/db";
+import { PLANO_PERSONALIZADO } from "@/domain/precos";
 import { alterarSenha, autenticar, cadastrarCliente } from "@/server/services/usuarios";
 import { marcarTodasLidas } from "@/server/services/notificacoes";
+import { registrarLogin } from "@/server/services/acessos";
 
 export async function entrarAction(_: Estado, fd: FormData): Promise<Estado> {
   let destino = "/";
   const r = await rodar(async () => {
     const u = autenticar(campo(fd, "email"), campo(fd, "senha"));
     await iniciarSessaoWeb(u.id);
+    registrarLogin(u, "site");
     destino = areaDo(u.papel);
   });
   if (r?.erro) return r;
@@ -22,7 +25,9 @@ export async function cadastrarAction(_: Estado, fd: FormData): Promise<Estado> 
   const r = await rodar(async () => {
     const metodo = campo(fd, "metodo") === "pix" ? "pix" : "cartao";
     const final = campo(fd, "final");
-    if (metodo === "cartao" && !/^\d{4}$/.test(final)) throw new ErroNegocio("Informe os 4 últimos dígitos do cartão.");
+    const personalizado = campo(fd, "plano") === PLANO_PERSONALIZADO; // sem pagamento no cadastro
+    if (!personalizado && metodo === "cartao" && !/^\d{4}$/.test(final))
+      throw new ErroNegocio("Informe os 4 últimos dígitos do cartão.");
     const u = cadastrarCliente({
       nome: campo(fd, "nome"),
       empresa: campo(fd, "empresa"),
@@ -33,6 +38,7 @@ export async function cadastrarAction(_: Estado, fd: FormData): Promise<Estado> 
       cartaoFinal: final,
     });
     await iniciarSessaoWeb(u.id);
+    registrarLogin(u, "cadastro");
   });
   if (r?.erro) return r;
   redirect("/cliente?bemvindo=1");

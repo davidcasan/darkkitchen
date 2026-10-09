@@ -1,0 +1,65 @@
+.cobranca {
+  display: grid;
+  gap: 16px;
+  align-items: start;
+}
+
+/* QR Code sempre em fundo branco: é o que os apps de banco leem melhor. */
+.qr {
+  width: min(240px, 100%);
+  padding: 10px;
+  border-radius: 14px;
+  background: #fff;
+  justify-self: center;
+}
+
+.qr svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.info {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.valor {
+  font-family: var(--font-display), sans-serif;
+  font-size: 30px;
+  line-height: 1.1;
+}
+
+.vencida {
+  color: var(--danger);
+}
+
+.passos {
+  margin: 8px 0 10px;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: 13.5px;
+  display: grid;
+  gap: 2px;
+}
+
+.copiar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+.copiar input {
+  flex: 1 1 220px;
+  min-width: 0;
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+}
+
+@media (min-width: 720px) {
+  .cobranca {
+    grid-template-columns: 220px minmax(0, 1fr);
+  }
+}

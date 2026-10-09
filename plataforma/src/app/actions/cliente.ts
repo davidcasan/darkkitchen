@@ -6,10 +6,18 @@ import { redirect } from "next/navigation";
 import { ErroNegocio } from "@/server/db";
 import { atualizarMarca, criarMarca, removerMarca } from "@/server/services/marcas";
 import { removerArquivoDaMarca } from "@/server/services/arquivos";
-import { type ResultadoTroca, definirRenovacao, pagarRenovacaoAgora, trocarPlano } from "@/server/services/assinaturas";
+import {
+  type ResultadoTroca,
+  avisarPagamento,
+  definirRenovacao,
+  gerarPixDeNovo,
+  pagarRenovacaoAgora,
+  trocarPlano,
+} from "@/server/services/assinaturas";
 import { formatarReais } from "@/domain/catalogo";
 import { formatarData } from "@/server/datas";
-import { adicionarMetodo, definirPadrao, removerMetodo } from "@/server/services/pagamentos";
+import { CARTAO_ATIVO, adicionarMetodo, definirPadrao, removerMetodo } from "@/server/services/pagamentos";
+import { pixDisponivel } from "@/server/services/pix";
 import {
   cancelarPedido,
   clienteAprovar,
@@ -79,6 +87,12 @@ export async function trocarPlanoAction(_: Estado, fd: FormData): Promise<Estado
       return { ok: `Troca agendada: seu plano muda para ${t.plano} na renovação de ${formatarData(t.em)}. Até lá, nada muda.` };
     case "cancelou_agendamento":
       return { ok: `Troca cancelada. Você continua no plano ${t.plano}.` };
+    case "upgrade_pix":
+      return {
+        ok: `Pronto! Pague o Pix de ${formatarReais(t.valor)} que apareceu abaixo. Assim que confirmarmos o pagamento, você passa para o plano ${t.plano} e ${t.creditos} créditos entram no saldo.`,
+      };
+    case "assinou_pix":
+      return { ok: `Assinatura do plano ${t.plano} criada. Pague o Pix para ativar: os créditos entram assim que confirmarmos o pagamento.` };
     default:
       return { ok: `Assinatura do plano ${t.plano} ativada.` };
   }
@@ -95,6 +109,16 @@ export async function renovacaoAction(_: Estado, fd: FormData): Promise<Estado> 
   );
 }
 
+export async function avisarPagamentoAction(_: Estado, fd: FormData): Promise<Estado> {
+  const u = await cliente();
+  return rodar(() => avisarPagamento(u.id, campoNumero(fd, "fatura")), "Obrigado! Avisamos a equipe. Assim que o pagamento for confirmado, os créditos entram.");
+}
+
+export async function gerarPixAction(): Promise<Estado> {
+  const u = await cliente();
+  return rodar(() => gerarPixDeNovo(u.id), "Novo Pix gerado.");
+}
+
 export async function pagarRenovacaoAction(): Promise<Estado> {
   const u = await cliente();
   const r = await rodar(() => pagarRenovacaoAgora(u.id));
@@ -107,6 +131,8 @@ export async function adicionarMetodoAction(_: Estado, fd: FormData): Promise<Es
   const u = await cliente();
   return rodar(() => {
     const tipo = campo(fd, "tipo") === "pix" ? "pix" : "cartao";
+    if (tipo === "pix" && !pixDisponivel()) throw new ErroNegocio("O pagamento por Pix ainda não está disponível.");
+    if (tipo === "cartao" && !CARTAO_ATIVO) throw new ErroNegocio("Por enquanto, os pagamentos são só por Pix.");
     if (tipo === "cartao" && !/^\d{4}$/.test(campo(fd, "final")))
       throw new ErroNegocio("Informe os 4 últimos dígitos do cartão.");
     adicionarMetodo(u.id, tipo, campo(fd, "final"));
