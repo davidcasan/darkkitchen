@@ -34,9 +34,18 @@ npm ci
 1. **Configuração:** copie `plataforma\.env.exemplo` para `plataforma\.env.local` e preencha
    (endereço, admin inicial, senha do e-mail, pasta do backup). Ou traga o `.env.local` da
    máquina antiga e acrescente `APP_URL`, `ADMIN_*` e `BACKUP_*`.
-2. **Dados (opcional):** para manter os dados atuais (contas, pedidos, conversas, Pix
-   configurado), copie a pasta `plataforma\data` da máquina antiga **com o servidor de lá
-   desligado**. Sem essa pasta, a plataforma começa vazia, só com o admin do `.env.local`.
+2. **Dados — decisão de out/2026: recomeçar do zero só nos clientes.** Copie a pasta
+   `plataforma\data` da máquina antiga (**com o servidor de lá desligado**) e, na máquina nova,
+   apague os clientes e tudo o que é deles (pedidos, créditos, faturas, marcas, arquivos,
+   conversas), mantendo os admins, os preços e planos, o Pix e as estatísticas de visitas:
+
+   ```powershell
+   node scripts\limpar-clientes.mjs              # só mostra o que vai apagar
+   node scripts\limpar-clientes.mjs --confirmar  # faz backup do banco e apaga
+   ```
+
+   (Sem copiar a pasta `data`, a plataforma começa vazia de tudo, só com o admin do
+   `.env.local`, e os preços e o Pix precisam ser refeitos nas telas.)
 
 Em produção, as contas de teste (`@teste.com`) são desativadas sozinhas.
 

@@ -128,6 +128,10 @@ A plataforma vai rodar num computador com **Windows 10** do dono, como servidor,
 
 **Etapa 4 — ir para o ar:** admin real e contas de teste desativadas; trocar a senha da noreply@ (exposta no chat); testes finais (cadastro, Pix de R$ 1,00, e-mail, recuperação de senha, celular no 4G); monitor UptimeRobot; Termos de uso e Política de privacidade (LGPD).
 
-**Decisões pendentes do dono:** (1) levar os dados atuais ou começar do zero; (2) endereço: `darkkitchen.art.br` ou `app.darkkitchen.art.br`; (3) e-mail do admin real; (4) destino do backup (Google Drive ou OneDrive).
+**Decisões do dono (out/2026):**
+- **Dados: "recomeçar do zero" = apagar só os clientes** e tudo deles; manter o resto (admins, equipe, preços/planos e histórico, Pix, estatísticas de visitas). Procedimento: copiar `plataforma/data` para o servidor e rodar `node scripts/limpar-clientes.mjs --confirmar` lá (sem `--confirmar` só simula; faz backup antes; apaga também os arquivos do disco; testado numa cópia dos dados reais). Não rodar na máquina de desenvolvimento (lá os dados de teste continuam úteis).
+- **Admin real:** já existem contato@ e david@darkkitchen.art.br.
+- **Backup:** `BACKUP_DESTINO=C:\darkkitchen\bkp` (no próprio disco do servidor; o dono sabe que não protege contra perda da máquina; segunda cópia externa fica para depois).
+- **Pendente:** endereço (recomendado `darkkitchen.art.br` + www, já que o domínio hoje só redireciona para o túnel provisório e não tem outro site; DNS hoje na UOL Host `ns1/ns2.cpuh5.hospedagemuolhost.com.br`) e pasta de instalação (sugerida `C:\darkkitchen\plataforma`).
 
 Conversa completa com o Claude Code (para retomar com `claude --resume`): cópia na pasta "Dark Kitchen - Claude" do OneDrive da máquina antiga, com LEIA-ME de como restaurar. Contém senhas: não compartilhar.
