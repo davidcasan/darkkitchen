@@ -12,6 +12,7 @@ import {
   redefinirSenha,
   removerConta,
 } from "@/server/services/contas";
+import { aplicarPersonalizado } from "@/server/services/assinaturas";
 import { salvarPrecos } from "@/server/services/precos";
 import { usuarioPorId } from "@/server/services/usuarios";
 
@@ -68,6 +69,25 @@ export async function reativarContaAction(_: Estado, fd: FormData): Promise<Esta
   const r = await rodar(() => reativarConta(u, campoNumero(fd, "id")));
   if (r?.erro) return r;
   redirect(`/equipe/contas/${campoNumero(fd, "id")}?ok=reativada`);
+}
+
+export async function personalizadoAction(_: Estado, fd: FormData): Promise<Estado> {
+  const u = await admin();
+  const saida: { quando?: "agora" | "renovacao" } = {};
+  const r = await rodar(() => {
+    saida.quando = aplicarPersonalizado(u, campoNumero(fd, "id"), {
+      precoMes: Number(campo(fd, "preco").replace(",", ".")),
+      creditosMes: Number(campo(fd, "creditos")),
+      quando: campo(fd, "quando") === "renovacao" ? "renovacao" : "agora",
+    });
+  });
+  if (r?.erro) return r;
+  return {
+    ok:
+      saida.quando === "renovacao"
+        ? "Plano Personalizado agendado: começa na próxima renovação do cliente. Ele foi avisado."
+        : "Plano Personalizado aplicado: cobrança feita, créditos lançados e novo período iniciado hoje. O cliente foi avisado.",
+  };
 }
 
 export async function ajustarCreditosAction(_: Estado, fd: FormData): Promise<Estado> {

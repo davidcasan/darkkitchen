@@ -347,6 +347,12 @@
   color: var(--accent-ink);
 }
 
+/* Botão sempre no pé do cartão: alinha os botões de todos os planos, mesmo com textos de tamanhos diferentes. */
+.plan > .btn,
+.plan > a:last-child {
+  margin-top: auto;
+}
+
 /* ---------- Dúvidas ---------- */
 
 .faq {

@@ -1,5 +1,6 @@
 import "server-only";
-import { planoPorId } from "@/domain/precos";
+import { PLANO_PERSONALIZADO, type Plano, planoPersonalizado, planoPorId } from "@/domain/precos";
+import type { Usuario } from "../auth";
 import { ErroNegocio, executar, transacao, um, varios } from "../db";
 import { adicionarMeses, agoraSql, deSql, formatarData, paraSql } from "../datas";
 import { lancar, saldo } from "./creditos";
@@ -18,6 +19,8 @@ import { precos } from "./precos";
 //   carência sem pagamento, a assinatura termina.
 // - Upgrade é imediato (paga a diferença, recebe a diferença de créditos); downgrade
 //   fica agendado para a próxima renovação.
+// - Plano Personalizado: sem valor fixo; o admin combina créditos e valor por mês com
+//   o cliente e aplica na conta dele (agora ou na próxima renovação).
 // Tudo isso roda em processarAssinaturas (a cada hora, em instrumentation.ts) e,
 // para o próprio cliente, ao abrir a área logada.
 
@@ -37,13 +40,31 @@ export interface Assinatura {
   tentativas_cobranca: number;
   proxima_tentativa: string | null;
   aviso_expiracao: string | null;
+  personalizado_preco: number | null; // valores do plano Personalizado combinados com o cliente
+  personalizado_creditos: number | null;
 }
 
 const CAMPOS =
-  "id, usuario_id, plano_id, status, periodo_inicio, periodo_fim, plano_proximo, renovacao_automatica, inadimplente_desde, tentativas_cobranca, proxima_tentativa, aviso_expiracao";
+  "id, usuario_id, plano_id, status, periodo_inicio, periodo_fim, plano_proximo, renovacao_automatica, inadimplente_desde, tentativas_cobranca, proxima_tentativa, aviso_expiracao, personalizado_preco, personalizado_creditos";
 
 export const assinaturaDo = (usuarioId: number) =>
   um<Assinatura & { usuario_id: number }>(`SELECT ${CAMPOS} FROM assinaturas WHERE usuario_id = ?`, usuarioId);
+
+/**
+ * Plano de uma assinatura: o da tabela ou, para o Personalizado, o montado com os
+ * valores combinados. Por padrão, o plano atual; com "id", outro (ex.: o agendado).
+ */
+export function planoDaAssinatura(
+  a: Pick<Assinatura, "plano_id" | "personalizado_preco" | "personalizado_creditos"> | null | undefined,
+  id: string | null | undefined = a?.plano_id,
+): Plano | undefined {
+  if (!a || !id) return undefined;
+  if (id === PLANO_PERSONALIZADO)
+    return a.personalizado_preco != null && a.personalizado_creditos != null
+      ? planoPersonalizado(a.personalizado_preco, a.personalizado_creditos)
+      : undefined;
+  return planoPorId(precos(), id);
+}
 
 /** Fim da carência de uma assinatura com cobrança recusada. */
 export const fimDaCarencia = (a: Pick<Assinatura, "inadimplente_desde">) =>
@@ -70,8 +91,7 @@ function encerrar(a: Assinatura & { usuario_id: number }, aviso: string) {
  * agendado). Recusada: entra ou continua em carência; vencida a carência, encerra.
  */
 function tentarRenovar(a: Assinatura & { usuario_id: number }): { ok: true } | { ok: false; mensagem: string } {
-  const t = precos();
-  const plano = planoPorId(t, a.plano_proximo) ?? planoPorId(t, a.plano_id);
+  const plano = planoDaAssinatura(a, a.plano_proximo) ?? planoDaAssinatura(a);
   if (!plano) {
     encerrar(a, "Sua assinatura terminou porque o plano não existe mais. Escolha um novo plano em Conta.");
     return { ok: false, mensagem: "Plano indisponível." };
@@ -276,10 +296,8 @@ export type ResultadoTroca =
   | { tipo: "assinou"; plano: string };
 
 /** Como a troca para um plano funcionaria (para a tela mostrar antes de confirmar). */
-export function simularTroca(atualId: string | null | undefined, novoId: string) {
-  const t = precos();
-  const atual = planoPorId(t, atualId);
-  const novo = planoPorId(t, novoId);
+export function simularTroca(atual: Plano | undefined, novoId: string) {
+  const novo = planoPorId(precos(), novoId);
   if (!atual || !novo || atual.id === novo.id) return null;
   return novo.creditosMes > atual.creditosMes
     ? { tipo: "upgrade" as const, cobrar: Math.max(0, novo.precoMes - atual.precoMes), creditos: novo.creditosMes - atual.creditosMes }
@@ -295,10 +313,20 @@ export function simularTroca(atualId: string | null | undefined, novoId: string)
  * - Sem assinatura ativa: assina o plano escolhido (cobra e começa um período novo).
  */
 export function trocarPlano(usuarioId: number, planoId: string): ResultadoTroca {
-  const t = precos();
-  const novo = planoPorId(t, planoId);
-  if (!novo?.ativo) throw new ErroNegocio("Este plano não está disponível.");
   const atual = assinaturaDo(usuarioId);
+  // O Personalizado não se escolhe sozinho; escolher de novo o atual só desfaz troca agendada.
+  if (planoId === PLANO_PERSONALIZADO && atual?.status === "ativa" && atual.plano_id === PLANO_PERSONALIZADO) {
+    if (!atual.plano_proximo) throw new ErroNegocio("Você já está no plano Personalizado.");
+    executar("UPDATE assinaturas SET plano_proximo = NULL WHERE id = ?", atual.id);
+    return { tipo: "cancelou_agendamento", plano: "Personalizado" };
+  }
+  const novo = planoPorId(precos(), planoId);
+  if (!novo?.ativo)
+    throw new ErroNegocio(
+      planoId === PLANO_PERSONALIZADO
+        ? "O plano Personalizado é combinado com o atendimento. Fale com a gente pelo chat."
+        : "Este plano não está disponível.",
+    );
   if (!atual || atual.status !== "ativa") {
     assinar(usuarioId, planoId);
     return { tipo: "assinou", plano: novo.nome };
@@ -311,7 +339,7 @@ export function trocarPlano(usuarioId: number, planoId: string): ResultadoTroca 
     return { tipo: "cancelou_agendamento", plano: novo.nome };
   }
 
-  const simulacao = simularTroca(atual.plano_id, novo.id);
+  const simulacao = simularTroca(planoDaAssinatura(atual), novo.id);
   if (simulacao?.tipo === "upgrade") {
     const r = transacao(() => {
       let faturaId: number | undefined;
@@ -333,4 +361,83 @@ export function trocarPlano(usuarioId: number, planoId: string): ResultadoTroca 
     throw new ErroNegocio("Sua assinatura termina no fim do período. Ligue a renovação automática para agendar a troca para um plano menor.");
   executar("UPDATE assinaturas SET plano_proximo = ? WHERE id = ?", novo.id, atual.id);
   return { tipo: "agendada", plano: novo.nome, em: atual.periodo_fim };
+}
+
+/**
+ * Admin aplica o plano Personalizado na conta de um cliente, com os créditos e o valor
+ * combinados.
+ * - Sem assinatura ativa: assina na hora (cobra e lança os créditos; período começa hoje).
+ * - "agora": cobra o valor e lança os créditos já; o período recomeça hoje e o saldo
+ *   que o cliente tinha continua valendo até o novo fim.
+ * - "renovacao": vale a partir da próxima renovação (se já estiver no Personalizado,
+ *   só atualiza os valores, que passam a valer na próxima cobrança).
+ */
+export function aplicarPersonalizado(
+  admin: Usuario,
+  clienteId: number,
+  dados: { precoMes: number; creditosMes: number; quando: "agora" | "renovacao" },
+) {
+  if (admin.papel !== "admin") throw new ErroNegocio("Somente o admin define o plano Personalizado.", 403);
+  const { precoMes, creditosMes, quando } = dados;
+  if (!(precoMes > 0) || precoMes > 1_000_000) throw new ErroNegocio("Informe o valor por mês, em reais.");
+  if (!Number.isInteger(creditosMes) || creditosMes < 1 || creditosMes > 100_000)
+    throw new ErroNegocio("Informe os créditos por mês (número inteiro).");
+  const cliente = um<{ id: number }>("SELECT id FROM usuarios WHERE id = ? AND papel = 'cliente' AND ativo = 1", clienteId);
+  if (!cliente) throw new ErroNegocio("Cliente não encontrado.", 404);
+  const plano = planoPersonalizado(precoMes, creditosMes);
+  const valores = `${plano.creditosMes} créditos por R$ ${plano.precoMes.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}/mês`;
+
+  return transacao(() => {
+    const a = assinaturaDo(clienteId);
+    const ativa = a?.status === "ativa";
+    if (ativa && a.inadimplente_desde)
+      throw new ErroNegocio("A renovação deste cliente está com pagamento pendente. Regularize antes de mudar o plano.");
+
+    if (ativa && quando === "renovacao") {
+      executar(
+        "UPDATE assinaturas SET personalizado_preco = ?, personalizado_creditos = ?, plano_proximo = ? WHERE id = ?",
+        precoMes,
+        creditosMes,
+        a.plano_id === PLANO_PERSONALIZADO ? null : PLANO_PERSONALIZADO,
+        a.id,
+      );
+      notificar(
+        clienteId,
+        `Seu plano Personalizado (${valores}) começa na renovação de ${formatarData(a.periodo_fim)}.`,
+        "/cliente/conta",
+      );
+      return "renovacao" as const;
+    }
+
+    // Agora (ou assinatura nova): cobra, lança os créditos e começa um período.
+    if (!ativa) expirarSaldo(clienteId, "Créditos anteriores à nova assinatura");
+    const faturaId = cobrar(clienteId, precoMes, "Plano Personalizado · mensalidade");
+    lancar(clienteId, creditosMes, "assinatura", "Créditos do plano Personalizado", { faturaId });
+    const inicio = new Date();
+    const periodo = [paraSql(inicio), paraSql(adicionarMeses(inicio, 1))];
+    if (a) {
+      executar(
+        `UPDATE assinaturas SET plano_id = ?, status = 'ativa', periodo_inicio = ?, periodo_fim = ?, plano_proximo = NULL,
+           personalizado_preco = ?, personalizado_creditos = ?, inadimplente_desde = NULL, tentativas_cobranca = 0,
+           proxima_tentativa = NULL, aviso_expiracao = NULL${ativa ? "" : ", renovacao_automatica = 1"} WHERE id = ?`,
+        PLANO_PERSONALIZADO,
+        ...periodo,
+        precoMes,
+        creditosMes,
+        a.id,
+      );
+    } else {
+      executar(
+        `INSERT INTO assinaturas (usuario_id, plano_id, status, periodo_inicio, periodo_fim, personalizado_preco, personalizado_creditos)
+         VALUES (?, ?, 'ativa', ?, ?, ?, ?)`,
+        clienteId,
+        PLANO_PERSONALIZADO,
+        ...periodo,
+        precoMes,
+        creditosMes,
+      );
+    }
+    notificar(clienteId, `Seu plano agora é o Personalizado: ${valores}. Os créditos já entraram no saldo.`, "/cliente/creditos");
+    return "agora" as const;
+  });
 }

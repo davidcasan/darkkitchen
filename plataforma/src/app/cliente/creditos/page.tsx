@@ -1,9 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { formatarReais } from "@/domain/catalogo";
-import { planoPorId } from "@/domain/precos";
-import { assinaturaDo } from "@/server/services/assinaturas";
-import { precos } from "@/server/services/precos";
+import { assinaturaDo, planoDaAssinatura } from "@/server/services/assinaturas";
 import { exigirUsuario } from "@/server/auth";
 import { formatarData } from "@/server/datas";
 import { extrato, saldo } from "@/server/services/creditos";
@@ -25,7 +23,7 @@ export default async function CreditosCliente() {
   const u = await exigirUsuario(["cliente"]);
   const lancamentos = extrato(u.id);
   const assinatura = assinaturaDo(u.id);
-  const plano = planoPorId(precos(), assinatura?.plano_id);
+  const plano = planoDaAssinatura(assinatura);
   const ativa = assinatura?.status === "ativa";
 
   return (

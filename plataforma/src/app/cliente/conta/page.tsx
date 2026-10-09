@@ -13,11 +13,11 @@ import { alterarSenhaAction, sairAction } from "@/app/actions/conta";
 import { Confirmacao } from "@/components/app/Confirmacao";
 import { Enviar, FormAcao } from "@/components/app/FormAcao";
 import { formatarReais } from "@/domain/catalogo";
-import { planoPorId } from "@/domain/precos";
+import { PLANO_PERSONALIZADO } from "@/domain/precos";
 import { precos } from "@/server/services/precos";
 import { exigirUsuario } from "@/server/auth";
 import { formatarData } from "@/server/datas";
-import { assinaturaDo, fimDaCarencia, simularTroca } from "@/server/services/assinaturas";
+import { assinaturaDo, fimDaCarencia, planoDaAssinatura, simularTroca } from "@/server/services/assinaturas";
 import { gatewayEhSimulado, listarFaturas, listarMetodos } from "@/server/services/pagamentos";
 
 export const metadata: Metadata = { title: "Conta" };
@@ -29,13 +29,14 @@ export default async function ContaCliente({ searchParams }: PageProps<"/cliente
   const { ok } = await searchParams;
   const assinatura = assinaturaDo(u.id);
   const tabela = precos();
-  const plano = planoPorId(tabela, assinatura?.plano_id);
-  // Planos à venda, mais o atual do cliente mesmo que tenha sido ocultado.
-  const planos = tabela.planos.filter((p) => p.ativo || p.id === plano?.id);
+  const plano = planoDaAssinatura(assinatura);
   const ativa = assinatura?.status === "ativa";
+  const noPersonalizado = ativa && plano?.id === PLANO_PERSONALIZADO;
+  // Planos à venda, mais o atual do cliente mesmo que tenha sido ocultado (ou o Personalizado dele).
+  const planos = [...(noPersonalizado && plano ? [plano] : []), ...tabela.planos.filter((p) => p.ativo || p.id === plano?.id)];
   const renova = ativa && assinatura.renovacao_automatica === 1;
   const pendente = ativa && !!assinatura.inadimplente_desde;
-  const proximo = planoPorId(tabela, assinatura?.plano_proximo);
+  const proximo = planoDaAssinatura(assinatura, assinatura?.plano_proximo);
   const metodos = listarMetodos(u.id);
   const faturas = listarFaturas(u.id);
 
@@ -103,7 +104,7 @@ export default async function ContaCliente({ searchParams }: PageProps<"/cliente
         <FormAcao action={trocarPlanoAction}>
           <div className="grid-kpi" role="radiogroup" aria-label="Planos">
             {planos.map((p) => {
-              const sim = ativa && !pendente ? simularTroca(plano?.id, p.id) : null;
+              const sim = ativa && !pendente ? simularTroca(plano, p.id) : null;
               const atual = ativa && p.id === plano?.id;
               return (
                 <label key={p.id} className="kpi" style={{ cursor: "pointer" }} data-atual={atual}>
@@ -138,6 +139,15 @@ export default async function ContaCliente({ searchParams }: PageProps<"/cliente
                 </label>
               );
             })}
+            {!noPersonalizado && (
+              <div className="kpi">
+                <span>Personalizado</span>
+                <small>Créditos e valor de acordo com a sua necessidade.</small>
+                <span style={{ display: "block", marginTop: 10 }}>
+                  <AbrirAtendimento className="btn btn-sm">Falar com o atendimento</AbrirAtendimento>
+                </span>
+              </div>
+            )}
           </div>
           <div className="row" style={{ marginTop: 14 }}>
             <Enviar>{ativa ? "Trocar plano" : "Assinar plano"}</Enviar>

@@ -120,6 +120,23 @@ export const planoPorId = (t: TabelaPrecos, id: string | null | undefined) => t.
 
 export const planosAtivos = (t: TabelaPrecos) => t.planos.filter((p) => p.ativo);
 
+/**
+ * Plano Personalizado (out/2026): sem valor fixo. O admin combina com cada cliente
+ * os créditos e o valor por mês, que ficam na assinatura dele. Não fica na tabela
+ * de planos; o identificador é reservado.
+ */
+export const PLANO_PERSONALIZADO = "personalizado";
+
+export const planoPersonalizado = (precoMes: number, creditosMes: number): Plano => ({
+  id: PLANO_PERSONALIZADO,
+  nome: "Personalizado",
+  creditosMes,
+  precoMes,
+  resumo: "Créditos e valor combinados de acordo com a sua necessidade.",
+  destaque: false,
+  ativo: false, // não se assina sozinho: o admin aplica na conta do cliente
+});
+
 /** Identificador estável para um plano novo, a partir do nome. */
 export const idDoPlano = (nome: string, existentes: string[]) => {
   const base =
@@ -130,7 +147,7 @@ export const idDoPlano = (nome: string, existentes: string[]) => {
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-|-$/g, "") || "plano";
   let id = base;
-  for (let i = 2; existentes.includes(id); i++) id = `${base}-${i}`;
+  for (let i = 2; existentes.includes(id) || id === PLANO_PERSONALIZADO; i++) id = `${base}-${i}`;
   return id;
 };
 
@@ -186,6 +203,8 @@ export function validarTabela(raw: unknown): { tabela: TabelaPrecos; erros: stri
     });
   }
   if (new Set(planos.map((p) => p.id)).size !== planos.length) erros.push("Há dois planos com o mesmo identificador.");
+  if (planos.some((p) => p.id === PLANO_PERSONALIZADO))
+    erros.push('"personalizado" é reservado para o plano Personalizado, que o admin aplica em cada cliente.');
   if (!planos.some((p) => p.ativo)) erros.push("Deixe pelo menos um plano ativo.");
   if (planos.filter((p) => p.destaque && p.ativo).length > 1) erros.push("Marque no máximo um plano como destaque.");
 

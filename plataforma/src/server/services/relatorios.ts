@@ -2,6 +2,7 @@ import "server-only";
 import { type Briefing } from "@/domain/briefing";
 import { PECAS, type TipoPeca } from "@/domain/catalogo";
 import { custoPadrao } from "@/domain/custos";
+import { PLANO_PERSONALIZADO } from "@/domain/precos";
 import { ErroNegocio, um, varios } from "../db";
 import type { Usuario } from "../auth";
 import { paraSql } from "../datas";
@@ -74,16 +75,27 @@ export function relatorio(admin: Usuario, codigo: CodigoPeriodo) {
   const mensalidades = reais(faturas.filter((f) => f.tipo === "assinatura").reduce((s, f) => s + f.valor_centavos, 0));
   const avulsos = faturado - mensalidades;
 
-  const assinaturas = varios<{ plano_id: string; status: string; renovacao_automatica: number; inadimplente_desde: string | null }>(
-    "SELECT plano_id, status, renovacao_automatica, inadimplente_desde FROM assinaturas",
-  );
+  const assinaturas = varios<{
+    plano_id: string;
+    status: string;
+    renovacao_automatica: number;
+    inadimplente_desde: string | null;
+    personalizado_preco: number | null;
+  }>("SELECT plano_id, status, renovacao_automatica, inadimplente_desde, personalizado_preco FROM assinaturas");
   const ativas = assinaturas.filter((a) => a.status === "ativa");
   // Receita recorrente: só quem vai pagar a próxima mensalidade (renovação ligada e pagamento em dia).
   const recorrentes = ativas.filter((a) => a.renovacao_automatica && !a.inadimplente_desde);
   const tabela = precos();
   const custos = tabela.custos;
   const impostosPct = custos.impostosPct / 100;
-  const receitaRecorrente = recorrentes.reduce((s, a) => s + (tabela.planos.find((p) => p.id === a.plano_id)?.precoMes ?? 0), 0);
+  const receitaRecorrente = recorrentes.reduce(
+    (s, a) =>
+      s +
+      (a.plano_id === PLANO_PERSONALIZADO
+        ? (a.personalizado_preco ?? 0)
+        : (tabela.planos.find((p) => p.id === a.plano_id)?.precoMes ?? 0)),
+    0,
+  );
 
   // Faturamento dos últimos 12 meses (gráfico), independente do filtro.
   const porMes = varios<{ mes: string; centavos: number }>(

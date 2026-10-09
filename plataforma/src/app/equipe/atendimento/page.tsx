@@ -38,7 +38,7 @@ export default async function AtendimentoAdmin({ searchParams }: PageProps<"/equ
       <div className="page-head">
         <div>
           <h1>Atendimento</h1>
-          <p>Conversas com os clientes, uma por pedido e uma geral por cliente. Nada pode ser apagado.</p>
+          <p>Conversas com os clientes, uma por pedido e uma geral por cliente. Só o admin pode apagar mensagens ou conversas.</p>
         </div>
       </div>
 

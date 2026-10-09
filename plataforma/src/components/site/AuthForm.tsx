@@ -5,6 +5,7 @@ import { useActionState, useState } from "react";
 import { cadastrarAction, entrarAction } from "@/app/actions/conta";
 import { Enviar } from "@/components/app/FormAcao";
 import { formatarReais } from "@/domain/catalogo";
+import { EMAIL_CONTATO, mailto } from "@/domain/contato";
 import type { Plano } from "@/domain/precos";
 import styles from "./AuthForm.module.css";
 
@@ -64,6 +65,10 @@ export function AuthForm({
                 </option>
               ))}
             </select>
+            <small className={styles.dica}>
+              Precisa de algo sob medida? O plano Personalizado é combinado com a gente:{" "}
+              <a href={mailto(EMAIL_CONTATO, "Plano Personalizado")}>{EMAIL_CONTATO}</a>
+            </small>
           </label>
           <fieldset className={styles.field} style={{ border: 0, padding: 0, margin: 0 }}>
             <span>Pagamento</span>

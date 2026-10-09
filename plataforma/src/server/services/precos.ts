@@ -1,7 +1,7 @@
 import "server-only";
 import { PECAS } from "@/domain/catalogo";
 import type { Custos } from "@/domain/custos";
-import { PRECOS_PADRAO, type TabelaPrecos, tabelaCreditos, validarTabela } from "@/domain/precos";
+import { PLANO_PERSONALIZADO, PRECOS_PADRAO, type TabelaPrecos, tabelaCreditos, validarTabela } from "@/domain/precos";
 import { ErroNegocio, executar, transacao, um, varios } from "../db";
 import type { Usuario } from "../auth";
 
@@ -91,7 +91,7 @@ export function salvarPrecos(admin: Usuario, raw: unknown): string {
   if (erros.length) throw new ErroNegocio(erros.slice(0, 4).join(" "));
 
   // Plano com assinantes não pode sumir da tabela (pode ser ocultado).
-  const emUso = varios<{ plano_id: string }>("SELECT DISTINCT plano_id FROM assinaturas");
+  const emUso = varios<{ plano_id: string }>("SELECT DISTINCT plano_id FROM assinaturas WHERE plano_id != ?", PLANO_PERSONALIZADO);
   const faltando = emUso.filter((a) => !tabela.planos.some((p) => p.id === a.plano_id));
   if (faltando.length) {
     const antes = precos();

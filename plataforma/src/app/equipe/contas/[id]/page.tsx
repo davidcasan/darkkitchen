@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import {
   acessarComoAction,
   ajustarCreditosAction,
+  personalizadoAction,
   atualizarContaAction,
   reativarContaAction,
   redefinirSenhaAction,
@@ -15,6 +16,9 @@ import { type Papel, PAPEIS } from "@/domain/pedido";
 import { exigirUsuario } from "@/server/auth";
 import { formatarData } from "@/server/datas";
 import { ErroNegocio } from "@/server/db";
+import { formatarReais } from "@/domain/catalogo";
+import { PLANO_PERSONALIZADO } from "@/domain/precos";
+import { assinaturaDo, planoDaAssinatura } from "@/server/services/assinaturas";
 import { type Conta, contaPorId } from "@/server/services/contas";
 import { CamposConta } from "../CamposConta";
 
@@ -41,6 +45,11 @@ export default async function ContaDetalhe({ params, searchParams }: PageProps<"
     throw e;
   }
   const cliente = c.papel === "cliente";
+  const assinatura = cliente ? assinaturaDo(c.id) : undefined;
+  const ativa = assinatura?.status === "ativa";
+  const plano = planoDaAssinatura(assinatura);
+  const proximo = planoDaAssinatura(assinatura, assinatura?.plano_proximo);
+  const noPersonalizado = ativa && assinatura.plano_id === PLANO_PERSONALIZADO;
   const voce = c.id === admin.id;
   // Conta com pedidos não troca entre cliente e colaborador.
   const papeis: Papel[] = c.pedidos > 0 ? (cliente ? ["cliente"] : EQUIPE_PAPEIS) : [...EQUIPE_PAPEIS, "cliente"];
@@ -119,6 +128,84 @@ export default async function ContaDetalhe({ params, searchParams }: PageProps<"
               <Enviar className="btn">Redefinir senha</Enviar>
             </FormAcao>
           </section>
+
+          {cliente && (
+            <section className="card">
+              <h2>Plano</h2>
+              <p className="small" style={{ marginBottom: 12 }}>
+                {ativa && plano ? (
+                  <>
+                    <b>{plano.nome}</b>: {plano.creditosMes} créditos por {formatarReais(plano.precoMes)}/mês.{" "}
+                    {assinatura.renovacao_automatica ? "Renova" : "Termina"} em {formatarData(assinatura.periodo_fim)}.
+                    {proximo && ` Na renovação muda para ${proximo.nome} (${proximo.creditosMes} créditos por ${formatarReais(proximo.precoMes)}).`}
+                    {assinatura.inadimplente_desde && " Pagamento da renovação pendente."}
+                  </>
+                ) : (
+                  "Sem assinatura ativa."
+                )}
+              </p>
+              <h3 style={{ fontSize: 16, margin: "0 0 4px" }}>Plano Personalizado</h3>
+              <p className="muted small" style={{ marginBottom: 12 }}>
+                Créditos e valor combinados com este cliente. A cobrança usa a forma de pagamento padrão dele.
+              </p>
+              <FormAcao action={personalizadoAction} confirmar={`Aplicar o plano Personalizado para ${c.nome}?`}>
+                <input type="hidden" name="id" value={c.id} />
+                <div className="row" style={{ alignItems: "flex-start" }}>
+                  <div className="field" style={{ flex: "1 1 120px" }}>
+                    <label className="label" htmlFor="pp-creditos">
+                      Créditos por mês
+                    </label>
+                    <input
+                      id="pp-creditos"
+                      name="creditos"
+                      type="number"
+                      min={1}
+                      step={1}
+                      className="txt"
+                      required
+                      defaultValue={assinatura?.personalizado_creditos ?? undefined}
+                    />
+                  </div>
+                  <div className="field" style={{ flex: "1 1 140px" }}>
+                    <label className="label" htmlFor="pp-preco">
+                      Valor por mês (R$)
+                    </label>
+                    <input
+                      id="pp-preco"
+                      name="preco"
+                      type="number"
+                      min={1}
+                      step={0.01}
+                      className="txt"
+                      required
+                      defaultValue={assinatura?.personalizado_preco ?? undefined}
+                    />
+                  </div>
+                </div>
+                {ativa && (
+                  <div className="field">
+                    <span className="label">Quando começa</span>
+                    <div className="chips">
+                      <label className="chip">
+                        <input type="radio" name="quando" value="renovacao" defaultChecked />
+                        {noPersonalizado ? "Novos valores na próxima renovação" : "Na próxima renovação"}
+                      </label>
+                      <label className="chip">
+                        <input type="radio" name="quando" value="agora" />
+                        Agora (cobra e lança os créditos hoje)
+                      </label>
+                    </div>
+                  </div>
+                )}
+                {!ativa && (
+                  <p className="hint" style={{ marginBottom: 12 }}>
+                    Sem assinatura ativa: começa agora, com a cobrança do primeiro mês.
+                  </p>
+                )}
+                <Enviar className="btn">{noPersonalizado ? "Atualizar valores" : "Aplicar Personalizado"}</Enviar>
+              </FormAcao>
+            </section>
+          )}
 
           {cliente && (
             <section className="card">

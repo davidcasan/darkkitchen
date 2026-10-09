@@ -14,6 +14,7 @@ interface Mensagem {
   criado_em: string;
   autor_nome: string;
   da_equipe: number;
+  imagem_nome: string | null;
 }
 
 export interface AlvoConversa {
@@ -44,6 +45,18 @@ const horario = (s: string) =>
     hour: "2-digit",
     minute: "2-digit",
   });
+
+const LIMITE_IMAGEM_MB = 2;
+const TIPOS_IMAGEM = ["image/png", "image/jpeg", "image/bmp"];
+const urlImagem = (mensagemId: number) => `/api/v1/atendimento/imagem/${mensagemId}`;
+
+/** Confere a imagem antes de enviar (o servidor confere de novo). */
+function problemaNaImagem(f: File) {
+  const tipoOk = TIPOS_IMAGEM.includes(f.type) || /\.(png|jpe?g|bmp)$/i.test(f.name);
+  if (!tipoOk) return "Envie uma imagem PNG, JPG ou BMP.";
+  if (f.size > LIMITE_IMAGEM_MB * 1024 * 1024) return `A imagem passa do limite de ${LIMITE_IMAGEM_MB} MB.`;
+  return null;
+}
 
 type EstadoEnvio = "enviando" | "enviada" | "lida" | "falhou";
 
@@ -97,21 +110,25 @@ function Marcador({ estado }: { estado: EstadoEnvio }) {
 interface Pendente {
   chave: number;
   texto: string;
+  imagem: File | null;
+  previa: string | null; // endereço local da imagem, para mostrar antes de o servidor confirmar
   estado: "enviando" | "falhou";
 }
 
-/** Painel da conversa: mensagens, campo de texto e envio. */
+/** Painel da conversa: mensagens, campo de texto, imagem e envio. O admin também apaga. */
 export function PainelAtendimento({
   alvo,
   visao,
   titulo,
   aoFechar,
+  aoApagarConversa,
   embutido = false,
 }: {
   alvo: AlvoConversa;
   visao: Visao;
   titulo?: string;
   aoFechar?: () => void;
+  aoApagarConversa?: () => void;
   embutido?: boolean;
 }) {
   const router = useRouter();
@@ -120,12 +137,15 @@ export function PainelAtendimento({
   const [lidaAte, setLidaAte] = useState(0);
   const [tituloApi, setTituloApi] = useState<string>("");
   const [texto, setTexto] = useState("");
+  const [anexo, setAnexo] = useState<{ arquivo: File; previa: string } | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [carregou, setCarregou] = useState(false);
   const ultimoId = useRef(0);
   const proximaChave = useRef(1);
   const lista = useRef<HTMLDivElement>(null);
+  const seletor = useRef<HTMLInputElement>(null);
   const { pedidoId, clienteId } = alvo;
+  const ehAdmin = visao === "admin";
   const minha = useCallback((m: Mensagem) => (visao === "admin" ? m.da_equipe === 1 : m.da_equipe === 0), [visao]);
 
   const buscar = useCallback(async () => {
@@ -139,12 +159,15 @@ export function PainelAtendimento({
       setTituloApi(j.dados.titulo);
       setLidaAte(j.dados.lidaAte ?? 0);
       const novas: Mensagem[] = j.dados.mensagens;
-      if (novas.length) {
-        ultimoId.current = novas[novas.length - 1].id;
-        setMensagens((m) => [...m, ...novas.filter((n) => !m.some((x) => x.id === n.id))]);
-        // Mensagens do outro lado acabaram de ser lidas: atualiza os contadores da página (menu, lista).
-        if (novas.some((n) => !minha(n))) router.refresh();
-      }
+      const existentes = new Set<number>(j.dados.ids ?? []);
+      if (novas.length) ultimoId.current = novas[novas.length - 1].id;
+      // Junta as novas e tira as que o admin apagou.
+      setMensagens((m) => {
+        const juntas = [...m, ...novas.filter((n) => !m.some((x) => x.id === n.id))].filter((x) => existentes.has(x.id));
+        return juntas.length === m.length && novas.length === 0 ? m : juntas;
+      });
+      // Mensagens do outro lado acabaram de ser lidas: atualiza os contadores da página (menu, lista).
+      if (novas.some((n) => !minha(n))) router.refresh();
       setErro(null);
     } catch {
       setErro("Sem conexão. Tentando de novo...");
@@ -167,35 +190,90 @@ export function PainelAtendimento({
     lista.current?.scrollTo({ top: lista.current.scrollHeight });
   }, [mensagens.length, pendentes.length]);
 
-  async function mandar(t: string, chaveExistente?: number) {
+  function escolherImagem(f: File | null | undefined) {
+    if (!f) return;
+    const problema = problemaNaImagem(f);
+    if (problema) {
+      setErro(problema);
+      return;
+    }
+    setErro(null);
+    setAnexo((a) => {
+      if (a) URL.revokeObjectURL(a.previa);
+      return { arquivo: f, previa: URL.createObjectURL(f) };
+    });
+  }
+
+  async function mandar(p: Omit<Pendente, "estado" | "chave">, chaveExistente?: number) {
     const chave = chaveExistente ?? proximaChave.current++;
-    setPendentes((p) =>
+    setPendentes((lista) =>
       chaveExistente
-        ? p.map((x) => (x.chave === chave ? { ...x, estado: "enviando" } : x))
-        : [...p, { chave, texto: t, estado: "enviando" }],
+        ? lista.map((x) => (x.chave === chave ? { ...x, estado: "enviando" } : x))
+        : [...lista, { ...p, chave, estado: "enviando" }],
     );
     setErro(null);
     try {
-      const r = await fetch("/api/v1/atendimento", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ texto: t, pedido: pedidoId ?? undefined, cliente: clienteId ?? undefined }),
-      });
+      let corpo: BodyInit;
+      const headers: HeadersInit = {};
+      if (p.imagem) {
+        const fd = new FormData();
+        fd.append("texto", p.texto);
+        if (pedidoId) fd.append("pedido", String(pedidoId));
+        if (clienteId) fd.append("cliente", String(clienteId));
+        fd.append("imagem", p.imagem);
+        corpo = fd;
+      } else {
+        headers["Content-Type"] = "application/json";
+        corpo = JSON.stringify({ texto: p.texto, pedido: pedidoId ?? undefined, cliente: clienteId ?? undefined });
+      }
+      const r = await fetch("/api/v1/atendimento", { method: "POST", headers, body: corpo });
       const j = await r.json();
       if (!r.ok) throw new Error(j.erro ?? "Não foi possível enviar.");
       await buscar(); // a mensagem salva chega pela lista; só então sai o rascunho
-      setPendentes((p) => p.filter((x) => x.chave !== chave));
+      setPendentes((lista) => {
+        const saindo = lista.find((x) => x.chave === chave);
+        if (saindo?.previa) URL.revokeObjectURL(saindo.previa);
+        return lista.filter((x) => x.chave !== chave);
+      });
     } catch (e) {
-      setPendentes((p) => p.map((x) => (x.chave === chave ? { ...x, estado: "falhou" } : x)));
+      setPendentes((lista) => lista.map((x) => (x.chave === chave ? { ...x, estado: "falhou" } : x)));
       setErro(e instanceof Error && e.message !== "Failed to fetch" ? e.message : "Sem conexão. A mensagem não foi enviada.");
     }
   }
 
   function enviar() {
     const t = texto.trim();
-    if (!t) return;
+    if (!t && !anexo) return;
     setTexto("");
-    mandar(t);
+    setAnexo(null);
+    mandar({ texto: t, imagem: anexo?.arquivo ?? null, previa: anexo?.previa ?? null });
+  }
+
+  async function apagar(url: string, confirmar: string) {
+    if (!window.confirm(confirmar)) return false;
+    const r = await fetch(url, { method: "DELETE" });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      setErro(j.erro ?? "Não foi possível apagar.");
+      return false;
+    }
+    return true;
+  }
+
+  async function apagarMensagem(m: Mensagem) {
+    if (await apagar(`/api/v1/atendimento?mensagem=${m.id}`, "Apagar esta mensagem? O cliente também deixa de vê-la."))
+      setMensagens((lista) => lista.filter((x) => x.id !== m.id));
+  }
+
+  async function apagarConversa() {
+    const confirmar = "Apagar a conversa inteira, com todas as mensagens e imagens? Não dá para desfazer.";
+    if (await apagar(consulta({ pedidoId, clienteId }, { conversa: 1 }), confirmar)) {
+      setMensagens([]);
+      if (aoApagarConversa) aoApagarConversa();
+      // Na página de atendimento do admin, a conversa some da lista: volta para a lista.
+      else if (embutido) router.replace("/equipe/atendimento");
+      router.refresh();
+    }
   }
 
   const estadoDe = (m: Mensagem): EstadoEnvio => (m.id <= lidaAte ? "lida" : "enviada");
@@ -207,11 +285,19 @@ export function PainelAtendimento({
           <b>{visao === "cliente" ? "Atendimento Dark Kitchen" : (titulo ?? "Atendimento")}</b>
           <small>{visao === "cliente" ? tituloApi || titulo : tituloApi}</small>
         </div>
-        {aoFechar && (
-          <button type="button" className={styles.fechar} onClick={aoFechar} aria-label="Fechar atendimento">
-            ×
-          </button>
-        )}
+        <span className={styles.acoesCabeca}>
+          {ehAdmin && mensagens.length > 0 && (
+            <button type="button" className={styles.apagarTudo} onClick={apagarConversa} title="Apagar conversa">
+              <Icone nome="lixeira" tamanho={16} />
+              <span>Apagar conversa</span>
+            </button>
+          )}
+          {aoFechar && (
+            <button type="button" className={styles.fechar} onClick={aoFechar} aria-label="Fechar atendimento">
+              ×
+            </button>
+          )}
+        </span>
       </header>
       <div className={styles.lista} ref={lista} aria-live="polite">
         {!carregou && <p className={styles.vazio}>Carregando...</p>}
@@ -227,22 +313,39 @@ export function PainelAtendimento({
             {!minha(m) && (
               <span className={styles.autor}>{m.da_equipe ? `Atendimento · ${m.autor_nome}` : m.autor_nome}</span>
             )}
-            <p>
+            <div className={styles.balao}>
+              {m.imagem_nome && (
+                <a href={urlImagem(m.id)} target="_blank" rel="noopener" className={styles.imagem}>
+                  {/* eslint-disable-next-line @next/next/no-img-element -- imagem privada servida pela API */}
+                  <img src={urlImagem(m.id)} alt={m.imagem_nome} loading="lazy" />
+                </a>
+              )}
               {m.texto}
               <span className={styles.meta}>
                 {horario(m.criado_em)}
                 {minha(m) && <Marcador estado={estadoDe(m)} />}
               </span>
-            </p>
+            </div>
+            {ehAdmin && (
+              <button type="button" className={styles.apagar} onClick={() => apagarMensagem(m)} aria-label="Apagar mensagem">
+                <Icone nome="lixeira" tamanho={14} /> Apagar
+              </button>
+            )}
           </div>
         ))}
         {pendentes.map((p) => (
           <div key={`p${p.chave}`} className={styles.msg} data-minha="true" data-pendente={p.estado}>
-            <p>
+            <div className={styles.balao}>
+              {p.previa && (
+                <span className={styles.imagem}>
+                  {/* eslint-disable-next-line @next/next/no-img-element -- prévia local antes do envio */}
+                  <img src={p.previa} alt={p.imagem?.name ?? "Imagem"} />
+                </span>
+              )}
               {p.texto}
               <span className={styles.meta}>
                 {p.estado === "falhou" ? (
-                  <button type="button" className={styles.reenviar} onClick={() => mandar(p.texto, p.chave)}>
+                  <button type="button" className={styles.reenviar} onClick={() => mandar(p, p.chave)}>
                     Tentar de novo
                   </button>
                 ) : (
@@ -250,7 +353,7 @@ export function PainelAtendimento({
                 )}
                 <Marcador estado={p.estado} />
               </span>
-            </p>
+            </div>
           </div>
         ))}
       </div>
@@ -266,7 +369,43 @@ export function PainelAtendimento({
             {erro}
           </p>
         )}
+        {anexo && (
+          <div className={styles.anexo}>
+            {/* eslint-disable-next-line @next/next/no-img-element -- prévia local antes do envio */}
+            <img src={anexo.previa} alt="" />
+            <span>{anexo.arquivo.name}</span>
+            <button
+              type="button"
+              onClick={() => {
+                URL.revokeObjectURL(anexo.previa);
+                setAnexo(null);
+              }}
+              aria-label="Tirar imagem"
+            >
+              ×
+            </button>
+          </div>
+        )}
         <div className={styles.campo}>
+          <button
+            type="button"
+            className={styles.clipe}
+            onClick={() => seletor.current?.click()}
+            aria-label="Anexar imagem (PNG, JPG ou BMP, até 2 MB)"
+            title="Anexar imagem (PNG, JPG ou BMP, até 2 MB)"
+          >
+            <Icone nome="clipe" tamanho={20} />
+          </button>
+          <input
+            ref={seletor}
+            type="file"
+            accept=".png,.jpg,.jpeg,.bmp,image/png,image/jpeg,image/bmp"
+            hidden
+            onChange={(e) => {
+              escolherImagem(e.target.files?.[0]);
+              e.target.value = "";
+            }}
+          />
           <textarea
             value={texto}
             onChange={(e) => setTexto(e.target.value)}
@@ -276,16 +415,27 @@ export function PainelAtendimento({
                 enviar();
               }
             }}
+            onPaste={(e) => {
+              const f = [...e.clipboardData.files].find((x) => x.type.startsWith("image/"));
+              if (f) {
+                e.preventDefault();
+                escolherImagem(f);
+              }
+            }}
             placeholder="Escreva sua mensagem"
             rows={2}
             maxLength={4000}
             aria-label="Mensagem"
           />
-          <button type="submit" className="btn btn-primary btn-sm" disabled={!texto.trim()}>
+          <button type="submit" className="btn btn-primary btn-sm" disabled={!texto.trim() && !anexo}>
             Enviar
           </button>
         </div>
-        <small className={styles.nota}>As conversas ficam salvas e não podem ser apagadas. ✓ enviada · ✓✓ lida</small>
+        <small className={styles.nota}>
+          {ehAdmin
+            ? "Imagens PNG, JPG ou BMP até 2 MB. ✓ enviada · ✓✓ lida. Só o admin apaga mensagens."
+            : "Imagens PNG, JPG ou BMP até 2 MB. As conversas ficam salvas. ✓ enviada · ✓✓ lida"}
+        </small>
       </form>
     </section>
   );

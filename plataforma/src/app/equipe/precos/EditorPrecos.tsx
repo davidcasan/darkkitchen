@@ -202,7 +202,8 @@ export function EditorPrecos({ inicial, assinantes }: { inicial: TabelaPrecos; a
         <h2>Planos (pacotes de créditos)</h2>
         <p className="muted small" style={{ marginBottom: 14 }}>
           A única forma de o cliente comprar créditos. Mudanças de preço valem para novas assinaturas e na próxima renovação de
-          quem já assina. Plano com assinantes não pode ser removido, só retirado da venda.
+          quem já assina. Plano com assinantes não pode ser removido, só retirado da venda. O plano Personalizado
+          não fica aqui: créditos e valor são combinados com cada cliente e aplicados na conta dele, em Contas.
         </p>
         <div className={styles.planos}>
           {t.planos.map((p, i) => {

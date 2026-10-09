@@ -170,8 +170,9 @@ CREATE INDEX IF NOT EXISTS idx_comentarios_pedido ON comentarios(pedido_id);
 CREATE INDEX IF NOT EXISTS idx_notificacoes_usuario ON notificacoes(usuario_id, lida);
 
 -- Atendimento (SAC): chat entre o cliente e o admin. Uma conversa por pedido
--- (pedido_id) e uma conversa geral do cliente (pedido_id NULL). As mensagens são
--- permanentes: o próprio banco recusa alterar ou apagar (gatilhos abaixo).
+-- (pedido_id) e uma conversa geral do cliente (pedido_id NULL). Ninguém edita
+-- mensagens (o banco recusa); só o admin apaga, e cada exclusão fica registrada
+-- em atendimento_exclusoes. Imagem anexada: colunas imagem_* (arquivo em data/arquivos).
 CREATE TABLE IF NOT EXISTS atendimento_mensagens (
   id INTEGER PRIMARY KEY,
   cliente_id INTEGER NOT NULL REFERENCES usuarios(id),
@@ -183,8 +184,15 @@ CREATE TABLE IF NOT EXISTS atendimento_mensagens (
 CREATE INDEX IF NOT EXISTS idx_atendimento_conversa ON atendimento_mensagens(cliente_id, pedido_id, id);
 CREATE TRIGGER IF NOT EXISTS atendimento_sem_edicao BEFORE UPDATE ON atendimento_mensagens
 BEGIN SELECT RAISE(ABORT, 'Mensagens do atendimento não podem ser alteradas.'); END;
-CREATE TRIGGER IF NOT EXISTS atendimento_sem_exclusao BEFORE DELETE ON atendimento_mensagens
-BEGIN SELECT RAISE(ABORT, 'Mensagens do atendimento não podem ser apagadas.'); END;
+CREATE TABLE IF NOT EXISTS atendimento_exclusoes (
+  id INTEGER PRIMARY KEY,
+  admin_id INTEGER NOT NULL REFERENCES usuarios(id),
+  cliente_id INTEGER NOT NULL,
+  pedido_id INTEGER,
+  quantidade INTEGER NOT NULL, -- mensagens apagadas
+  conversa_inteira INTEGER NOT NULL DEFAULT 0,
+  criado_em TEXT NOT NULL DEFAULT (datetime('now'))
+);
 -- Até qual mensagem cada pessoa já leu, por conversa (pedido 0 = conversa geral).
 CREATE TABLE IF NOT EXISTS atendimento_leituras (
   usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
@@ -325,9 +333,23 @@ function migrar(d: DatabaseSync) {
     ["tentativas_cobranca", "INTEGER NOT NULL DEFAULT 0"],
     ["proxima_tentativa", "TEXT"],
     ["aviso_expiracao", "TEXT"], // fim de período para o qual o aviso de expiração já foi enviado
+    // Plano Personalizado: valores combinados com o cliente (plano_id = 'personalizado').
+    ["personalizado_preco", "REAL"],
+    ["personalizado_creditos", "INTEGER"],
   ];
   for (const [nome, tipo] of novasColunas)
     if (!colAssinatura.includes(nome)) d.exec(`ALTER TABLE assinaturas ADD COLUMN ${nome} ${tipo}`);
+  // Atendimento (out/2026): o admin passa a poder apagar mensagens e conversas, e
+  // as mensagens podem levar uma imagem.
+  d.exec("DROP TRIGGER IF EXISTS atendimento_sem_exclusao");
+  const colMsg = colunas("atendimento_mensagens");
+  for (const [nome, tipo] of [
+    ["imagem_caminho", "TEXT"],
+    ["imagem_nome", "TEXT"],
+    ["imagem_mime", "TEXT"],
+    ["imagem_tamanho", "INTEGER"],
+  ])
+    if (!colMsg.includes(nome)) d.exec(`ALTER TABLE atendimento_mensagens ADD COLUMN ${nome} ${tipo}`);
   // Créditos passam a expirar: o extrato ganha o tipo "expiracao". O SQLite não altera
   // a regra (CHECK) de uma tabela, então ela é recriada com os mesmos lançamentos.
   const sqlCreditos = (d.prepare("SELECT sql FROM sqlite_master WHERE name = 'creditos'").get() as { sql: string }).sql;

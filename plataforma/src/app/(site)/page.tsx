@@ -189,7 +189,10 @@ export default function Home() {
         <div className={styles.head}>
           <span className="eyebrow">Planos</span>
           <h2>Assine uma vez. Peça quando quiser.</h2>
-          <p>Créditos renovados todo mês. Precisa de mais? Suba de plano e os créditos extras entram na hora.</p>
+          <p>
+            Créditos renovados todo mês. Precisa de mais? Suba de plano e os créditos extras entram na hora. Precisa de algo sob
+            medida? Fale com a gente sobre o plano Personalizado.
+          </p>
         </div>
         <div className={styles.plans}>
           {planos.map((p) => (
@@ -207,6 +210,14 @@ export default function Home() {
               </Link>
             </article>
           ))}
+          <article className={styles.plan}>
+            <h3>Personalizado</h3>
+            <p className={styles.planResumo}>Para quem tem um volume ou uma rotina diferente. Montamos o plano com você.</p>
+            <p className={styles.credits}>Créditos e valor de acordo com a sua necessidade</p>
+            <a href={mailto(EMAIL_CONTATO, "Plano Personalizado")} className="btn">
+              Fale com a gente
+            </a>
+          </article>
         </div>
       </section>
 
