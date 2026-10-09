@@ -125,8 +125,8 @@ Faz backup, para o servidor, baixa o código, instala, compila e sobe de novo.
 - Conferir: `BACKUP_DESTINO\backup.log` tem uma linha por dia ("OK" ou "ERRO"). Backup à mão:
   `npm run backup`.
 - Restaurar:
-  1. Pare o servidor: `Stop-ScheduledTask "Dark Kitchen - Servidor"` e feche o processo na
-     porta 3000 (`Get-NetTCPConnection -LocalPort 3000 | % { Stop-Process -Id $_.OwningProcess -Force }`).
+  1. Pare o servidor: `powershell -ExecutionPolicy Bypass -File scripts\parar.ps1`
+     (só parar a tarefa agendada não basta: os processos que ela abriu continuam rodando).
   2. Em `plataforma\data`, apague `dark-kitchen.db`, `dark-kitchen.db-wal` e `dark-kitchen.db-shm`.
   3. Copie a cópia escolhida de `BACKUP_DESTINO\banco\` para `plataforma\data\dark-kitchen.db`.
   4. Copie `BACKUP_DESTINO\arquivos\` para `plataforma\data\arquivos\`.

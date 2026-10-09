@@ -13,9 +13,7 @@ Write-Host "1/5 Backup antes de atualizar..."
 if ($LASTEXITCODE -ne 0) { throw "O backup falhou. Nada foi alterado." }
 
 Write-Host "2/5 Parando o servidor..."
-Stop-ScheduledTask -TaskName "Dark Kitchen - Servidor" -ErrorAction SilentlyContinue
-Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue |
-  ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }
+& powershell -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "parar.ps1")
 
 try {
   Write-Host "3/5 Baixando a versao nova do GitHub..."
