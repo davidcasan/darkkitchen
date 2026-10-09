@@ -2,7 +2,7 @@
   position: sticky;
   top: 0;
   z-index: 20;
-  background: rgb(12 10 9 / 0.72);
+  background: rgb(13 13 13 / 0.72);
   backdrop-filter: blur(16px) saturate(140%);
   border-bottom: 1px solid rgb(255 255 255 / 0.06);
   padding-top: env(safe-area-inset-top, 0px);

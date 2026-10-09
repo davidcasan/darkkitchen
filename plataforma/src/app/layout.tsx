@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from "next";
 import { Manrope, Sora } from "next/font/google";
 import "./globals.css";
 import "./ui.css";
-import { DefinicoesMarca } from "@/components/Marca";
 
 const display = Sora({
   variable: "--font-display",
@@ -31,14 +30,13 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#0c0a09",
+  themeColor: "#0d0d0d",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="pt-BR" className={`${display.variable} ${body.variable}`} data-scroll-behavior="smooth">
       <body>
-        <DefinicoesMarca />
         {children}
       </body>
     </html>

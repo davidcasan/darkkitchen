@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_2" xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 595.28 841.89">
+  <!-- Generator: Adobe Illustrator 30.8.2, SVG Export Plug-In . SVG Version: 2.1.4 Build 7)  -->
+  <defs>
+    <style>
+      .st0 {
+        fill: #961a1d;
+      }
+
+      .st1 {
+        fill: #fff;
+        font-family: ArticulatCF-Heavy, 'Articulat CF';
+        font-size: 77.38px;
+        font-weight: 800;
+      }
+    </style>
+  </defs>
+  <text class="st1" transform="translate(144.18 212.93)"><tspan x="0" y="0">DARK</tspan><tspan x="0" y="64">KITCHEN</tspan></text>
+  <path class="st0" d="M371.88,158.77c12.4,12.67,17.44,16.79,26.91,26.46-10.51,10.51-14.83,15.34-26.91,27.71.91-17.94-.91-36.23,0-54.17Z"/>
+</svg>

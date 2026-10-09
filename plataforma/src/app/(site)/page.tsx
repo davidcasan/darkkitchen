@@ -67,13 +67,13 @@ export default function Home() {
       <section className={styles.heroWrap}>
         <div className={`container ${styles.hero}`}>
           <div className={styles.heroText}>
-            <span className="eyebrow">Estúdio de motion sem salão</span>
+            <span className="eyebrow">Estúdio de criação digital</span>
             <h1>
               Motion graphics <span className="brasa">direto da cozinha.</span>
             </h1>
             <p className={styles.lead}>
               Sem reunião, sem fila, sem agência. Você faz o pedido, nossa cozinha de motion designers prepara, o diretor de arte
-              prova, e a peça sai quente direto pra você.
+              aprova, e a peça sai quente direto pra você.
             </p>
             <div className={styles.ctas}>
               <Link href="/cadastro" className="btn btn-primary">
@@ -133,7 +133,7 @@ export default function Home() {
         <div className={styles.head}>
           <span className="eyebrow">Da comanda à entrega</span>
           <h2>Uma cozinha que só trabalha pra você</h2>
-          <p>Dark kitchen é cozinha sem salão: tudo o que existe é a produção. Aqui é igual, só que com motion graphics.</p>
+          <p>Dark kitchen é baixo custo, autoatendimento, agilidade e qualidade High End.</p>
         </div>
         <ol className={styles.steps}>
           {PASSOS.map((s, i) => (

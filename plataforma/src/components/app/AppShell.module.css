@@ -23,7 +23,7 @@
   justify-content: space-between;
   gap: 12px;
   padding: calc(10px + env(safe-area-inset-top, 0px)) var(--gutter) 10px;
-  background: rgb(12 10 9 / 0.78);
+  background: rgb(13 13 13 / 0.78);
   backdrop-filter: blur(16px) saturate(140%);
   border-bottom: 1px solid var(--line);
 }

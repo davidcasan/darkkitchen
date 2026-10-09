@@ -1,7 +1,8 @@
 /* Dark Kitchen Studio: preto de carvão, brasa vermelha e laranja.
    Interface só no escuro, como a identidade. */
 :root {
-  --bg: #0c0a09; /* carvão */
+  --bg: #0d0d0d; /* 95% preto */
+  --logo-vermelho: #961a1d; /* seta do logo */
   --paper: #161210; /* superfície de cartões */
   --paper-2: #1f1916; /* superfície elevada / campos */
   --ink: #f5eee9; /* texto principal, branco quente */
