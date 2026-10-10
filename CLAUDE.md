@@ -77,7 +77,7 @@ App em `plataforma/` — Next.js 16 (App Router, TypeScript), CSS Modules + toke
 Existe um protótipo clicável em HTML (`briefing-motion.html`, publicado como artifact no claude.ai).
 1. **Tipo de peça:** post animado, vídeo curto, vídeo explicativo, animação de logo. Define os campos seguintes (lógica condicional).
 2. **Contexto:** objetivo, público, onde será publicado, chamada para ação. (Logo: onde a vinheta será usada.)
-3. **Técnico:** proporções (9:16, 1:1, 4:5, 16:9), duração, áudio (locução só em vídeo curto/explicativo), legendas, arquivo aberto (.aep).
+3. **Técnico:** proporções (9:16, 1:1, 4:5, 16:9) — já vêm marcadas a partir de onde vai publicar (out/2026, `PROPORCAO_DA_PLATAFORMA` em `domain/briefing.ts`: Reels/Stories/TikTok/YouTube Shorts 9:16, Feed e LinkedIn 4:5, YouTube 16:9, Anúncio pago sem proporção fixa); lugares com a mesma proporção são uma saída só; cada proporção a mais é formato extra e o custo já aparece na etapa Contexto; o cliente ainda pode marcar/desmarcar à mão; duração, áudio (locução só em vídeo curto/explicativo), legendas, arquivo aberto (.aep).
 4. **Conteúdo:** roteiro por cena com contador de palavras (~1,5 palavra/segundo), opção "não tenho roteiro", locução (texto + tipo de voz), informações obrigatórias. (Logo: tipo de revelação + slogan.)
 5. **Marca:** logo (obrigatório), manual e fontes, fotos, cores, seguir padrão ou visual de campanha. Fica salvo no perfil.
 6. **Estilo:** estilo de animação, referências com "o que você gosta nela", tom, o que evitar.

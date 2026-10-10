@@ -12,7 +12,10 @@ import {
   SO_TRILHA,
   TRILHA_EFEITOS,
   OPCOES,
+  PROPORCAO_DA_PLATAFORMA,
   briefingVazio,
+  formatosAoMudarPlataformas,
+  proporcoesDe,
   calcularCreditos,
   creditosAdicionais,
   contarPalavras,
@@ -264,6 +267,26 @@ export function Wizard({
   const { linhas, total } = calcularCreditos(b, precos);
   const dias = diasUteisDo(b, precos);
   const ad = creditosAdicionais(b, precos);
+  // Resumo das proporções que saem dos lugares escolhidos, com o custo dos formatos extras.
+  const props = proporcoesDe(b.plataformas);
+  const extrasFormato = Math.max(0, b.formatos.length - 1);
+  const dicaPlataformas = !b.plataformas.length ? (
+    "Pode marcar mais de um. Já definimos a proporção certa de cada lugar."
+  ) : (
+    <>
+      {props.length > 0 &&
+        `Proporções: ${props
+          .map((p) => `${p} (${b.plataformas.filter((x) => PROPORCAO_DA_PLATAFORMA[x] === p).join(", ")})`)
+          .join(" e ")}. `}
+      {extrasFormato > 0 ? (
+        <b>
+          {extrasFormato} formato{extrasFormato > 1 ? "s" : ""} extra: +{extrasFormato * ad.formatoExtra} créditos.
+        </b>
+      ) : props.length > 0 ? (
+        "Uma saída só, sem custo extra."
+      ) : null}
+    </>
+  );
   const crAudio = (o: string) => (o === LOCUCAO ? ad.locucao : o === SO_TRILHA ? ad.trilha : o === TRILHA_EFEITOS ? ad.trilhaEfeitos : 0);
   const precoPeca = peca ? precos.pecas[peca.id] : null;
   const falta = total - saldo;
@@ -277,9 +300,11 @@ export function Wizard({
       const atual = x[k];
       let novo = atual.includes(v) ? atual.filter((y) => y !== v) : [...atual, v];
       if (k === "estilo" && novo.length > 2) novo = novo.slice(-2);
+      // Onde vai publicar define as proporções (próxima etapa).
+      if (k === "plataformas") return { ...x, plataformas: novo, formatos: formatosAoMudarPlataformas(x.formatos, atual, novo) };
       return { ...x, [k]: novo };
     });
-    setErros((e) => e.filter((x) => x !== k));
+    setErros((e) => e.filter((x) => x !== k && !(k === "plataformas" && x === "formatos")));
   };
 
   const escolherTipo = (t: Briefing["tipo"]) => {
@@ -484,13 +509,23 @@ export function Wizard({
                     onChange={(e) => set("publico", e.target.value)}
                   />
                 </Campo>
-                <Campo id="plataformas" label="Onde vai ser publicado" hint="Pode marcar mais de um." erro="Marque pelo menos um lugar.">
+                <Campo id="plataformas" label="Onde vai ser publicado" hint={dicaPlataformas} erro="Marque pelo menos um lugar.">
                   <div className="chips">
-                    {OPCOES.plataformas.map((o) => (
-                      <Chip key={o} on={b.plataformas.includes(o)} onClick={() => alternar("plataformas", o)}>
-                        {o}
-                      </Chip>
-                    ))}
+                    {OPCOES.plataformas.map((o) => {
+                      const prop = PROPORCAO_DA_PLATAFORMA[o];
+                      // Lugar com proporção que o pedido ainda não tem = mais um formato.
+                      const custa = prop && !b.plataformas.includes(o) && b.formatos.length > 0 && !b.formatos.includes(prop) && ad.formatoExtra;
+                      return (
+                        <Chip
+                          key={o}
+                          on={b.plataformas.includes(o)}
+                          onClick={() => alternar("plataformas", o)}
+                          extra={prop ? (custa ? `${prop} · +${ad.formatoExtra}` : prop) : undefined}
+                        >
+                          {o}
+                        </Chip>
+                      );
+                    })}
                   </div>
                 </Campo>
                 <Campo id="cta" label="O que a pessoa deve fazer depois" opcional hint="A chamada para ação que aparece no fim.">
@@ -507,7 +542,12 @@ export function Wizard({
             <Campo
               id="formatos"
               label="Proporções"
-              hint={`Cada formato além do primeiro adiciona ${ad.formatoExtra} créditos.`}
+              hint={
+                <>
+                  {proporcoesDe(b.plataformas).length > 0 && "Já marcamos as proporções de onde você vai publicar. "}
+                  Cada formato além do primeiro adiciona {ad.formatoExtra} créditos.
+                </>
+              }
               erro="Escolha pelo menos uma proporção."
             >
               <div className="chips">

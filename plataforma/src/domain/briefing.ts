@@ -53,7 +53,7 @@ export const ETAPAS = ["Tipo", "Contexto", "Técnico", "Conteúdo", "Marca", "Es
 
 export const OPCOES = {
   objetivos: ["Vender produto", "Divulgar evento", "Explicar serviço", "Fortalecer marca", "Comunicação interna"],
-  plataformas: ["Instagram Reels", "Stories", "Feed", "TikTok", "YouTube", "LinkedIn", "Anúncio pago"],
+  plataformas: ["Instagram Reels", "Stories", "Feed", "TikTok", "YouTube", "YouTube Shorts", "LinkedIn", "Anúncio pago"],
   usosLogo: ["Abertura de vídeos", "Fim de vídeos", "Redes sociais", "Apresentações", "Site"],
   formatos: [
     ["9:16", "Vertical 9:16"],
@@ -66,6 +66,42 @@ export const OPCOES = {
   estilos: ["Tipografia animada", "Flat 2D", "3D", "Colagem", "Minimalista", "Com personagens"],
   tons: ["Energético", "Divertido", "Sofisticado", "Sério", "Emocional"],
 };
+
+/**
+ * Proporção recomendada de cada lugar de publicação (out/2026). Ao marcar onde vai
+ * publicar, o briefing já marca as proporções; lugares com a mesma proporção viram
+ * uma saída só. null: depende da campanha, o cliente escolhe.
+ */
+export const PROPORCAO_DA_PLATAFORMA: Record<string, string | null> = {
+  "Instagram Reels": "9:16", // 1080 × 1920
+  Stories: "9:16",
+  Feed: "4:5", // 1080 × 1350, o mais recomendado no feed do Instagram
+  TikTok: "9:16",
+  YouTube: "16:9", // vídeo tradicional, 1920 × 1080
+  "YouTube Shorts": "9:16",
+  LinkedIn: "4:5", // feed, 1080 × 1350
+  "Anúncio pago": null,
+};
+
+const ordemFormatos = (fs: Iterable<string>) => {
+  const set = new Set(fs);
+  const conhecidos = OPCOES.formatos.map(([v]) => v).filter((v) => set.has(v));
+  return [...conhecidos, ...[...set].filter((v) => !conhecidos.includes(v))];
+};
+
+/** Proporções necessárias para os lugares escolhidos, sem repetir. */
+export const proporcoesDe = (plataformas: string[]) =>
+  ordemFormatos(plataformas.map((p) => PROPORCAO_DA_PLATAFORMA[p]).filter((v): v is string => Boolean(v)));
+
+/**
+ * Proporções depois de mudar onde vai publicar: entram as dos lugares novos e saem as
+ * que só o lugar desmarcado usava. As que o cliente marcou à mão continuam.
+ */
+export function formatosAoMudarPlataformas(formatos: string[], antes: string[], depois: string[]) {
+  const eram = proporcoesDe(antes);
+  const agora = proporcoesDe(depois);
+  return ordemFormatos([...formatos.filter((f) => agora.includes(f) || !eram.includes(f)), ...agora]);
+}
 
 export const LOCUCAO = "Com locução";
 export const SO_TRILHA = "Só trilha";
