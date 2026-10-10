@@ -19,6 +19,7 @@ import { usuarioPorId } from "@/server/services/usuarios";
 import { criarPerfil, moverPerfil, removerPerfil, salvarPerfil } from "@/server/services/perfis";
 import { desligarTelegram, linkParaLigar } from "@/server/services/telegram";
 import { salvarTermos } from "@/server/services/termos";
+import { gerarParaPedido, salvarConfigIaComp } from "@/server/services/iaComp";
 
 const admin = () => exigirUsuario(["admin"]);
 
@@ -219,4 +220,24 @@ export async function salvarTermosAction(_: Estado, fd: FormData): Promise<Estad
     versao = salvarTermos(u, campo(fd, "texto"));
   });
   return r?.erro ? r : { ok: `Versão ${versao} publicada. Novos cadastros passam a aceitar esta versão.` };
+}
+
+// ---------- IA Comp ----------
+
+export async function salvarIaCompAction(_: Estado, fd: FormData): Promise<Estado> {
+  const u = await admin();
+  return rodar(
+    () =>
+      salvarConfigIaComp(u, {
+        ativo: campo(fd, "ativo") === "1",
+        modo: campo(fd, "modo") === "operaria" ? "operaria" : "kit",
+        usarIA: campo(fd, "usarIA") === "1",
+      }),
+    "Configuração da IA Comp salva.",
+  );
+}
+
+export async function gerarIaCompAction(_: Estado, fd: FormData): Promise<Estado> {
+  const u = await admin();
+  return rodar(() => gerarParaPedido(u, campoNumero(fd, "pedido")), "Na fila. Em até 1 minuto começa a gerar; atualize a página.");
 }

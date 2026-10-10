@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Scripts do After Effects (ExtendScript), fora das regras do projeto.
+    "ia-comp/**",
   ]),
 ]);
 

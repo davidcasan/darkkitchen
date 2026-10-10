@@ -32,6 +32,7 @@ import { IMPORTANTE, SEM_EMAIL, notificar, notificarPapel } from "./notificacoes
 import type { Arquivo } from "./arquivos";
 import type { TipoPeca } from "@/domain/catalogo";
 import { precos } from "./precos";
+import { aoCriarPedido } from "./iaComp";
 
 // ---------- Tipos ----------
 
@@ -259,6 +260,7 @@ export function criarPedido(cliente: Usuario, raw: unknown): PedidoResumo {
     lancar(cliente.id, -total, "pedido", `Pedido ${codigo} · ${peca.nome}`, { pedidoId: id });
     registrarEvento(id, cliente.id, "criado", null, "triagem", { creditos: total });
     notificarPapel(["diretor", "admin"], `Novo pedido ${codigo} aguardando triagem.`, `/equipe/pedidos/${id}`, IMPORTANTE);
+    aoCriarPedido(id); // IA Comp: entra na fila só se o admin tiver ligado
     return resumo(id)!;
   });
 }

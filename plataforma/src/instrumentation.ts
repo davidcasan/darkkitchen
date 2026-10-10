@@ -45,6 +45,11 @@ export async function register() {
   enviarEmails();
   setInterval(enviarEmails, 30 * 1000);
 
+  // IA Comp: sugestões da IA + kit do After para pedidos novos (só quando o admin liga).
+  const { processarFilaIaComp } = await import("./server/services/iaComp");
+  const iaComp = () => processarFilaIaComp().catch((e) => console.error("[dark-kitchen] Falha na IA Comp:", e));
+  setInterval(iaComp, 30 * 1000);
+
   // Atendimento pelo Telegram (só se TELEGRAM_BOT_TOKEN estiver no .env.local).
   const { iniciarTelegram } = await import("./server/services/telegram");
   iniciarTelegram();

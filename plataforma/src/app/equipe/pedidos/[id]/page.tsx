@@ -12,6 +12,7 @@ import {
   reprovarQualidadeAction,
 } from "@/app/actions/equipe";
 import { BriefingResumo } from "@/components/app/BriefingResumo";
+import { IaCompPedido } from "./IaCompPedido";
 import { Confirmacao } from "@/components/app/Confirmacao";
 import { EnviarVersao } from "@/components/app/EnviarVersao";
 import { Enviar, FormAcao } from "@/components/app/FormAcao";
@@ -417,6 +418,7 @@ export default async function PedidoEquipe({ params, searchParams }: PageProps<"
           </section>
         </div>
         <div className="stack">
+          <IaCompPedido pedidoId={p.id} admin={u.papel === "admin"} />
           <section className="card">
             <h2>Briefing</h2>
             <BriefingResumo b={b} arquivos={arquivos} marcaNome={p.marca_nome} creditos={{ linhas: p.linhasCreditos, total: p.creditos }} />

@@ -5,7 +5,7 @@
 // Apaga: clientes; pedidos, versões, comentários e histórico deles; créditos, faturas,
 // assinaturas, formas de pagamento; marcas e arquivos (no disco também); conversas do
 // atendimento e imagens; notificações e e-mails na fila; sessões e bloqueios de login;
-// aceites dos Termos de Uso; mensagens do Telegram ligadas a esses clientes.
+// aceites dos Termos de Uso; mensagens do Telegram ligadas a esses clientes; IA Comp dos pedidos.
 // Nunca toca nas mídias do Quem somos (data/arquivos/perfis).
 //
 // Uso (na pasta plataforma, de preferência com o servidor parado):
@@ -124,6 +124,7 @@ try {
   apagar(`DELETE FROM acessos_logins WHERE usuario_id IN (${inC})`);
   apagar(`DELETE FROM termos_aceites WHERE usuario_id IN (${inC})`);
   apagar(`DELETE FROM telegram_mensagens WHERE cliente_id IN (${inC})`);
+  apagar(`DELETE FROM ia_comp_jobs WHERE pedido_id IN (${inP})`); // os arquivos (data/arquivos/ia-comp) saem na varredura abaixo
   apagar(`DELETE FROM sessoes WHERE usuario_id IN (${inC})`);
   // Notificações: as dos clientes e as da equipe, que falam de pedidos e clientes apagados.
   apagar("DELETE FROM notificacoes");

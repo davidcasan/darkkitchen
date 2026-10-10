@@ -287,6 +287,23 @@ CREATE TABLE IF NOT EXISTS termos_aceites (
   navegador TEXT,
   criado_em TEXT NOT NULL DEFAULT (datetime('now'))
 );
+-- IA Comp (out/2026): sugestões da IA + kit para o After Effects, um por pedido.
+-- Arquivos em data/arquivos/ia-comp/<id>/ (kit.zip, comp.aep, previa.png), só para a equipe.
+CREATE TABLE IF NOT EXISTS ia_comp_jobs (
+  id INTEGER PRIMARY KEY,
+  pedido_id INTEGER NOT NULL UNIQUE REFERENCES pedidos(id) ON DELETE CASCADE,
+  status TEXT NOT NULL DEFAULT 'pendente',
+  modo TEXT NOT NULL,
+  usar_ia INTEGER NOT NULL DEFAULT 1,
+  sugestoes TEXT,
+  modelo TEXT,
+  tokens_entrada INTEGER NOT NULL DEFAULT 0,
+  tokens_saida INTEGER NOT NULL DEFAULT 0,
+  erro TEXT,
+  maquina_desde TEXT,
+  criado_em TEXT NOT NULL DEFAULT (datetime('now')),
+  atualizado_em TEXT NOT NULL DEFAULT (datetime('now'))
+);
 -- Quem somos (out/2026): perfis de colaboradores-chave mostrados no site.
 -- Mídias em data/arquivos/perfis (só o nome do arquivo fica aqui); vídeos opcionais.
 CREATE TABLE IF NOT EXISTS perfis (

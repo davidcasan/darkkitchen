@@ -23,6 +23,7 @@ const ITENS_ADMIN: ItemNav[] = [
   { href: "/equipe/precos", rotulo: "Preços", icone: "creditos" },
   { href: "/equipe/quem-somos", rotulo: "Quem somos", icone: "pessoas" },
   { href: "/equipe/termos", rotulo: "Termos de uso", icone: "pedidos" },
+  { href: "/equipe/ia-comp", rotulo: "IA Comp", icone: "grafico" },
 ];
 
 export default async function EquipeLayout({ children }: LayoutProps<"/equipe">) {
