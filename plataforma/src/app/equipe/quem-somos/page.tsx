@@ -72,6 +72,16 @@ export default async function QuemSomosAdmin() {
                   <textarea className="txt" name="bio" defaultValue={p.bio} rows={8} maxLength={4000} />
                   <span className="hint">Linha em branco separa parágrafos.</span>
                 </label>
+                <div className="row" style={{ gap: 12, alignItems: "flex-start" }}>
+                  <label className="field" style={{ flex: "1 1 180px" }}>
+                    <span className="label">Título do vídeo 16:9</span>
+                    <input className="txt" name="titulo_16x9" defaultValue={p.titulo_16x9} maxLength={80} placeholder="Reel 16x9" />
+                  </label>
+                  <label className="field" style={{ flex: "1 1 180px" }}>
+                    <span className="label">Título do vídeo 9:16</span>
+                    <input className="txt" name="titulo_9x16" defaultValue={p.titulo_9x16} maxLength={80} placeholder="Reel 9x16" />
+                  </label>
+                </div>
                 <label className="check" style={{ marginBottom: 12 }}>
                   <input type="checkbox" name="visivel" value="1" defaultChecked={p.visivel === 1} />
                   <span>Mostrar no site</span>

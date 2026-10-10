@@ -12,6 +12,8 @@ export function GET() {
       foto: p.foto && urlMidia(p.foto),
       video16x9: p.video_16x9 && urlMidia(p.video_16x9),
       video9x16: p.video_9x16 && urlMidia(p.video_9x16),
+      titulo16x9: p.titulo_16x9,
+      titulo9x16: p.titulo_9x16,
     })),
   );
 }

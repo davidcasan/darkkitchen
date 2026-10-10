@@ -48,10 +48,16 @@ export default function QuemSomos() {
               {(p.video_16x9 || p.video_9x16) && (
                 <div className={styles.videos} data-dois={Boolean(p.video_16x9 && p.video_9x16)}>
                   {p.video_16x9 && (
-                    <video className={styles.horizontal} src={urlMidia(p.video_16x9)} controls preload="metadata" playsInline />
+                    <figure className={styles.video}>
+                      {p.titulo_16x9 && <figcaption>{p.titulo_16x9}</figcaption>}
+                      <video className={styles.horizontal} src={urlMidia(p.video_16x9)} controls preload="metadata" playsInline />
+                    </figure>
                   )}
                   {p.video_9x16 && (
-                    <video className={styles.vertical} src={urlMidia(p.video_9x16)} controls preload="metadata" playsInline />
+                    <figure className={`${styles.video} ${styles.videoVertical}`}>
+                      {p.titulo_9x16 && <figcaption>{p.titulo_9x16}</figcaption>}
+                      <video className={styles.vertical} src={urlMidia(p.video_9x16)} controls preload="metadata" playsInline />
+                    </figure>
                   )}
                 </div>
               )}

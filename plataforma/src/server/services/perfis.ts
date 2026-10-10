@@ -19,6 +19,8 @@ export interface Perfil {
   foto: string | null;
   video_16x9: string | null;
   video_9x16: string | null;
+  titulo_16x9: string; // título mostrado acima do vídeo (vazio: sem título)
+  titulo_9x16: string;
   ordem: number;
   visivel: number;
 }
@@ -58,16 +60,23 @@ export function criarPerfil(admin: Usuario, dados: { nome: string; funcao: strin
   return executar("INSERT INTO perfis (nome, funcao, bio, ordem) VALUES (?, ?, ?, ?)", c.nome, c.funcao, c.bio, ordem).id;
 }
 
-export function salvarPerfil(admin: Usuario, id: number, dados: { nome: string; funcao: string; bio: string; visivel: boolean }) {
+export function salvarPerfil(
+  admin: Usuario,
+  id: number,
+  dados: { nome: string; funcao: string; bio: string; visivel: boolean; titulo16x9: string; titulo9x16: string },
+) {
   exigirAdmin(admin);
   perfil(id);
   const c = limparCampos(dados);
   executar(
-    "UPDATE perfis SET nome = ?, funcao = ?, bio = ?, visivel = ?, atualizado_em = datetime('now') WHERE id = ?",
+    `UPDATE perfis SET nome = ?, funcao = ?, bio = ?, visivel = ?, titulo_16x9 = ?, titulo_9x16 = ?,
+     atualizado_em = datetime('now') WHERE id = ?`,
     c.nome,
     c.funcao,
     c.bio,
     dados.visivel ? 1 : 0,
+    dados.titulo16x9.trim().slice(0, 80),
+    dados.titulo9x16.trim().slice(0, 80),
     id,
   );
 }

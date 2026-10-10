@@ -176,6 +176,8 @@ export async function salvarPerfilAction(_: Estado, fd: FormData): Promise<Estad
         funcao: campo(fd, "funcao"),
         bio: campo(fd, "bio"),
         visivel: campo(fd, "visivel") === "1",
+        titulo16x9: campo(fd, "titulo_16x9"),
+        titulo9x16: campo(fd, "titulo_9x16"),
       }),
     "Perfil salvo.",
   );

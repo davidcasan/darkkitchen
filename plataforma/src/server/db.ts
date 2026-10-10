@@ -492,6 +492,9 @@ function migrar(d: DatabaseSync) {
   d.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_usuarios_documento ON usuarios(documento) WHERE documento IS NOT NULL");
   // Registro de acesso (Marco Civil, art. 15): IP de cada login, guardado por pelo menos 6 meses.
   if (!colunas("acessos_logins").includes("ip")) d.exec("ALTER TABLE acessos_logins ADD COLUMN ip TEXT");
+  // Quem somos: título de cada vídeo do perfil (out/2026).
+  for (const col of ["titulo_16x9", "titulo_9x16"])
+    if (!colunas("perfis").includes(col)) d.exec(`ALTER TABLE perfis ADD COLUMN ${col} TEXT NOT NULL DEFAULT ''`);
   // Reativação de pedido concluído ou cancelado (out/2026): quantas vezes, para o selo "Reativado".
   if (!colunas("pedidos").includes("reativacoes")) d.exec("ALTER TABLE pedidos ADD COLUMN reativacoes INTEGER NOT NULL DEFAULT 0");
   // Créditos passam a expirar: o extrato ganha o tipo "expiracao". O SQLite não altera
