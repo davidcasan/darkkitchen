@@ -91,7 +91,7 @@ export default function Home() {
           <div className={styles.heroText}>
             <span className="eyebrow">Estúdio de criação digital</span>
             <h1>
-              Motion graphics <span className="brasa">direto da cozinha.</span>
+              Edição e Motion Graphics <span className="brasa">direto da cozinha.</span>
             </h1>
             <p className={styles.lead}>
               Sem reunião, sem fila, sem agência. Você faz o pedido, nossa cozinha de motion designers prepara, o diretor de arte
