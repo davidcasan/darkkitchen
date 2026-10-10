@@ -39,7 +39,7 @@ export function Footer() {
         </nav>
       </div>
       <div className={`container ${styles.base}`}>
-        © 2026 Dark Kitchen Studio. Uso digital; TV e mídia nacional sob consulta.
+        © 2026 Dark Kitchen Studio. Todos os direitos reservados. Uso digital; TV e mídia nacional sob consulta.
       </div>
     </footer>
   );
