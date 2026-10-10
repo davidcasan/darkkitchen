@@ -94,7 +94,7 @@ export default function Home() {
               Edição e Motion <span className="brasa">direto da cozinha.</span>
             </h1>
             <p className={styles.lead}>
-              Sem reunião, sem fila, sem agência. Você faz o pedido, nossa cozinha de motion designers prepara, o diretor de arte
+              Sem reunião, sem fila, sem agência. Você faz o pedido, nossa equipe prepara, o diretor de arte
               aprova, e a peça sai quente direto pra você.
             </p>
             <div className={styles.ctas}>
