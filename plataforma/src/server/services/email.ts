@@ -30,7 +30,7 @@ function montarHtml(titulo: string, texto: string, link?: { url: string; rotulo:
     .map((p) => `<p style="margin:0 0 14px;line-height:1.55">${escapar(p).replace(/\n/g, "<br>")}</p>`)
     .join("");
   const botao = link
-    ? `<p style="margin:22px 0 6px"><a href="${escapar(link.url)}" style="display:inline-block;background:#ff4d2e;color:#140a06;text-decoration:none;font-weight:700;padding:12px 20px;border-radius:999px">${escapar(link.rotulo)}</a></p>`
+    ? `<p style="margin:22px 0 6px"><a href="${escapar(link.url)}" style="display:inline-block;background:#961a1d;color:#ffffff;text-decoration:none;font-weight:700;padding:12px 20px;border-radius:999px">${escapar(link.rotulo)}</a></p>`
     : "";
   return `<!doctype html><html lang="pt-BR"><body style="margin:0;background:#f4f1ee;font-family:Arial,Helvetica,sans-serif;color:#1c1917">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f1ee;padding:24px 12px"><tr><td align="center">

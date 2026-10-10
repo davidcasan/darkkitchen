@@ -1,6 +1,6 @@
 .footer {
   border-top: 1px solid var(--line);
-  background: radial-gradient(60% 120% at 50% 120%, rgb(255 77 46 / 0.12), transparent 70%);
+  background: radial-gradient(60% 120% at 50% 120%, rgb(216 53 47 / 0.12), transparent 70%);
   margin-top: 40px;
   padding: 48px 0 calc(28px + env(safe-area-inset-bottom, 0px));
 }

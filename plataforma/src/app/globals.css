@@ -1,4 +1,4 @@
-/* Dark Kitchen Studio: preto de carvão, brasa vermelha e laranja.
+/* Dark Kitchen Studio: preto de carvão e brasa vermelha (#961a1d, o vermelho do logo).
    Interface só no escuro, como a identidade. */
 :root {
   --bg: #0d0d0d; /* 95% preto */
@@ -8,20 +8,22 @@
   --ink: #f5eee9; /* texto principal, branco quente */
   --muted: #a8998f; /* texto secundário */
   --line: #2e2522; /* bordas */
-  --accent: #ff4d2e; /* brasa */
-  --accent-2: #ff8a3d; /* brasa clara (fim do degradê) */
-  --accent-soft: #2b1410; /* fundo de destaque */
-  --accent-ink: #ff8f66; /* texto de destaque sobre o escuro */
-  --on-accent: #140a06; /* texto sobre a brasa */
+  --accent: #961a1d; /* brasa: o vermelho do logo */
+  --accent-2: #d8352f; /* vermelho mais vivo (fim do degradê) */
+  --accent-soft: #2a0f10; /* fundo de destaque */
+  --accent-ink: #f0625a; /* texto de destaque sobre o escuro (o #961a1d puro não tem contraste no preto) */
+  --on-accent: #fff7f5; /* texto sobre a brasa: claro, porque o vermelho é escuro */
   --key: #ffb547; /* âmbar: estados ativos, marcadores */
   --key-ink: #1a0f02;
   --danger: #ff6b6b;
   --danger-soft: #331517;
   --ok: #4fd1a0;
-  --chart-bar: #f2502c; /* validado sobre --paper (banda de luminosidade e contraste) */
+  --chart-bar: #d8352f; /* contraste 3,9:1 sobre --paper */
 
   --grad-brasa: linear-gradient(120deg, var(--accent) 0%, var(--accent-2) 100%);
-  --glow: 0 0 0 1px rgb(255 77 46 / 0.25), 0 18px 50px -18px rgb(255 77 46 / 0.55);
+  /* Texto em degradê sobre o preto: tons mais claros do mesmo vermelho, para ler bem. */
+  --grad-brasa-texto: linear-gradient(120deg, var(--accent-2) 0%, var(--accent-ink) 100%);
+  --glow: 0 0 0 1px rgb(216 53 47 / 0.3), 0 18px 50px -18px rgb(216 53 47 / 0.55);
 
   --radius-sm: 10px;
   --radius: 18px;
@@ -152,7 +154,7 @@ svg {
 .btn-primary:hover {
   background: var(--grad-brasa);
   border-color: transparent;
-  box-shadow: 0 0 0 1px rgb(255 138 61 / 0.45), 0 22px 60px -16px rgb(255 77 46 / 0.75);
+  box-shadow: 0 0 0 1px rgb(150 26 29 / 0.45), 0 22px 60px -16px rgb(216 53 47 / 0.75);
   transform: translateY(-1px);
 }
 
@@ -173,12 +175,12 @@ svg {
   height: 7px;
   border-radius: 50%;
   background: var(--accent);
-  box-shadow: 0 0 10px 2px rgb(255 77 46 / 0.7);
+  box-shadow: 0 0 10px 2px rgb(216 53 47 / 0.7);
 }
 
 /* Texto em degradê de brasa, para palavras de destaque */
 .brasa {
-  background: var(--grad-brasa);
+  background: var(--grad-brasa-texto);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;

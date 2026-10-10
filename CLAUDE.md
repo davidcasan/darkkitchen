@@ -15,7 +15,7 @@ Plataforma online brasileira onde empresas pedem peças de motion graphics por u
 
 ## Identidade visual (out/2026)
 Conceito: "dark kitchen" de motion graphics, sem salão, da cozinha direto pro cliente; cozinha de churrasco, brasa, vermelho e preto. Referência: Suno (escuro, tipografia forte, simples e sofisticado).
-- Interface só no escuro. Tokens em `plataforma/src/app/globals.css`: fundo 95% preto (`--bg` #0d0d0d), brasa (`--accent` #ff4d2e → `--accent-2` #ff8a3d, degradê `--grad-brasa`), âmbar `--key` #ffb547. Texto sobre brasa é escuro (`--on-accent`) por contraste.
+- Interface só no escuro. Tokens em `plataforma/src/app/globals.css`: fundo 95% preto (`--bg` #0d0d0d), brasa **vermelha** (out/2026: `--accent` #961a1d, o vermelho do logo → `--accent-2` #d8352f, degradê `--grad-brasa`; o laranja antigo saiu), âmbar `--key` #ffb547. Texto sobre a brasa é claro (`--on-accent`). Texto de destaque sobre o preto usa `--accent-ink` #f0625a e `--grad-brasa-texto` (o #961a1d puro não tem contraste no fundo preto).
 - Fontes: Sora (títulos) e Manrope (texto). Logo (out/2026, arquivo original do dono): "DARK" + seta vermelha (`--logo-vermelho` #961a1d) / "KITCHEN", branco, em duas linhas (`src/components/Marca.tsx`, texto + SVG). A fonte original do logo é Articulat CF Heavy (paga, não instalada); hoje o texto usa Sora 800. Ícone da aba: seta vermelha em `src/app/icon.svg`. A chama antiga foi removida.
 - Vocabulário de cozinha só em detalhes (Cardápio, Da comanda à entrega), sem sacrificar clareza.
 - Códigos de pedido: `DK-1001`, `DK-1002`… (os antigos `Q-` são convertidos pela migração em `db.ts`).

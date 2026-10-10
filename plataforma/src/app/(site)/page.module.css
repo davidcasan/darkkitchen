@@ -17,9 +17,9 @@
   z-index: -1;
   background:
     linear-gradient(180deg, transparent 70%, var(--bg) 100%),
-    radial-gradient(45% 55% at 78% 60%, rgb(255 77 46 / 0.32), transparent 70%),
-    radial-gradient(35% 40% at 15% 100%, rgb(255 138 61 / 0.16), transparent 70%),
-    radial-gradient(60% 50% at 50% -10%, rgb(255 77 46 / 0.08), transparent 70%);
+    radial-gradient(45% 55% at 78% 60%, rgb(216 53 47 / 0.32), transparent 70%),
+    radial-gradient(35% 40% at 15% 100%, rgb(150 26 29 / 0.16), transparent 70%),
+    radial-gradient(60% 50% at 50% -10%, rgb(216 53 47 / 0.08), transparent 70%);
   pointer-events: none;
 }
 
@@ -140,9 +140,9 @@
 }
 
 .card:hover {
-  border-color: rgb(255 77 46 / 0.55);
+  border-color: rgb(216 53 47 / 0.55);
   transform: translateY(-3px);
-  box-shadow: 0 24px 50px -28px rgb(255 77 46 / 0.6);
+  box-shadow: 0 24px 50px -28px rgb(216 53 47 / 0.6);
 }
 
 .numero {
@@ -192,7 +192,7 @@
   font-weight: 700;
   color: var(--accent-ink);
   background: var(--accent-soft);
-  border: 1px solid rgb(255 77 46 / 0.3);
+  border: 1px solid rgb(216 53 47 / 0.3);
   padding: 5px 12px;
   border-radius: 999px;
 }
@@ -237,8 +237,8 @@
   font-family: var(--font-display), sans-serif;
   font-weight: 800;
   color: var(--on-accent);
-  background: radial-gradient(circle at 35% 30%, #ffd08a, var(--accent-2) 45%, var(--accent) 100%);
-  box-shadow: 0 0 22px 2px rgb(255 77 46 / 0.55);
+  background: radial-gradient(circle at 35% 30%, #ff9b8f, var(--accent-2) 45%, var(--accent) 100%);
+  box-shadow: 0 0 22px 2px rgb(216 53 47 / 0.55);
 }
 
 /* ---------- Benefícios ---------- */
@@ -293,7 +293,7 @@
     linear-gradient(var(--paper), var(--paper)) padding-box,
     var(--grad-brasa) border-box;
   border: 1.5px solid transparent;
-  box-shadow: 0 30px 70px -35px rgb(255 77 46 / 0.7);
+  box-shadow: 0 30px 70px -35px rgb(216 53 47 / 0.7);
 }
 
 .plan :global(.btn) {
@@ -370,7 +370,7 @@
 }
 
 .faq details[open] {
-  border-color: rgb(255 77 46 / 0.4);
+  border-color: rgb(216 53 47 / 0.4);
 }
 
 .faq summary {
@@ -415,10 +415,10 @@
   gap: 24px;
   justify-items: start;
   background:
-    radial-gradient(70% 140% at 100% 100%, rgb(255 77 46 / 0.55), transparent 60%),
-    radial-gradient(50% 120% at 0% 0%, rgb(255 138 61 / 0.18), transparent 60%),
+    radial-gradient(70% 140% at 100% 100%, rgb(216 53 47 / 0.55), transparent 60%),
+    radial-gradient(50% 120% at 0% 0%, rgb(150 26 29 / 0.18), transparent 60%),
     var(--paper);
-  border: 1px solid rgb(255 77 46 / 0.35);
+  border: 1px solid rgb(216 53 47 / 0.35);
 }
 
 .final h2 {
