@@ -16,7 +16,9 @@ import {
   OUTRO,
   PROPORCAO_DA_PLATAFORMA,
   atualizarBriefing,
+  EFEITO_SONORO,
   objetivoTexto,
+  revelacaoTexto,
   tonsTexto,
   briefingVazio,
   formatosAoMudarPlataformas,
@@ -292,7 +294,7 @@ export function Wizard({
       ) : null}
     </>
   );
-  const crAudio = (o: string) => (o === LOCUCAO ? ad.locucao : o === SO_TRILHA ? ad.trilha : o === TRILHA_EFEITOS ? ad.trilhaEfeitos : 0);
+  const crAudio = (o: string) => (o === LOCUCAO ? ad.locucao : o === SO_TRILHA ? ad.trilha : o === TRILHA_EFEITOS || o === EFEITO_SONORO ? ad.trilhaEfeitos : 0);
   const precoPeca = peca ? precos.pecas[peca.id] : null;
   const falta = total - saldo;
 
@@ -644,7 +646,7 @@ export function Wizard({
         if (logo)
           return (
             <>
-              <Campo id="revelacao" label="Tipo de revelação" erro="Escolha um tipo de revelação.">
+              <Campo id="revelacao" label="Como o logo aparece" erro="Escolha como o logo aparece.">
                 <div className="chips">
                   {OPCOES.revelacoes.map((o) => (
                     <Chip key={o} on={b.revelacao === o} onClick={() => set("revelacao", o)}>
@@ -653,6 +655,17 @@ export function Wizard({
                   ))}
                 </div>
               </Campo>
+              {b.revelacao === OUTRO && (
+                <Campo id="revelacaoOutro" label="Como você imagina o seu logo aparecendo?" erro="Conte como você imagina o logo aparecendo.">
+                  <textarea
+                    className="txt"
+                    rows={3}
+                    value={b.revelacaoOutro}
+                    placeholder="O logo surge de uma gota de tinta que se espalha na tela."
+                    onChange={(e) => set("revelacaoOutro", e.target.value)}
+                  />
+                </Campo>
+              )}
               <Campo id="slogan" label="Slogan junto ao logo" opcional>
                 <input className="txt" value={b.slogan} placeholder="Moda que acompanha você" onChange={(e) => set("slogan", e.target.value)} />
               </Campo>
@@ -1045,7 +1058,7 @@ export function Wizard({
             {linha(
               3,
               logo
-                ? [["Revelação", b.revelacao], ["Slogan", b.slogan]]
+                ? [["Como o logo aparece", revelacaoTexto(b)], ["Slogan", b.slogan]]
                 : [
                     b.semRoteiro ? ["Ideia (roteiro a criar)", b.ideia] : ["Cenas", cenas.map((x, i) => `${i + 1}. ${x}`).join("  ")],
                     ["Locução", b.audio === LOCUCAO && `${b.voz ?? ""}: ${b.locucao}`],

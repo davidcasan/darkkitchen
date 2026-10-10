@@ -149,6 +149,7 @@ export function normalizarBriefing(raw: unknown): Briefing {
     voz: opcional(r.voz),
     obrig: texto(r.obrig, 500),
     revelacao: opcional(r.revelacao),
+    revelacaoOutro: texto(r.revelacaoOutro, 500),
     slogan: texto(r.slogan, 200),
     marcaId: Number.isInteger(Number(r.marcaId)) && Number(r.marcaId) > 0 ? Number(r.marcaId) : null,
     arquivos: { logo: ids(arq.logo), manual: ids(arq.manual), fotos: ids(arq.fotos) },

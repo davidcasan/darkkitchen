@@ -1,4 +1,4 @@
-import { type Briefing, type LinhaCredito, LOCUCAO, contarPalavras, limitePalavras, objetivoTexto, pecaDo, tonsTexto } from "@/domain/briefing";
+import { type Briefing, type LinhaCredito, LOCUCAO, contarPalavras, limitePalavras, objetivoTexto, pecaDo, revelacaoTexto, tonsTexto } from "@/domain/briefing";
 import type { Arquivo } from "@/server/services/arquivos";
 import { formatarTamanho, urlArquivo } from "./upload";
 import styles from "./BriefingResumo.module.css";
@@ -89,7 +89,7 @@ export function BriefingResumo({
         linhas={
           logo
             ? [
-                ["Revelação", b.revelacao],
+                ["Como o logo aparece", revelacaoTexto(b)],
                 ["Slogan", b.slogan],
               ]
             : [

@@ -80,7 +80,7 @@ Existe um protótipo clicável em HTML (`briefing-motion.html`, publicado como a
 1. **Tipo de peça:** post animado, vídeo curto, vídeo explicativo, animação de logo. Define os campos seguintes (lógica condicional).
 2. **Contexto:** objetivo (com "Outro" + campo "Explique o job", obrigatório), público, onde será publicado, chamada para ação. (Logo: onde a vinheta será usada.)
 3. **Técnico:** proporções (9:16, 1:1, 4:5, 16:9) — já vêm marcadas a partir de onde vai publicar (out/2026, `PROPORCAO_DA_PLATAFORMA` em `domain/briefing.ts`: Reels/Stories/TikTok/YouTube Shorts 9:16, Feed e LinkedIn 4:5, YouTube 16:9, Anúncio pago sem proporção fixa); lugares com a mesma proporção são uma saída só; cada proporção a mais é formato extra e o custo já aparece na etapa Contexto; o cliente ainda pode marcar/desmarcar à mão; duração, áudio (locução só em vídeo curto/explicativo), legendas, arquivo aberto (.aep).
-4. **Conteúdo:** roteiro por cena com contador de palavras (~1,5 palavra/segundo), opção "não tenho roteiro", locução (texto + tipo de voz), informações obrigatórias. (Logo: tipo de revelação + slogan.)
+4. **Conteúdo:** (logo: "Como o logo aparece" — Crescendo, Montando em partes, Descortinando, Efeito de luz, Desenho, Outline, Outro + campo `revelacaoOutro`) roteiro por cena com contador de palavras (~1,5 palavra/segundo), opção "não tenho roteiro", locução (texto + tipo de voz), informações obrigatórias. (Logo: tipo de revelação + slogan.)
 5. **Marca:** logo (obrigatório), manual e fontes, fotos, cores, seguir padrão ou visual de campanha. Fica salvo no perfil.
 6. **Estilo:** estilo de animação e tom, cada um com **até 5 opções** (`MAX_ESCOLHAS`; listas em `OPCOES` de `domain/briefing.ts`, out/2026; tom virou lista `tons` com "Outro" + texto `tomOutro`; pedidos antigos com `tom` único são convertidos por `atualizarBriefing`), referências com "o que você gosta nela", o que evitar.
 7. **Prazo e aprovação:** padrão ou urgente (+50%), quem aprova e e-mail.
@@ -107,7 +107,7 @@ Existe um protótipo clicável em HTML (`briefing-motion.html`, publicado como a
 | Logo (até 5s) | 6h + 1h | R$ 460 | R$ 1.000 | 20 |
 | Logo (até 8s) | 9h + 1,2h | R$ 658 | R$ 1.500 | 30 |
 
-**Adicionais:** formato extra 3 cr (até 30s) / 6 cr (acima); locução 8 / 12 / 16 cr (30 / 60 / 90s, margem ~15% por ser repasse); roteiro 4 cr (post/curto) / 12 cr (explicativo); personagens +40%; arquivo aberto +30%; urgência +50%; revisão extra 3 / 6 cr. Trilha e legendas (out/2026): "Só trilha", "Trilha e efeitos" e legendas custam créditos (horas de designer editáveis em Preços, padrão 0,5h / 1,5h / 0,5h → 2 / 4 / 2 cr); sem som e sem legendas, nada. O efeito sonoro de assinatura da animação de logo e a locução não cobram trilha à parte.
+**Adicionais:** formato extra 3 cr (até 30s) / 6 cr (acima); locução 8 / 12 / 16 cr (30 / 60 / 90s, margem ~15% por ser repasse); roteiro 4 cr (post/curto) / 12 cr (explicativo); personagens +40%; arquivo aberto +30%; urgência +50%; revisão extra 3 / 6 cr. Trilha e legendas (out/2026): "Só trilha", "Trilha e efeitos" e legendas custam créditos (horas de designer editáveis em Preços, padrão 0,5h / 1,5h / 0,5h → 2 / 4 / 2 cr); sem som e sem legendas, nada. Na animação de logo, "Efeito sonoro" custa o mesmo que "Trilha e efeitos" (`EFEITO_SONORO`); "Sem som", nada. A locução não cobra trilha à parte.
 
 **Referências de mercado (2026):** hora de motion designer autônomo ~R$ 31–159; reels 15s R$ 300–1.500; explicativo 60s R$ 3.000–12.000; vinheta R$ 300–3.000.
 

@@ -96,7 +96,7 @@ export function custoPadrao(b: Briefing, c: Custos, rodadasRetrabalho = 0): Cust
   horasDesigner += Math.max(0, b.formatos.length - 1) * c.horasFormatoExtra;
   if (b.aberto) horasDesigner += c.horasArquivoAberto;
   if (b.audio === "Só trilha") horasDesigner += c.horasTrilha;
-  if (b.audio === "Trilha e efeitos") horasDesigner += c.horasTrilhaEfeitos;
+  if (b.audio === "Trilha e efeitos" || b.audio === "Efeito sonoro") horasDesigner += c.horasTrilhaEfeitos;
   if (b.legendas === "Sim" && b.tipo !== "logo") horasDesigner += c.horasLegendas;
   horasDesigner += rodadasRetrabalho * base.designer * (c.retrabalhoPct / 100);
   horasDiretor += rodadasRetrabalho * c.retrabalhoHorasDiretor;

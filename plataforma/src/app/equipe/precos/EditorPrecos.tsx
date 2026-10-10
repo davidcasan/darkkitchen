@@ -70,7 +70,7 @@ export function EditorPrecos({
         { nome: "Formato extra (cada)", custo: c.horasFormatoExtra * c.valorHoraDesigner, creditos: tc.formatoExtra, repasse: false },
         { nome: "Arquivo aberto (.aep)", custo: c.horasArquivoAberto * c.valorHoraDesigner, creditos: tc.arquivoAberto, repasse: false },
         { nome: "Só trilha", custo: c.horasTrilha * c.valorHoraDesigner, creditos: tc.trilha, repasse: false },
-        { nome: "Trilha e efeitos sonoros", custo: c.horasTrilhaEfeitos * c.valorHoraDesigner, creditos: tc.trilhaEfeitos, repasse: false },
+        { nome: "Trilha e efeitos sonoros (e efeito sonoro do logo)", custo: c.horasTrilhaEfeitos * c.valorHoraDesigner, creditos: tc.trilhaEfeitos, repasse: false },
         { nome: "Legendas", custo: c.horasLegendas * c.valorHoraDesigner, creditos: tc.legendas, repasse: false },
         { nome: "Roteiro até 30s", custo: c.roteiro.ate30, creditos: tc.roteiro.ate30, repasse: true },
         { nome: "Roteiro até 90s", custo: c.roteiro.ate90, creditos: tc.roteiro.ate90, repasse: true },

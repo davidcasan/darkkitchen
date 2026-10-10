@@ -32,7 +32,8 @@ export interface Briefing {
   locucao: string;
   voz: string | null;
   obrig: string;
-  revelacao: string | null; // só logo
+  revelacao: string | null; // só logo: como o logo aparece
+  revelacaoOutro: string; // com "Outro": como o cliente imagina o logo aparecendo
   slogan: string; // só logo
   // Marca: o pedido pertence a uma das marcas do cliente (ids de arquivos enviados)
   marcaId: number | null;
@@ -63,7 +64,7 @@ export const OPCOES = {
     ["4:5", "Feed 4:5"],
     ["16:9", "Horizontal 16:9"],
   ] as [string, string][],
-  revelacoes: ["Montagem por partes", "Desenho do traço", "Revelação com luz", "Transformação de forma", "A critério do designer"],
+  revelacoes: ["Crescendo", "Montando em partes", "Descortinando", "Efeito de luz", "Desenho", "Outline", "Outro"],
   vozes: ["Feminina jovem", "Feminina madura", "Masculina jovem", "Masculina madura"],
   estilos: [
     "Tipografia animada",
@@ -152,6 +153,8 @@ export const OUTRO = "Outro";
 
 /** Objetivo e tons para mostrar, com o texto do "Outro" no lugar. */
 export const objetivoTexto = (b: Briefing) => (b.objetivo === OUTRO && b.objetivoOutro.trim() ? `Outro: ${b.objetivoOutro.trim()}` : b.objetivo);
+export const revelacaoTexto = (b: Briefing) =>
+  b.revelacao === OUTRO && b.revelacaoOutro.trim() ? `Outro: ${b.revelacaoOutro.trim()}` : b.revelacao;
 export const tonsTexto = (b: Briefing) =>
   b.tons.map((t) => (t === OUTRO && b.tomOutro.trim() ? `Outro: ${b.tomOutro.trim()}` : t)).join(", ");
 
@@ -165,6 +168,8 @@ export function atualizarBriefing(salvo: Partial<Briefing> & { tom?: unknown }):
 
 export const LOCUCAO = "Com locução";
 export const SO_TRILHA = "Só trilha";
+/** Som da animação de logo: custa o mesmo que "Trilha e efeitos". */
+export const EFEITO_SONORO = "Efeito sonoro";
 export const TRILHA_EFEITOS = "Trilha e efeitos";
 
 export function briefingVazio(): Briefing {
@@ -189,6 +194,7 @@ export function briefingVazio(): Briefing {
     voz: null,
     obrig: "",
     revelacao: null,
+    revelacaoOutro: "",
     slogan: "",
     marcaId: null,
     arquivos: { logo: [], manual: [], fotos: [] },
@@ -208,7 +214,7 @@ export function briefingVazio(): Briefing {
 export const pecaDo = (b: Pick<Briefing, "tipo">): Peca | undefined => PECAS.find((p) => p.id === b.tipo);
 
 export const opcoesAudio = (b: Briefing): string[] => {
-  if (b.tipo === "logo") return ["Sem som", "Efeito sonoro de assinatura"];
+  if (b.tipo === "logo") return ["Sem som", EFEITO_SONORO];
   const base = ["Sem som", SO_TRILHA, TRILHA_EFEITOS];
   return pecaDo(b)?.aceitaLocucao ? [...base, LOCUCAO] : base;
 };
@@ -238,6 +244,7 @@ export function calcularCreditos(b: Briefing, t: TabelaPrecos): { linhas: LinhaC
   if (b.audio === SO_TRILHA && tc.trilha) linhas.push({ descricao: "Trilha sonora", creditos: tc.trilha });
   if (b.audio === TRILHA_EFEITOS && tc.trilhaEfeitos)
     linhas.push({ descricao: "Trilha e efeitos sonoros", creditos: tc.trilhaEfeitos });
+  if (b.audio === EFEITO_SONORO && tc.trilhaEfeitos) linhas.push({ descricao: "Efeito sonoro", creditos: tc.trilhaEfeitos });
   if (b.legendas === "Sim" && b.tipo !== "logo" && tc.legendas) linhas.push({ descricao: "Legendas", creditos: tc.legendas });
   const locucao = creditosLocucao(tc, b.duracao);
   if (b.audio === LOCUCAO && locucao) linhas.push({ descricao: "Locução profissional", creditos: locucao });
@@ -315,7 +322,7 @@ export function errosDaEtapa(b: Briefing, etapa: number): string[] {
       break;
     case 3:
       if (logo) {
-        e.push(!b.revelacao && "revelacao");
+        e.push(!b.revelacao && "revelacao", b.revelacao === OUTRO && vazio(b.revelacaoOutro) && "revelacaoOutro");
         break;
       }
       if (b.semRoteiro) e.push(vazio(b.ideia) && "ideia");
