@@ -44,4 +44,8 @@ export async function register() {
   const enviarEmails = () => processarFilaEmails().catch((e) => console.error("[dark-kitchen] Falha na fila de e-mails:", e));
   enviarEmails();
   setInterval(enviarEmails, 30 * 1000);
+
+  // Atendimento pelo Telegram (só se TELEGRAM_BOT_TOKEN estiver no .env.local).
+  const { iniciarTelegram } = await import("./server/services/telegram");
+  iniciarTelegram();
 }

@@ -17,6 +17,7 @@ import { salvarConfigPix } from "@/server/services/pix";
 import { definirPadraoPrecos, salvarPrecos } from "@/server/services/precos";
 import { usuarioPorId } from "@/server/services/usuarios";
 import { criarPerfil, moverPerfil, removerPerfil, salvarPerfil } from "@/server/services/perfis";
+import { desligarTelegram, linkParaLigar } from "@/server/services/telegram";
 
 const admin = () => exigirUsuario(["admin"]);
 
@@ -187,4 +188,21 @@ export async function moverPerfilAction(_: Estado, fd: FormData): Promise<Estado
 export async function removerPerfilAction(_: Estado, fd: FormData): Promise<Estado> {
   const u = await admin();
   return rodar(() => removerPerfil(u, campoNumero(fd, "id")), "Perfil removido.");
+}
+
+// ---------- Telegram ----------
+
+/** Link de uso único para ligar o Telegram deste admin ao atendimento. */
+export async function linkTelegramAction(): Promise<{ url?: string; erro?: string }> {
+  const u = await admin();
+  try {
+    return { url: await linkParaLigar(u) };
+  } catch (e) {
+    return { erro: e instanceof ErroNegocio ? e.message : "Não foi possível gerar o link." };
+  }
+}
+
+export async function desligarTelegramAction(): Promise<Estado> {
+  const u = await admin();
+  return rodar(() => desligarTelegram(u), "Telegram desligado.");
 }

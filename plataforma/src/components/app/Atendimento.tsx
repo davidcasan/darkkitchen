@@ -3,6 +3,7 @@
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Icone } from "./Icone";
+import { NOME_ATENDIMENTO } from "@/domain/contato";
 import styles from "./Atendimento.module.css";
 
 // Chat do atendimento (SAC) entre o cliente e o admin. Conversa por pedido ou
@@ -282,7 +283,7 @@ export function PainelAtendimento({
     <section className={styles.painel} data-embutido={embutido} aria-label="Atendimento">
       <header className={styles.cabeca}>
         <div>
-          <b>{visao === "cliente" ? "Atendimento Dark Kitchen" : (titulo ?? "Atendimento")}</b>
+          <b>{visao === "cliente" ? NOME_ATENDIMENTO : (titulo ?? "Atendimento")}</b>
           <small>{visao === "cliente" ? tituloApi || titulo : tituloApi}</small>
         </div>
         <span className={styles.acoesCabeca}>
@@ -311,7 +312,9 @@ export function PainelAtendimento({
         {mensagens.map((m) => (
           <div key={m.id} className={styles.msg} data-minha={minha(m)}>
             {!minha(m) && (
-              <span className={styles.autor}>{m.da_equipe ? `Atendimento · ${m.autor_nome}` : m.autor_nome}</span>
+              <span className={styles.autor}>
+                {m.da_equipe && visao !== "cliente" ? `Atendimento · ${m.autor_nome}` : m.autor_nome}
+              </span>
             )}
             <div className={styles.balao}>
               {m.imagem_nome && (

@@ -256,6 +256,28 @@ CREATE TABLE IF NOT EXISTS atendimento_leituras (
   ultima_lida INTEGER NOT NULL,
   PRIMARY KEY (usuario_id, cliente_id, pedido_chave)
 );
+-- Telegram (out/2026): admins que recebem e respondem o atendimento pelo bot.
+CREATE TABLE IF NOT EXISTS telegram_destinos (
+  chat_id TEXT PRIMARY KEY,
+  usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+  nome TEXT,
+  criado_em TEXT NOT NULL DEFAULT (datetime('now'))
+);
+-- Código de uso único para ligar a conta (link t.me/bot?start=código); só o hash fica aqui.
+CREATE TABLE IF NOT EXISTS telegram_codigos (
+  hash TEXT PRIMARY KEY,
+  usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+  expira_em TEXT NOT NULL
+);
+-- Cada mensagem que o bot mandou, para saber a qual conversa uma resposta pertence.
+CREATE TABLE IF NOT EXISTS telegram_mensagens (
+  chat_id TEXT NOT NULL,
+  msg_id INTEGER NOT NULL,
+  cliente_id INTEGER NOT NULL,
+  pedido_id INTEGER,
+  criado_em TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (chat_id, msg_id)
+);
 -- Quem somos (out/2026): perfis de colaboradores-chave mostrados no site.
 -- Mídias em data/arquivos/perfis (só o nome do arquivo fica aqui); vídeos opcionais.
 CREATE TABLE IF NOT EXISTS perfis (

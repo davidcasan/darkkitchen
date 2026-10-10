@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import { alterarSenhaAction, sairAction } from "@/app/actions/conta";
 import { Enviar, FormAcao } from "@/components/app/FormAcao";
 import { PreferenciaEmail } from "@/components/app/PreferenciaEmail";
+import { TelegramConta } from "@/components/app/TelegramConta";
 import { EQUIPE, PAPEIS } from "@/domain/pedido";
 import { exigirUsuario } from "@/server/auth";
+import { destinosDoUsuario, telegramAtivo } from "@/server/services/telegram";
 
 export const metadata: Metadata = { title: "Conta" };
 
@@ -22,6 +24,7 @@ export default async function ContaEquipe() {
       </div>
       <div className="grid-2">
         <PreferenciaEmail usuarioId={u.id} />
+        {u.papel === "admin" && <TelegramConta ativo={telegramAtivo()} ligados={destinosDoUsuario(u.id)} />}
         <section className="card">
           <h2>Alterar senha</h2>
           <FormAcao action={alterarSenhaAction}>

@@ -4,6 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { ErroNegocio, PASTA_ARQUIVOS, executar, transacao, um, varios } from "../db";
 import type { Usuario } from "../auth";
+import { NOME_ATENDIMENTO } from "@/domain/contato";
 import { IMPORTANTE, notificar, notificarPapel } from "./notificacoes";
 
 // Atendimento (SAC): chat entre o cliente e o admin, dentro da plataforma.
@@ -124,12 +125,18 @@ export function lidaPeloOutroLado(usuario: Usuario, c: Conversa) {
   return r?.m ?? 0;
 }
 
-/** Mensagens da conversa (a partir de um id, para atualizar sem recarregar tudo). Marca como lidas. */
+/**
+ * Mensagens da conversa (a partir de um id, para atualizar sem recarregar tudo). Marca como lidas.
+ * O cliente vê as respostas da equipe como "${NOME_ATENDIMENTO}", sem o nome de quem respondeu.
+ */
 export function listarMensagens(usuario: Usuario, c: Conversa, depoisDe = 0) {
   const mensagens = varios<MensagemAtendimento>(
-    `SELECT m.id, m.texto, m.criado_em, u.nome autor_nome, (u.papel != 'cliente') da_equipe, m.imagem_nome
+    `SELECT m.id, m.texto, m.criado_em, (u.papel != 'cliente') da_equipe, m.imagem_nome,
+            CASE WHEN u.papel != 'cliente' AND ? THEN ? ELSE u.nome END autor_nome
      FROM atendimento_mensagens m JOIN usuarios u ON u.id = m.autor_id
      WHERE m.cliente_id = ? AND m.pedido_id IS ? AND m.id > ? ORDER BY m.id`,
+    usuario.papel === "cliente" ? 1 : 0,
+    NOME_ATENDIMENTO,
     c.clienteId,
     c.pedidoId,
     depoisDe,
@@ -164,18 +171,22 @@ async function guardarImagem(arquivo: File) {
   };
 }
 
-/** Envia uma mensagem (texto, imagem ou os dois) e avisa o outro lado (no máximo um aviso a cada 15 minutos por conversa). */
+/**
+ * Envia uma mensagem (texto, imagem ou os dois) e avisa o outro lado (no máximo um aviso a cada 15 minutos por conversa).
+ * Também encaminha para o Telegram dos admins; origemTelegram é o chat de onde veio a resposta (não volta para ele).
+ */
 export async function enviarMensagem(
   usuario: Usuario,
   c: Conversa & { titulo: string; cliente_nome: string },
   texto: string,
   imagem?: File | null,
+  origemTelegram?: string,
 ) {
   const t = texto.trim();
   if (!t && !imagem) throw new ErroNegocio("Escreva a mensagem ou anexe uma imagem.");
   if (t.length > LIMITE_TEXTO) throw new ErroNegocio(`A mensagem passou de ${LIMITE_TEXTO} caracteres.`);
   const img = imagem ? await guardarImagem(imagem) : null;
-  return transacao(() => {
+  const id = transacao(() => {
     const anterior = um<{ autor_id: number; recente: number }>(
       `SELECT autor_id, (criado_em > datetime('now', '-15 minutes')) recente FROM atendimento_mensagens
        WHERE ${filtro} ORDER BY id DESC LIMIT 1`,
@@ -212,6 +223,11 @@ export async function enviarMensagem(
     }
     return id;
   });
+  // Fora da transação e sem esperar: o Telegram nunca atrasa nem derruba o chat.
+  void import("./telegram")
+    .then((t) => t.encaminharMensagem(id, origemTelegram))
+    .catch((e) => console.error("[telegram] Falha ao encaminhar:", (e as Error).message));
+  return id;
 }
 
 /** Imagem de uma mensagem, conferindo o acesso: o cliente da conversa ou um admin. */
