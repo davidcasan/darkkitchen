@@ -1,13 +1,18 @@
 # Dark Kitchen Studio - registra as tarefas do Windows (rodar UMA vez, como Administrador):
-#   1. "Dark Kitchen - Servidor": sobe com o Windows, mesmo sem ninguem fazer login,
-#      e reinicia sozinho se cair.
+#   1. "Dark Kitchen - Servidor": roda a plataforma em segundo plano (mesmo sem ninguem
+#      logado) e reinicia sozinha se cair. Por padrao NAO sobe com o Windows (decisao do
+#      dono, out/2026): liga-se pelo iniciar-producao.bat ou com
+#      Start-ScheduledTask "Dark Kitchen - Servidor". Para subir junto com o Windows, use
+#      o parametro -IniciarComWindows.
 #   2. "Dark Kitchen - Backup": copia o banco e os arquivos todo dia as 3h.
 # As duas rodam com o usuario atual, sem guardar senha (tipo de logon S4U).
 #
 # Uso (PowerShell como Administrador, na pasta plataforma):
 #   powershell -ExecutionPolicy Bypass -File scripts\instalar-servico.ps1
+#   powershell -ExecutionPolicy Bypass -File scripts\instalar-servico.ps1 -IniciarComWindows
 
 #Requires -RunAsAdministrator
+param([switch]$IniciarComWindows)
 $ErrorActionPreference = "Stop"
 $raiz = Split-Path -Parent $PSScriptRoot
 $node = (Get-Command node.exe -ErrorAction SilentlyContinue).Source
@@ -19,13 +24,15 @@ if (-not (Test-Path (Join-Path $raiz ".env.local"))) { throw "Falta o arquivo pl
 $usuario = [Security.Principal.WindowsIdentity]::GetCurrent().Name
 $quem = New-ScheduledTaskPrincipal -UserId $usuario -LogonType S4U -RunLevel Limited
 
-# Servidor: ao ligar o Windows; se cair, a propria tarefa tenta de novo a cada minuto.
+# Servidor: se cair, a propria tarefa tenta de novo a cada minuto.
 $servidor = New-ScheduledTaskAction -Execute "powershell.exe" `
   -Argument "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$raiz\scripts\producao.ps1`"" `
   -WorkingDirectory $raiz
 $regrasServidor = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable `
   -ExecutionTimeLimit ([TimeSpan]::Zero) -RestartCount 999 -RestartInterval (New-TimeSpan -Minutes 1) -MultipleInstances IgnoreNew
-Register-ScheduledTask -TaskName "Dark Kitchen - Servidor" -Action $servidor -Trigger (New-ScheduledTaskTrigger -AtStartup) `
+$extras = @{}
+if ($IniciarComWindows) { $extras.Trigger = New-ScheduledTaskTrigger -AtStartup }
+Register-ScheduledTask -TaskName "Dark Kitchen - Servidor" -Action $servidor @extras `
   -Principal $quem -Settings $regrasServidor -Description "Plataforma Dark Kitchen Studio (Next.js, modo producao)" -Force | Out-Null
 
 # Backup: todo dia as 3h (se o computador estiver desligado, roda quando ligar).
@@ -37,5 +44,6 @@ Register-ScheduledTask -TaskName "Dark Kitchen - Backup" -Action $backup -Trigge
 
 Start-ScheduledTask -TaskName "Dark Kitchen - Servidor"
 Write-Host "Pronto. Servidor iniciado e backup diario agendado (3h)."
+if (-not $IniciarComWindows) { Write-Host "Ao reiniciar o Windows, ligue de novo pelo iniciar-producao.bat." }
 Write-Host "Teste em alguns segundos: http://localhost:3000"
 Write-Host "Registro (log) do servidor: $raiz\logs"
