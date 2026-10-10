@@ -4,17 +4,35 @@
   <defs>
     <style>
       .st0 {
-        fill: #961a1d;
+        fill: #fff;
+        font-family: ArticulatCF-ExtraBold, 'Articulat CF';
+        font-size: 77.38px;
+        font-weight: 700;
       }
 
-      .st1 {
-        fill: #fff;
-        font-family: ArticulatCF-Heavy, 'Articulat CF';
-        font-size: 77.38px;
-        font-weight: 800;
+      .st0, .st1 {
+        isolation: isolate;
+      }
+
+      .st2 {
+        fill: #231f20;
+        stroke: #000;
+        stroke-miterlimit: 10;
+      }
+
+      .st3 {
+        fill: #961a1d;
       }
     </style>
   </defs>
-  <text class="st1" transform="translate(144.18 212.93)"><tspan x="0" y="0">DARK</tspan><tspan x="0" y="64">KITCHEN</tspan></text>
-  <path class="st0" d="M371.88,158.77c12.4,12.67,17.44,16.79,26.91,26.46-10.51,10.51-14.83,15.34-26.91,27.71.91-17.94-.91-36.23,0-54.17Z"/>
+  <rect class="st2" width="595.28" height="841.89"/>
+  <g class="st1">
+    <text class="st0" transform="translate(144.18 212.93)"><tspan x="0" y="0">DARK</tspan></text>
+    <text class="st0" transform="translate(144.18 276.93)"><tspan x="0" y="0">KITCHEN</tspan></text>
+  </g>
+  <path class="st3" d="M371.88,158.77c12.4,12.67,17.44,16.79,26.91,26.46-10.51,10.51-14.83,15.34-26.91,27.71.91-17.94-.91-36.23,0-54.17Z"/>
+  <g>
+    <text class="st0" transform="translate(234.85 433.93)"><tspan x="0" y="0">DK</tspan></text>
+    <path class="st3" d="M349.39,379.76c12.4,12.67,17.44,16.79,26.91,26.46-10.51,10.51-14.83,15.34-26.91,27.71.91-17.94-.91-36.23,0-54.17Z"/>
+  </g>
 </svg>
