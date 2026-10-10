@@ -1,0 +1,137 @@
+.pagina {
+  padding-top: 64px;
+  padding-bottom: 72px;
+}
+
+.head {
+  max-width: 720px;
+  margin-bottom: 48px;
+}
+
+.head h1 {
+  font-size: clamp(36px, 7vw, 64px);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.02;
+  margin-top: 14px;
+}
+
+.head p {
+  color: var(--muted);
+  margin-top: 16px;
+  font-size: 17px;
+}
+
+.perfis {
+  display: flex;
+  flex-direction: column;
+  gap: 56px;
+}
+
+.perfil {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: clamp(20px, 4vw, 40px);
+}
+
+.topo {
+  display: grid;
+  gap: 28px;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 800px) {
+  .topo {
+    grid-template-columns: 300px 1fr;
+    align-items: start;
+  }
+}
+
+.foto {
+  width: 100%;
+  max-width: 300px;
+  aspect-ratio: 4 / 5;
+  object-fit: cover;
+  border-radius: var(--radius);
+  display: block;
+}
+
+.texto {
+  min-width: 0;
+}
+
+.texto h2 {
+  font-size: clamp(28px, 4.5vw, 40px);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.funcao {
+  color: var(--accent-ink);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 13px;
+  margin-top: 6px;
+}
+
+.bio {
+  color: var(--ink);
+  opacity: 0.88;
+  margin-top: 16px;
+  line-height: 1.7;
+}
+
+.videos {
+  display: grid;
+  gap: 20px;
+  margin-top: 32px;
+  grid-template-columns: 1fr;
+}
+
+.videos video {
+  width: 100%;
+  display: block;
+  background: #000;
+  border-radius: var(--radius);
+}
+
+.horizontal {
+  aspect-ratio: 16 / 9;
+}
+
+.vertical {
+  aspect-ratio: 9 / 16;
+  max-width: 360px;
+  justify-self: center;
+}
+
+/* Os dois formatos: horizontal largo e vertical ao lado, com a mesma altura. */
+@media (min-width: 800px) {
+  .videos[data-dois="true"] {
+    grid-template-columns: 16fr 5.06fr;
+    align-items: start;
+  }
+
+  .videos[data-dois="true"] .vertical {
+    max-width: none;
+  }
+}
+
+.chamada {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 56px;
+  padding: 24px clamp(20px, 4vw, 40px);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+}
+
+.chamada p {
+  font-size: 20px;
+  font-weight: 700;
+}

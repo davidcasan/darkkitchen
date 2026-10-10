@@ -16,6 +16,7 @@ import { aplicarPersonalizado, cancelarCobranca, confirmarPagamento } from "@/se
 import { salvarConfigPix } from "@/server/services/pix";
 import { definirPadraoPrecos, salvarPrecos } from "@/server/services/precos";
 import { usuarioPorId } from "@/server/services/usuarios";
+import { criarPerfil, moverPerfil, removerPerfil, salvarPerfil } from "@/server/services/perfis";
 
 const admin = () => exigirUsuario(["admin"]);
 
@@ -155,4 +156,35 @@ export async function definirPadraoPrecosAction(): Promise<Estado> {
   const u = await admin();
   const r = await rodar(() => definirPadraoPrecos(u));
   return r?.erro ? r : { ok: "Os preços atuais agora são o padrão. \"Restaurar padrão\" volta para eles." };
+}
+
+// ---------- Quem somos ----------
+
+export async function criarPerfilAction(_: Estado, fd: FormData): Promise<Estado> {
+  const u = await admin();
+  return rodar(() => criarPerfil(u, { nome: campo(fd, "nome"), funcao: campo(fd, "funcao"), bio: campo(fd, "bio") }), "Perfil criado.");
+}
+
+export async function salvarPerfilAction(_: Estado, fd: FormData): Promise<Estado> {
+  const u = await admin();
+  return rodar(
+    () =>
+      salvarPerfil(u, campoNumero(fd, "id"), {
+        nome: campo(fd, "nome"),
+        funcao: campo(fd, "funcao"),
+        bio: campo(fd, "bio"),
+        visivel: campo(fd, "visivel") === "1",
+      }),
+    "Perfil salvo.",
+  );
+}
+
+export async function moverPerfilAction(_: Estado, fd: FormData): Promise<Estado> {
+  const u = await admin();
+  return rodar(() => moverPerfil(u, campoNumero(fd, "id"), campo(fd, "direcao") === "-1" ? -1 : 1));
+}
+
+export async function removerPerfilAction(_: Estado, fd: FormData): Promise<Estado> {
+  const u = await admin();
+  return rodar(() => removerPerfil(u, campoNumero(fd, "id")), "Perfil removido.");
 }

@@ -256,6 +256,21 @@ CREATE TABLE IF NOT EXISTS atendimento_leituras (
   ultima_lida INTEGER NOT NULL,
   PRIMARY KEY (usuario_id, cliente_id, pedido_chave)
 );
+-- Quem somos (out/2026): perfis de colaboradores-chave mostrados no site.
+-- Mídias em data/arquivos/perfis (só o nome do arquivo fica aqui); vídeos opcionais.
+CREATE TABLE IF NOT EXISTS perfis (
+  id INTEGER PRIMARY KEY,
+  nome TEXT NOT NULL,
+  funcao TEXT NOT NULL DEFAULT '',
+  bio TEXT NOT NULL DEFAULT '',
+  foto TEXT,
+  video_16x9 TEXT,
+  video_9x16 TEXT,
+  ordem INTEGER NOT NULL DEFAULT 0,
+  visivel INTEGER NOT NULL DEFAULT 1,
+  criado_em TEXT NOT NULL DEFAULT (datetime('now')),
+  atualizado_em TEXT NOT NULL DEFAULT (datetime('now'))
+);
 `;
 
 type GlobalDb = typeof globalThis & { __dkDb?: DatabaseSync };

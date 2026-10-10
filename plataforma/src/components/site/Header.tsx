@@ -10,6 +10,7 @@ const LINKS = [
   { href: "/#como-funciona", label: "Como funciona" },
   { href: "/#planos", label: "Planos" },
   { href: "/#duvidas", label: "Dúvidas" },
+  { href: "/quem-somos", label: "Quem somos" },
 ];
 
 export function Header({ area }: { area: string | null }) {

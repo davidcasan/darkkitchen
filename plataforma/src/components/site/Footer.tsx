@@ -17,6 +17,7 @@ export function Footer() {
             <Link href="/#servicos">Cardápio</Link>
             <Link href="/#planos">Planos</Link>
             <Link href="/#duvidas">Dúvidas</Link>
+            <Link href="/quem-somos">Quem somos</Link>
           </div>
           <div>
             <p className={styles.h}>Acesso</p>
