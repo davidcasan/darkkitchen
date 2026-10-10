@@ -14,6 +14,7 @@ export interface Briefing {
   nome: string; // nome curto do pedido, opcional
   // Contexto
   objetivo: string | null;
+  objetivoOutro: string; // com objetivo "Outro": o cliente explica o job
   publico: string;
   plataformas: string[];
   cta: string;
@@ -41,7 +42,8 @@ export interface Briefing {
   // Estilo
   estilo: string[];
   refs: Referencia[];
-  tom: string | null;
+  tons: string[]; // até MAX_ESCOLHAS (antes de out/2026 era um só, no campo "tom")
+  tomOutro: string; // com tom "Outro"
   evitar: string;
   // Prazo
   prazo: "padrao" | "urgente";
@@ -52,7 +54,7 @@ export interface Briefing {
 export const ETAPAS = ["Tipo", "Contexto", "Técnico", "Conteúdo", "Marca", "Estilo", "Prazo", "Revisão"] as const;
 
 export const OPCOES = {
-  objetivos: ["Vender produto", "Divulgar evento", "Explicar serviço", "Fortalecer marca", "Comunicação interna"],
+  objetivos: ["Vender produto", "Divulgar evento", "Explicar serviço", "Fortalecer marca", "Comunicação interna", "Outro"],
   plataformas: ["Instagram Reels", "Stories", "Feed", "TikTok", "YouTube", "YouTube Shorts", "LinkedIn", "Anúncio pago"],
   usosLogo: ["Abertura de vídeos", "Fim de vídeos", "Redes sociais", "Apresentações", "Site"],
   formatos: [
@@ -63,8 +65,48 @@ export const OPCOES = {
   ] as [string, string][],
   revelacoes: ["Montagem por partes", "Desenho do traço", "Revelação com luz", "Transformação de forma", "A critério do designer"],
   vozes: ["Feminina jovem", "Feminina madura", "Masculina jovem", "Masculina madura"],
-  estilos: ["Tipografia animada", "Flat 2D", "3D", "Colagem", "Minimalista", "Com personagens"],
-  tons: ["Energético", "Divertido", "Sofisticado", "Sério", "Emocional"],
+  estilos: [
+    "Tipografia animada",
+    "Colagem",
+    "Minimalista",
+    "Animação de personagem",
+    "Clean",
+    "Orgânica",
+    "Tech",
+    "Vintage",
+    "Vibrante",
+    "Luxo",
+    "Corporativo",
+    "Lúdico",
+    "Ilustrado",
+    "Industrial",
+    "Urbano",
+    "Campo",
+    "Natureza",
+    "Cultura POP",
+    "Geométrico",
+    "Abstrato",
+    "Artesanal",
+    "Futurista",
+  ],
+  tons: [
+    "Manifesto",
+    "Problema",
+    "Solução",
+    "Transformação",
+    "Processo",
+    "Tutorial",
+    "Sensorial",
+    "Depoimento",
+    "Humor",
+    "Inspiracional",
+    "Dinâmico",
+    "Contemplativo",
+    "Comparativo",
+    "Realista",
+    "Teaser",
+    "Outro",
+  ],
 };
 
 /**
@@ -103,6 +145,24 @@ export function formatosAoMudarPlataformas(formatos: string[], antes: string[], 
   return ordemFormatos([...formatos.filter((f) => agora.includes(f) || !eram.includes(f)), ...agora]);
 }
 
+/** Estilo de animação e tom: o cliente escolhe até este número de opções em cada um. */
+export const MAX_ESCOLHAS = 5;
+
+export const OUTRO = "Outro";
+
+/** Objetivo e tons para mostrar, com o texto do "Outro" no lugar. */
+export const objetivoTexto = (b: Briefing) => (b.objetivo === OUTRO && b.objetivoOutro.trim() ? `Outro: ${b.objetivoOutro.trim()}` : b.objetivo);
+export const tonsTexto = (b: Briefing) =>
+  b.tons.map((t) => (t === OUTRO && b.tomOutro.trim() ? `Outro: ${b.tomOutro.trim()}` : t)).join(", ");
+
+/** Briefing guardado (pedido ou rascunho) no formato atual: campos novos com o padrão e o tom antigo (um só) virando lista. */
+export function atualizarBriefing(salvo: Partial<Briefing> & { tom?: unknown }): Briefing {
+  const { tom, ...resto } = salvo;
+  const b = { ...briefingVazio(), ...resto };
+  if (!Array.isArray(salvo.tons)) b.tons = typeof tom === "string" && tom ? [tom] : [];
+  return b;
+}
+
 export const LOCUCAO = "Com locução";
 export const SO_TRILHA = "Só trilha";
 export const TRILHA_EFEITOS = "Trilha e efeitos";
@@ -112,6 +172,7 @@ export function briefingVazio(): Briefing {
     tipo: null,
     nome: "",
     objetivo: null,
+    objetivoOutro: "",
     publico: "",
     plataformas: [],
     cta: "",
@@ -135,7 +196,8 @@ export function briefingVazio(): Briefing {
     visual: null,
     estilo: [],
     refs: [{ url: "", gosta: "" }],
-    tom: null,
+    tons: [],
+    tomOutro: "",
     evitar: "",
     prazo: "padrao",
     aprovador: "",
@@ -235,7 +297,13 @@ export function errosDaEtapa(b: Briefing, etapa: number): string[] {
       break;
     case 1:
       if (logo) e.push(!b.uso.length && "uso");
-      else e.push(!b.objetivo && "objetivo", vazio(b.publico) && "publico", !b.plataformas.length && "plataformas");
+      else
+        e.push(
+          !b.objetivo && "objetivo",
+          b.objetivo === OUTRO && vazio(b.objetivoOutro) && "objetivoOutro",
+          vazio(b.publico) && "publico",
+          !b.plataformas.length && "plataformas",
+        );
       break;
     case 2:
       e.push(
@@ -258,7 +326,7 @@ export function errosDaEtapa(b: Briefing, etapa: number): string[] {
       e.push(!b.marcaId && "marca", !b.arquivos.logo.length && "logo", !b.visual && "visual");
       break;
     case 5:
-      e.push(!b.estilo.length && "estilo", !b.tom && "tom");
+      e.push(!b.estilo.length && "estilo", !b.tons.length && "tom", b.tons.includes(OUTRO) && vazio(b.tomOutro) && "tomOutro");
       break;
     case 6:
       e.push(vazio(b.aprovador) && "aprovador", !/^\S+@\S+\.\S+$/.test(b.email) && "email");
@@ -277,6 +345,6 @@ export function primeiraEtapaInvalida(b: Briefing): number {
 export function nomeDoPedido(b: Briefing): string {
   if (b.nome.trim()) return b.nome.trim().slice(0, 80);
   const peca = pecaDo(b);
-  const extra = b.tipo === "logo" ? b.uso[0] : b.objetivo;
+  const extra = b.tipo === "logo" ? b.uso[0] : b.objetivo === OUTRO ? b.objetivoOutro.trim().slice(0, 40) || null : b.objetivo;
   return [peca?.nome, extra].filter(Boolean).join(" · ");
 }

@@ -1,4 +1,4 @@
-import { type Briefing, type LinhaCredito, LOCUCAO, contarPalavras, limitePalavras, pecaDo } from "@/domain/briefing";
+import { type Briefing, type LinhaCredito, LOCUCAO, contarPalavras, limitePalavras, objetivoTexto, pecaDo, tonsTexto } from "@/domain/briefing";
 import type { Arquivo } from "@/server/services/arquivos";
 import { formatarTamanho, urlArquivo } from "./upload";
 import styles from "./BriefingResumo.module.css";
@@ -77,7 +77,7 @@ export function BriefingResumo({
           logo
             ? [["Usos da vinheta", b.uso.join(", ")]]
             : [
-                ["Objetivo", b.objetivo],
+                ["Objetivo", objetivoTexto(b)],
                 ["Público", b.publico],
                 ["Onde publica", b.plataformas.join(", ")],
                 ["Chamada para ação", b.cta],
@@ -138,7 +138,7 @@ export function BriefingResumo({
         titulo="Estilo"
         linhas={[
           ["Animação", b.estilo.join(", ")],
-          ["Tom", b.tom],
+          ["Tom", tonsTexto(b)],
           [
             "Referências",
             b.refs.some((r) => r.url) ? (

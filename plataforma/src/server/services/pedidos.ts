@@ -10,6 +10,8 @@ import {
   pecaDo,
   primeiraEtapaInvalida,
   ETAPAS,
+  MAX_ESCOLHAS,
+  atualizarBriefing,
 } from "@/domain/briefing";
 import {
   type Acao,
@@ -129,6 +131,7 @@ export function normalizarBriefing(raw: unknown): Briefing {
     tipo: pecaDo({ tipo: r.tipo as Briefing["tipo"] }) ? (r.tipo as Briefing["tipo"]) : null,
     nome: texto(r.nome, 80),
     objetivo: opcional(r.objetivo),
+    objetivoOutro: texto(r.objetivoOutro, 1000),
     publico: texto(r.publico, 300),
     plataformas: lista(r.plataformas),
     cta: texto(r.cta, 300),
@@ -150,11 +153,12 @@ export function normalizarBriefing(raw: unknown): Briefing {
     arquivos: { logo: ids(arq.logo), manual: ids(arq.manual), fotos: ids(arq.fotos) },
     cores: lista(r.cores, 5).filter((c) => /^#[0-9a-f]{6}$/i.test(c)),
     visual: r.visual === "padrao" || r.visual === "especial" ? r.visual : null,
-    estilo: lista(r.estilo, 2),
+    estilo: lista(r.estilo, MAX_ESCOLHAS),
     refs: Array.isArray(r.refs)
       ? r.refs.slice(0, 4).map((x) => ({ url: texto((x as Referencia)?.url, 500), gosta: texto((x as Referencia)?.gosta, 500) }))
       : [],
-    tom: opcional(r.tom),
+    tons: lista(r.tons, MAX_ESCOLHAS),
+    tomOutro: texto(r.tomOutro, 300),
     evitar: texto(r.evitar, 500),
     prazo: r.prazo === "urgente" ? "urgente" : "padrao",
     aprovador: texto(r.aprovador, 120),
@@ -330,7 +334,7 @@ export function pedidoParaUsuario(id: number, usuario: Usuario): PedidoDetalhe {
   const { briefing, creditos_detalhe, ...resto } = p;
   return {
     ...resto,
-    briefing: JSON.parse(briefing) as Briefing,
+    briefing: atualizarBriefing(JSON.parse(briefing)),
     linhasCreditos: creditos_detalhe ? (JSON.parse(creditos_detalhe) as LinhaCredito[]) : null,
     versoes,
     comentarios,

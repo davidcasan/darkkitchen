@@ -91,7 +91,7 @@ export async function popularSeVazio() {
       legendas: "Sim",
       cenas: ["Texto: Coleção Verão", "Três looks com transição rápida", "Texto: até 30% off", "Logo e link na bio"],
       estilo: ["Tipografia animada"],
-      tom: "Energético",
+      tons: ["Dinâmico"],
       refs: [{ url: "https://www.instagram.com/reel/exemplo", gosta: "O ritmo rápido das transições" }],
     }),
   );
@@ -113,7 +113,7 @@ export async function popularSeVazio() {
       audio: "Efeito sonoro de assinatura",
       revelacao: "Transformação de forma",
       estilo: ["Minimalista"],
-      tom: "Sofisticado",
+      tons: ["Contemplativo"],
     }),
   );
   atribuirDesigner(caio, vinheta.id, rafa.id);
@@ -138,8 +138,8 @@ export async function popularSeVazio() {
       audio: "Só trilha",
       legendas: "Não",
       cenas: ["Texto: Lançamento", "Data e endereço da loja"],
-      estilo: ["Flat 2D"],
-      tom: "Divertido",
+      estilo: ["Vibrante"],
+      tons: ["Humor"],
     }),
   );
   atribuirDesigner(caio, post.id, rafa.id);
@@ -163,8 +163,8 @@ export async function popularSeVazio() {
       locucao: "Comprar na Verão Moda ficou ainda mais fácil. Escolha seu look, finalize em dois cliques e receba em casa.",
       legendas: "Sim",
       cenas: ["Tela do site", "Escolhendo um look", "Pagamento rápido", "Entrega em casa"],
-      estilo: ["Flat 2D", "Tipografia animada"],
-      tom: "Divertido",
+      estilo: ["Ilustrado", "Tipografia animada"],
+      tons: ["Humor"],
     }),
   );
   atribuirDesigner(caio, explicativo.id, rafa.id);
@@ -186,7 +186,7 @@ export async function popularSeVazio() {
       semRoteiro: true,
       ideia: "Contagem regressiva para a Black Friday com 50% de desconto em toda a loja.",
       estilo: ["Tipografia animada"],
-      tom: "Energético",
+      tons: ["Dinâmico"],
       prazo: "urgente",
     }),
   );

@@ -11,8 +11,13 @@ import {
   LOCUCAO,
   SO_TRILHA,
   TRILHA_EFEITOS,
+  MAX_ESCOLHAS,
   OPCOES,
+  OUTRO,
   PROPORCAO_DA_PLATAFORMA,
+  atualizarBriefing,
+  objetivoTexto,
+  tonsTexto,
   briefingVazio,
   formatosAoMudarPlataformas,
   proporcoesDe,
@@ -244,7 +249,7 @@ export function Wizard({
   const continuarRascunho = () => {
     try {
       const r = JSON.parse(rascunho ?? "") as { b: Briefing; etapa: number; max: number; nomes: Record<number, string> };
-      setB({ ...inicial, ...r.b });
+      setB(atualizarBriefing({ ...inicial, ...r.b }));
       setEtapa(Math.min(r.etapa ?? 0, 7));
       setMax(Math.min(r.max ?? 0, 7));
       setNomes((n) => ({ ...r.nomes, ...n }));
@@ -295,11 +300,12 @@ export function Wizard({
     setB((x) => ({ ...x, [k]: v }));
     setErros((e) => e.filter((x) => x !== k));
   };
-  const alternar = (k: "plataformas" | "uso" | "formatos" | "estilo", v: string) => {
+  const alternar = (k: "plataformas" | "uso" | "formatos" | "estilo" | "tons", v: string) => {
     setB((x) => {
       const atual = x[k];
-      let novo = atual.includes(v) ? atual.filter((y) => y !== v) : [...atual, v];
-      if (k === "estilo" && novo.length > 2) novo = novo.slice(-2);
+      // Estilo e tom: no máximo MAX_ESCOLHAS; com o limite cheio, só desmarca.
+      if ((k === "estilo" || k === "tons") && !atual.includes(v) && atual.length >= MAX_ESCOLHAS) return x;
+      const novo = atual.includes(v) ? atual.filter((y) => y !== v) : [...atual, v];
       // Onde vai publicar define as proporções (próxima etapa).
       if (k === "plataformas") return { ...x, plataformas: novo, formatos: formatosAoMudarPlataformas(x.formatos, atual, novo) };
       return { ...x, [k]: novo };
@@ -501,6 +507,17 @@ export function Wizard({
                     ))}
                   </div>
                 </Campo>
+                {b.objetivo === OUTRO && (
+                  <Campo id="objetivoOutro" label="Explique o job" hint="Conte com suas palavras o que a peça precisa fazer." erro="Explique o objetivo do job.">
+                    <textarea
+                      className="txt"
+                      rows={3}
+                      value={b.objetivoOutro}
+                      placeholder="Quero um vídeo para apresentar a nova sede da empresa aos funcionários e parceiros."
+                      onChange={(e) => set("objetivoOutro", e.target.value)}
+                    />
+                  </Campo>
+                )}
                 <Campo id="publico" label="Quem vai assistir" hint="Idade, perfil e o que essa pessoa já sabe sobre o produto.">
                   <input
                     className="txt"
@@ -873,7 +890,12 @@ export function Wizard({
       case 5:
         return (
           <>
-            <Campo id="estilo" label="Estilo de animação" hint="Pode combinar até dois." erro="Escolha pelo menos um estilo.">
+            <Campo
+              id="estilo"
+              label="Estilo de animação"
+              hint={`Escolha até ${MAX_ESCOLHAS} opções (${b.estilo.length} de ${MAX_ESCOLHAS}).`}
+              erro="Escolha pelo menos um estilo."
+            >
               <div className="chips">
                 {OPCOES.estilos.map((o) => (
                   <Chip key={o} on={b.estilo.includes(o)} onClick={() => alternar("estilo", o)}>
@@ -915,15 +937,20 @@ export function Wizard({
                 </button>
               )}
             </Campo>
-            <Campo id="tom" label="Tom" erro="Escolha um tom.">
+            <Campo id="tom" label="Tom" hint={`Escolha até ${MAX_ESCOLHAS} opções (${b.tons.length} de ${MAX_ESCOLHAS}).`} erro="Escolha pelo menos um tom.">
               <div className="chips">
                 {OPCOES.tons.map((o) => (
-                  <Chip key={o} on={b.tom === o} onClick={() => set("tom", o)}>
+                  <Chip key={o} on={b.tons.includes(o)} onClick={() => alternar("tons", o)}>
                     {o}
                   </Chip>
                 ))}
               </div>
             </Campo>
+            {b.tons.includes(OUTRO) && (
+              <Campo id="tomOutro" label="Qual tom?" erro="Descreva o tom que você quer.">
+                <input className="txt" value={b.tomOutro} placeholder="Nostálgico, com cara de filme antigo" onChange={(e) => set("tomOutro", e.target.value)} />
+              </Campo>
+            )}
             <Campo id="evitar" label="O que evitar" opcional hint="Às vezes é mais útil que dizer o que você quer.">
               <input className="txt" value={b.evitar} placeholder="Efeitos 3D e cores neon" onChange={(e) => set("evitar", e.target.value)} />
             </Campo>
@@ -1002,7 +1029,7 @@ export function Wizard({
                 ? [["Nome", b.nome], ["Usos", b.uso.join(", ")]]
                 : [
                     ["Nome", b.nome],
-                    ["Objetivo", b.objetivo],
+                    ["Objetivo", objetivoTexto(b)],
                     ["Público", b.publico],
                     ["Onde", b.plataformas.join(", ")],
                     ["Chamada", b.cta],
@@ -1033,7 +1060,7 @@ export function Wizard({
             ])}
             {linha(5, [
               ["Estilo", b.estilo.join(", ")],
-              ["Tom", b.tom],
+              ["Tom", tonsTexto(b)],
               ["Referências", b.refs.filter((r) => r.url).map((r) => r.url + (r.gosta ? ` (${r.gosta})` : "")).join("; ")],
               ["Evitar", b.evitar],
             ])}
