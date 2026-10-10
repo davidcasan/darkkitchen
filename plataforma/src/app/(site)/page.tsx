@@ -122,7 +122,10 @@ export default function Home() {
       <section id="servicos" className={`container ${styles.section}`}>
         <div className={styles.head}>
           <span className="eyebrow">Cardápio</span>
-          <h2>Escolha o prato. A gente acende a brasa.</h2>
+          <h2>
+            Escolha o prato.
+            <br />A gente acende a brasa.
+          </h2>
           <p>Cada peça já vem com escopo, prazo e rodadas de ajuste definidos. Você escolhe, descreve e recebe.</p>
         </div>
         <div className={styles.cards}>
