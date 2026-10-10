@@ -17,9 +17,10 @@ import { ipDe } from "@/server/ip";
 export async function entrarAction(_: Estado, fd: FormData): Promise<Estado> {
   let destino = "/";
   const r = await rodar(async () => {
-    const u = autenticar(campo(fd, "email"), campo(fd, "senha"), ipDe(await headers()));
+    const ip = ipDe(await headers());
+    const u = autenticar(campo(fd, "email"), campo(fd, "senha"), ip);
     await iniciarSessaoWeb(u.id);
-    registrarLogin(u, "site");
+    registrarLogin(u, "site", ip);
     destino = areaDo(u.papel);
   });
   if (r?.erro) return r;
@@ -33,17 +34,21 @@ export async function cadastrarAction(_: Estado, fd: FormData): Promise<Estado> 
     const personalizado = campo(fd, "plano") === PLANO_PERSONALIZADO; // sem pagamento no cadastro
     if (!personalizado && metodo === "cartao" && !/^\d{4}$/.test(final))
       throw new ErroNegocio("Informe os 4 últimos dígitos do cartão.");
+    const h = await headers();
+    const ip = ipDe(h);
     const u = cadastrarCliente({
       nome: campo(fd, "nome"),
       empresa: campo(fd, "empresa"),
+      documento: campo(fd, "documento"),
       email: campo(fd, "email"),
       senha: campo(fd, "senha"),
       planoId: campo(fd, "plano"),
       metodo,
       cartaoFinal: final,
+      aceite: { versao: Number(campo(fd, "aceite")) || 0, ip, navegador: h.get("user-agent") ?? "" },
     });
     await iniciarSessaoWeb(u.id);
-    registrarLogin(u, "cadastro");
+    registrarLogin(u, "cadastro", ip);
   });
   if (r?.erro) return r;
   redirect("/cliente?bemvindo=1");

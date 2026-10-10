@@ -61,13 +61,15 @@ export function registrarVisita(dados: { caminho: string; ip: string; navegador:
   return true;
 }
 
-export function registrarLogin(usuario: { id: number; papel: Papel }, origem: "site" | "cadastro" | "app") {
+/** Registra o login (estatística e registro de acesso exigido pelo art. 15 do Marco Civil: data, hora e IP). */
+export function registrarLogin(usuario: { id: number; papel: Papel }, origem: "site" | "cadastro" | "app", ip: string) {
   executar(
-    "INSERT INTO acessos_logins (usuario_id, papel, origem, dia) VALUES (?, ?, ?, ?)",
+    "INSERT INTO acessos_logins (usuario_id, papel, origem, dia, ip) VALUES (?, ?, ?, ?, ?)",
     usuario.id,
     usuario.papel,
     origem,
     diaBrasilia(),
+    ip.slice(0, 64),
   );
 }
 

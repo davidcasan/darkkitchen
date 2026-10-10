@@ -278,6 +278,15 @@ CREATE TABLE IF NOT EXISTS telegram_mensagens (
   criado_em TEXT NOT NULL DEFAULT (datetime('now')),
   PRIMARY KEY (chat_id, msg_id)
 );
+-- Aceite dos Termos de Uso (out/2026): versão aceita, quando e de onde (prova da contratação).
+CREATE TABLE IF NOT EXISTS termos_aceites (
+  id INTEGER PRIMARY KEY,
+  usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+  versao INTEGER NOT NULL,
+  ip TEXT,
+  navegador TEXT,
+  criado_em TEXT NOT NULL DEFAULT (datetime('now'))
+);
 -- Quem somos (out/2026): perfis de colaboradores-chave mostrados no site.
 -- Mídias em data/arquivos/perfis (só o nome do arquivo fica aqui); vídeos opcionais.
 CREATE TABLE IF NOT EXISTS perfis (
@@ -478,6 +487,11 @@ function migrar(d: DatabaseSync) {
     ["imagem_tamanho", "INTEGER"],
   ])
     if (!colMsg.includes(nome)) d.exec(`ALTER TABLE atendimento_mensagens ADD COLUMN ${nome} ${tipo}`);
+  // CPF ou CNPJ de quem contrata (out/2026): só letras e números; um por conta.
+  if (!colunas("usuarios").includes("documento")) d.exec("ALTER TABLE usuarios ADD COLUMN documento TEXT");
+  d.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_usuarios_documento ON usuarios(documento) WHERE documento IS NOT NULL");
+  // Registro de acesso (Marco Civil, art. 15): IP de cada login, guardado por pelo menos 6 meses.
+  if (!colunas("acessos_logins").includes("ip")) d.exec("ALTER TABLE acessos_logins ADD COLUMN ip TEXT");
   // Reativação de pedido concluído ou cancelado (out/2026): quantas vezes, para o selo "Reativado".
   if (!colunas("pedidos").includes("reativacoes")) d.exec("ALTER TABLE pedidos ADD COLUMN reativacoes INTEGER NOT NULL DEFAULT 0");
   // Créditos passam a expirar: o extrato ganha o tipo "expiracao". O SQLite não altera

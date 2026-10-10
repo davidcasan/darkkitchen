@@ -10,6 +10,8 @@ import { CARTAO_ATIVO, adicionarMetodo } from "./pagamentos";
 import { criarMarca } from "./marcas";
 import { LOGIN_EMAIL, LOGIN_IP, conferirLimite, registrarTentativa, zerarTentativas } from "./limites";
 import { enfileirarEmail } from "./email";
+import { conferirDocumento } from "@/domain/documento";
+import { registrarAceite, termosAtuais } from "./termos";
 
 const CAMPOS = "id, papel, nome, email, empresa, senior";
 
@@ -37,6 +39,8 @@ export interface DadosCadastro {
   planoId: string;
   metodo: "cartao" | "pix";
   cartaoFinal?: string;
+  documento: string; // CPF ou CNPJ
+  aceite: { versao: number; ip: string; navegador: string }; // aceite dos Termos de Uso
 }
 
 export function cadastrarCliente(d: DadosCadastro): Usuario {
@@ -45,21 +49,31 @@ export function cadastrarCliente(d: DadosCadastro): Usuario {
   if (nome.length < 2) throw new ErroNegocio("Informe seu nome.");
   if (!/^\S+@\S+\.\S+$/.test(email)) throw new ErroNegocio("Digite um e-mail válido.");
   if (d.senha.length < 8) throw new ErroNegocio("A senha precisa ter pelo menos 8 caracteres.");
+  const doc = conferirDocumento(d.documento);
+  if (!doc.valido) throw new ErroNegocio("Informe um CPF ou CNPJ válido.");
+  const termos = termosAtuais();
+  if (!d.aceite.versao) throw new ErroNegocio("Para criar a conta, aceite os Termos de Uso.");
+  if (d.aceite.versao !== termos.versao)
+    throw new ErroNegocio("Os Termos de Uso foram atualizados enquanto você preenchia. Recarregue a página, leia e aceite a versão nova.");
   const personalizado = d.planoId === PLANO_PERSONALIZADO;
   if (!personalizado && !planoPorId(precos(), d.planoId)?.ativo) throw new ErroNegocio("Escolha um plano.");
   if (!CARTAO_ATIVO) d = { ...d, metodo: "pix" }; // por enquanto, só Pix
   if (!personalizado && d.metodo === "pix" && !pixDisponivel())
     throw new ErroNegocio("O pagamento por Pix ainda não está disponível. Escolha o cartão ou fale com a gente.");
   if (um("SELECT id FROM usuarios WHERE email = ?", email)) throw new ErroNegocio("Já existe uma conta com esse e-mail.");
+  if (um("SELECT id FROM usuarios WHERE documento = ?", doc.numero))
+    throw new ErroNegocio(`Já existe uma conta com esse ${doc.tipo === "cpf" ? "CPF" : "CNPJ"}. Entre com ela ou fale com a gente.`);
 
   return transacao(() => {
     const id = executar(
-      "INSERT INTO usuarios (papel, nome, email, senha_hash, empresa) VALUES ('cliente', ?, ?, ?, ?)",
+      "INSERT INTO usuarios (papel, nome, email, senha_hash, empresa, documento) VALUES ('cliente', ?, ?, ?, ?, ?)",
       nome,
       email,
       hashSenha(d.senha),
       d.empresa.trim() || null,
+      doc.numero,
     ).id;
+    registrarAceite(id, termos.versao, d.aceite.ip, d.aceite.navegador);
     criarMarca(id, d.empresa.trim() || nome);
     enfileirarEmail({
       para: email,

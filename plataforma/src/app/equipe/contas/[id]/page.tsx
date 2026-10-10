@@ -14,8 +14,10 @@ import { Confirmacao } from "@/components/app/Confirmacao";
 import { Enviar, FormAcao } from "@/components/app/FormAcao";
 import { type Papel, PAPEIS } from "@/domain/pedido";
 import { exigirUsuario } from "@/server/auth";
-import { formatarData } from "@/server/datas";
-import { ErroNegocio } from "@/server/db";
+import { formatarData, formatarDataHora } from "@/server/datas";
+import { ErroNegocio, um } from "@/server/db";
+import { formatarDocumento } from "@/domain/documento";
+import { aceitesDo } from "@/server/services/termos";
 import { formatarReais } from "@/domain/catalogo";
 import { PLANO_PERSONALIZADO } from "@/domain/precos";
 import { assinaturaDo, planoDaAssinatura } from "@/server/services/assinaturas";
@@ -87,6 +89,21 @@ export default async function ContaDetalhe({ params, searchParams }: PageProps<"
       </div>
 
       <Confirmacao texto={confirmacao} />
+
+      {cliente && (() => {
+        const documento = um<{ documento: string | null }>("SELECT documento FROM usuarios WHERE id = ?", c.id)?.documento;
+        const aceite = aceitesDo(c.id)[0];
+        return (
+          <p className="small" style={{ marginBottom: 16 }}>
+            <b>{documento ? (documento.length === 11 ? "CPF" : "CNPJ") : "CPF/CNPJ"}:</b> {documento ? formatarDocumento(documento) : "não informado"}
+            {" · "}
+            <b>Termos de Uso:</b>{" "}
+            {aceite
+              ? `versão ${aceite.versao} aceita em ${formatarDataHora(aceite.criado_em)}${aceite.ip ? ` (IP ${aceite.ip})` : ""}`
+              : "sem aceite registrado (conta anterior aos termos)"}
+          </p>
+        );
+      })()}
 
       <div className="grid-kpi" style={{ marginBottom: 16 }}>
         <div className="kpi">

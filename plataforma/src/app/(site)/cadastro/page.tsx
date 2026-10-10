@@ -7,6 +7,7 @@ import { planosAtivos } from "@/domain/precos";
 import { precos } from "@/server/services/precos";
 import { pixDisponivel } from "@/server/services/pix";
 import { CARTAO_ATIVO } from "@/server/services/pagamentos";
+import { termosAtuais } from "@/server/services/termos";
 
 export const metadata: Metadata = { title: "Criar conta" };
 
@@ -25,6 +26,7 @@ export default async function CadastroPage({ searchParams }: PageProps<"/cadastr
           planos={planosAtivos(precos())}
           pix={pixDisponivel()}
           cartao={CARTAO_ATIVO}
+          versaoTermos={termosAtuais().versao}
         />
       </div>
     </section>

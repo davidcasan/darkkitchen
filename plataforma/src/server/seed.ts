@@ -62,6 +62,8 @@ export async function popularSeVazio() {
     planoId: "estudio",
     metodo: "cartao",
     cartaoFinal: "4242",
+    documento: "529.982.247-25", // CPF de teste (válido)
+    aceite: { versao: 1, ip: "seed", navegador: "seed" },
   });
 
   const marcaId = um<{ id: number }>("SELECT id FROM marcas WHERE usuario_id = ?", marina.id)!.id;

@@ -91,3 +91,36 @@
   line-height: 1.5;
   overflow-wrap: anywhere;
 }
+
+.erroCampo {
+  color: var(--danger);
+  font-size: 13px;
+}
+
+.okCampo {
+  color: var(--ok);
+  font-size: 13px;
+}
+
+.aceite {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.aceite input {
+  margin-top: 3px;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  accent-color: var(--accent);
+}
+
+.aceite a {
+  color: var(--accent-ink);
+  text-decoration: underline;
+}

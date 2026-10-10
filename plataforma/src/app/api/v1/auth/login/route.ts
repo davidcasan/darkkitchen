@@ -11,7 +11,7 @@ export async function POST(req: Request) {
     if (!corpo?.email || !corpo?.senha) return falha("Informe e-mail e senha.");
     const usuario = autenticar(corpo.email, corpo.senha, ipDe(req.headers));
     const { token, expira } = criarSessao(usuario.id);
-    registrarLogin(usuario, "app");
+    registrarLogin(usuario, "app", ipDe(req.headers));
     return ok({ token, expiraEm: expira.toISOString(), usuario });
   } catch (e) {
     return tratarErro(e);

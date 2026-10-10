@@ -5,6 +5,7 @@ import { useActionState, useState } from "react";
 import { cadastrarAction, entrarAction } from "@/app/actions/conta";
 import { Enviar } from "@/components/app/FormAcao";
 import { formatarReais } from "@/domain/catalogo";
+import { conferirDocumento, mascaraDocumento } from "@/domain/documento";
 import { PLANO_PERSONALIZADO, type Plano } from "@/domain/precos";
 import styles from "./AuthForm.module.css";
 
@@ -14,12 +15,14 @@ export function AuthForm({
   planos = [],
   pix = false,
   cartao = true,
+  versaoTermos = 1,
 }: {
   modo: "entrar" | "cadastro";
   planoInicial?: string;
   planos?: Plano[];
   pix?: boolean; // Pix configurado pelo admin
   cartao?: boolean; // cartão aceito (desligado por enquanto: só Pix)
+  versaoTermos?: number; // versão dos Termos de Uso que o cliente aceita ao criar a conta
 }) {
   const cadastro = modo === "cadastro";
   const [estado, acao] = useActionState(cadastro ? cadastrarAction : entrarAction, null);
@@ -30,6 +33,10 @@ export function AuthForm({
       : (planos.find((p) => p.destaque) ?? planos[0])?.id;
   const [plano, setPlano] = useState(inicial);
   const personalizado = plano === PLANO_PERSONALIZADO;
+  const [documento, setDocumento] = useState("");
+  const doc = conferirDocumento(documento);
+  const docCompleto = doc.numero.length === 11 || doc.numero.length === 14;
+  const erroDoc = docCompleto && !doc.valido ? `${doc.tipo === "cpf" ? "CPF" : "CNPJ"} inválido. Confira os números.` : null;
 
   return (
     <form className={styles.form} action={acao}>
@@ -42,6 +49,31 @@ export function AuthForm({
           <label className={styles.field}>
             <span>Empresa ou marca</span>
             <input className={styles.txt} name="empresa" autoComplete="organization" required />
+          </label>
+          <label className={styles.field}>
+            <span>CPF ou CNPJ</span>
+            <input
+              className={styles.txt}
+              name="documento"
+              value={documento}
+              onChange={(e) => {
+                const v = mascaraDocumento(e.target.value);
+                setDocumento(v);
+                const c = conferirDocumento(v);
+                // O navegador não deixa enviar enquanto o número não for válido.
+                e.target.setCustomValidity(c.valido ? "" : "Informe um CPF ou CNPJ válido.");
+              }}
+              placeholder="000.000.000-00 ou 00.000.000/0000-00"
+              autoComplete="off"
+              maxLength={18}
+              required
+              aria-invalid={Boolean(erroDoc)}
+            />
+            {erroDoc ? (
+              <small className={styles.erroCampo}>{erroDoc}</small>
+            ) : doc.valido ? (
+              <small className={styles.okCampo}>{doc.tipo === "cpf" ? "CPF" : "CNPJ"} válido ✓</small>
+            ) : null}
           </label>
         </>
       )}
@@ -128,6 +160,19 @@ export function AuthForm({
         <p className={styles.dica} style={{ margin: "-4px 0 0" }}>
           <Link href="/esqueci-senha">Esqueci minha senha</Link>
         </p>
+      )}
+
+      {cadastro && (
+        <label className={styles.aceite}>
+          <input type="checkbox" name="aceite" value={versaoTermos} required />
+          <span>
+            Li e aceito os{" "}
+            <Link href="/termos" target="_blank" rel="noopener">
+              Termos de Uso
+            </Link>{" "}
+            da Dark Kitchen Studio.
+          </span>
+        </label>
       )}
 
       <Enviar enviando={cadastro ? "Criando conta..." : "Entrando..."}>{cadastro ? (personalizado ? "Criar conta" : "Assinar e criar conta") : "Entrar"}</Enviar>

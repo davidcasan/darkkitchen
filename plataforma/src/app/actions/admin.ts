@@ -18,6 +18,7 @@ import { definirPadraoPrecos, salvarPrecos } from "@/server/services/precos";
 import { usuarioPorId } from "@/server/services/usuarios";
 import { criarPerfil, moverPerfil, removerPerfil, salvarPerfil } from "@/server/services/perfis";
 import { desligarTelegram, linkParaLigar } from "@/server/services/telegram";
+import { salvarTermos } from "@/server/services/termos";
 
 const admin = () => exigirUsuario(["admin"]);
 
@@ -205,4 +206,15 @@ export async function linkTelegramAction(): Promise<{ url?: string; erro?: strin
 export async function desligarTelegramAction(): Promise<Estado> {
   const u = await admin();
   return rodar(() => desligarTelegram(u), "Telegram desligado.");
+}
+
+// ---------- Termos de Uso ----------
+
+export async function salvarTermosAction(_: Estado, fd: FormData): Promise<Estado> {
+  const u = await admin();
+  let versao = 0;
+  const r = await rodar(() => {
+    versao = salvarTermos(u, campo(fd, "texto"));
+  });
+  return r?.erro ? r : { ok: `Versão ${versao} publicada. Novos cadastros passam a aceitar esta versão.` };
 }
