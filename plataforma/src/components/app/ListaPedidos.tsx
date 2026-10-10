@@ -25,6 +25,7 @@ export function ListaPedidos({
             <span className="item-titulo">{p.titulo}</span>
             <StatusBadge status={p.status} visao={visao} />
             <span className="item-meta">
+              {p.reativacoes > 0 && <span className="tag tag-reativado">Reativado</span>}
               <span className="tnum">{p.codigo}</span>
               <span>{pecaDo({ tipo: p.tipo as TipoPeca })?.nome}</span>
               {visao === "equipe" && (

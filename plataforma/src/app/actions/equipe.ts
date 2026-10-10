@@ -9,6 +9,7 @@ import {
   cancelarPedido,
   concluirPorDiretor,
   enviarVersao,
+  reativarPedido,
   reprovarQualidade,
 } from "@/server/services/pedidos";
 
@@ -58,4 +59,13 @@ export async function cancelarEquipeAction(_: Estado, fd: FormData): Promise<Est
 export async function concluirAction(_: Estado, fd: FormData): Promise<Estado> {
   const u = await equipe();
   return rodarEIr(() => concluirPorDiretor(u, campoNumero(fd, "pedido"), campo(fd, "motivo")), paginaPedido(fd), "concluido");
+}
+
+export async function reativarAction(_: Estado, fd: FormData): Promise<Estado> {
+  const u = await equipe();
+  return rodarEIr(
+    () => reativarPedido(u, campoNumero(fd, "pedido"), { motivo: campo(fd, "motivo"), cobrar: campo(fd, "cobrar") === "1" }),
+    paginaPedido(fd),
+    "reativado",
+  );
 }

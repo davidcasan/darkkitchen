@@ -31,6 +31,7 @@ const HISTORICO_CLIENTE: Record<string, string> = {
   concluido_equipe: "Pedido concluído pela equipe",
   concluido_gerente: "Pedido concluído pela equipe", // nome antigo do evento
   aprovacao_automatica: "Peça aprovada automaticamente (sem resposta no prazo)",
+  reativado: "Pedido reativado pela equipe",
 };
 
 export default async function PedidoCliente({ params, searchParams }: PageProps<"/cliente/pedidos/[id]">) {
@@ -66,6 +67,7 @@ export default async function PedidoCliente({ params, searchParams }: PageProps<
             <span className="tnum">{p.codigo}</span>
             <StatusBadge status={p.status} visao="cliente" />
             {p.urgente === 1 && <span className="tag">Urgente</span>}
+            {p.reativacoes > 0 && <span className="tag tag-reativado">Reativado</span>}
           </p>
         </div>
         <AbrirAtendimento>Falar com o atendimento</AbrirAtendimento>

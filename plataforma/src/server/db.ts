@@ -441,6 +441,8 @@ function migrar(d: DatabaseSync) {
     ["imagem_tamanho", "INTEGER"],
   ])
     if (!colMsg.includes(nome)) d.exec(`ALTER TABLE atendimento_mensagens ADD COLUMN ${nome} ${tipo}`);
+  // Reativação de pedido concluído ou cancelado (out/2026): quantas vezes, para o selo "Reativado".
+  if (!colunas("pedidos").includes("reativacoes")) d.exec("ALTER TABLE pedidos ADD COLUMN reativacoes INTEGER NOT NULL DEFAULT 0");
   // Créditos passam a expirar: o extrato ganha o tipo "expiracao". O SQLite não altera
   // a regra (CHECK) de uma tabela, então ela é recriada com os mesmos lançamentos.
   const sqlCreditos = (d.prepare("SELECT sql FROM sqlite_master WHERE name = 'creditos'").get() as { sql: string }).sql;

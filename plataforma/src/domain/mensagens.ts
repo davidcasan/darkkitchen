@@ -11,6 +11,7 @@ export const MENSAGENS = {
   rejeitado: "Recebemos. O diretor de arte vai falar com você para recomeçar.",
   cancelado: "Pedido cancelado e créditos devolvidos.",
   concluido: "Pedido concluído. O cliente foi avisado e os arquivos finais estão liberados.",
+  reativado: "Pedido reativado. Ele voltou para a fila com o selo Reativado.",
 } as const;
 
 export type CodigoMensagem = keyof typeof MENSAGENS;

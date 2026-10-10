@@ -7,6 +7,7 @@ import {
   atribuirAction,
   cancelarEquipeAction,
   concluirAction,
+  reativarAction,
   reprovarQualidadeAction,
 } from "@/app/actions/equipe";
 import { BriefingResumo } from "@/components/app/BriefingResumo";
@@ -21,7 +22,7 @@ import { exigirUsuario } from "@/server/auth";
 import { formatarData, formatarDataHora, paraSql } from "@/server/datas";
 import { ErroNegocio, um } from "@/server/db";
 import { arquivosPorIds } from "@/server/services/arquivos";
-import { type Evento, type PedidoDetalhe, pedidoParaUsuario, prazoAprovacaoAutomatica } from "@/server/services/pedidos";
+import { type Evento, type PedidoDetalhe, creditosDevolvidos, pedidoParaUsuario, prazoAprovacaoAutomatica } from "@/server/services/pedidos";
 import { listarDesigners } from "@/server/services/usuarios";
 import styles from "@/app/cliente/pedidos/[id]/pedido.module.css";
 
@@ -55,6 +56,8 @@ function descreverEvento(e: Evento): string {
       return `Concluído pela equipe com a versão ${d.versao}: ${d.motivo}`;
     case "aprovacao_automatica":
       return `Versão ${d.versao} aprovada automaticamente (cliente sem resposta em ${d.dias} dias úteis)`;
+    case "reativado":
+      return `Pedido reativado${Number(d.cobrado) > 0 ? ` (${d.cobrado} créditos cobrados de novo)` : ""}: ${d.motivo}`;
     case "lembrete_aprovacao":
       return "Cliente lembrado: falta 1 dia útil para a aprovação automática";
     default:
@@ -84,6 +87,8 @@ export default async function PedidoEquipe({ params, searchParams }: PageProps<"
   const reprovacao = p.status === "producao" && ultima?.status === "reprovada" ? p.eventos.findLast((e) => e.tipo === "qualidade_reprovada") : undefined;
   const ajusteCliente = p.status === "ajustes" ? p.eventos.findLast((e) => e.tipo === "cliente_ajuste") : undefined;
   const rejeicao = p.status === "triagem" ? p.eventos.findLast((e) => e.tipo === "cliente_rejeitou") : undefined;
+  // Reativado e ainda sem versão nova: mostra o motivo para quem vai produzir.
+  const reativacao = p.eventos.filter((e) => e.para).at(-1)?.tipo === "reativado" ? p.eventos.findLast((e) => e.tipo === "reativado") : undefined;
 
   const acoes: React.ReactNode[] = [];
 
@@ -244,6 +249,45 @@ export default async function PedidoEquipe({ params, searchParams }: PageProps<"
     );
   }
 
+  if (pode("reativar")) {
+    const devolvidos = p.status === "cancelado" ? creditosDevolvidos(p.id) : 0;
+    acoes.push(
+      <section className="card" key="reativar">
+        <h2>Reativar pedido</h2>
+        <p className="muted small" style={{ marginBottom: 12 }}>
+          {p.designer_id
+            ? `O pedido volta para a fila de produção de ${p.designer_nome}`
+            : "Sem designer: o pedido volta para a triagem"}{" "}
+          com o selo Reativado e prazo novo a partir de hoje. O cliente é avisado.
+        </p>
+        <FormAcao action={reativarAction} confirmar="Reativar este pedido?">
+          <input type="hidden" name="pedido" value={p.id} />
+          <div className="field">
+            <label className="label" htmlFor="motivo-reativar">
+              Motivo
+            </label>
+            <textarea
+              id="motivo-reativar"
+              name="motivo"
+              className="txt"
+              required
+              minLength={5}
+              placeholder="Ex.: cliente pediu uma nova versão com o preço atualizado."
+            />
+            <span className="hint">Fica no histórico do pedido e vai no aviso para o designer.</span>
+          </div>
+          {devolvidos > 0 && (
+            <label className="check" style={{ marginBottom: 12 }}>
+              <input type="checkbox" name="cobrar" value="1" />
+              <span>Cobrar de novo os {devolvidos} créditos devolvidos no cancelamento (sem marcar, reativa sem cobrar).</span>
+            </label>
+          )}
+          <Enviar>Reativar pedido</Enviar>
+        </FormAcao>
+      </section>,
+    );
+  }
+
   if (pode("cancelar"))
     acoes.push(
       <section className="card" key="cancelar">
@@ -280,6 +324,7 @@ export default async function PedidoEquipe({ params, searchParams }: PageProps<"
             <span className="tnum">{p.codigo}</span>
             <StatusBadge status={p.status} visao="equipe" />
             {p.urgente === 1 && <span className="tag">Urgente</span>}
+            {p.reativacoes > 0 && <span className="tag tag-reativado">Reativado</span>}
             {escalar && <span className="tag">{p.tentativas_internas} reprovações internas</span>}
           </p>
         </div>
@@ -287,6 +332,11 @@ export default async function PedidoEquipe({ params, searchParams }: PageProps<"
       </div>
 
       <Confirmacao texto={confirmacao} />
+      {reativacao && (
+        <p className="alerta alerta-aviso" style={{ marginBottom: 16 }}>
+          {descreverEvento(reativacao)}
+        </p>
+      )}
 
       <div className="card" style={{ marginBottom: 16 }}>
         <dl className="dl">

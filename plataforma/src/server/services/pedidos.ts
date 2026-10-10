@@ -49,6 +49,7 @@ export interface PedidoResumo {
   revisoes_incluidas: number;
   revisoes_usadas: number;
   tentativas_internas: number;
+  reativacoes: number; // > 0: mostra o selo "Reativado"
   cliente_id: number;
   marca_id: number | null;
   marca_nome: string | null;
@@ -105,7 +106,7 @@ export interface PedidoDetalhe extends PedidoResumo {
 
 const SELECT_RESUMO = `
   SELECT p.id, p.codigo, p.titulo, p.tipo, p.status, p.creditos, p.urgente, p.entrega_prevista,
-         p.criado_em, p.atualizado_em, p.revisoes_incluidas, p.revisoes_usadas, p.tentativas_internas,
+         p.criado_em, p.atualizado_em, p.revisoes_incluidas, p.revisoes_usadas, p.tentativas_internas, p.reativacoes,
          p.cliente_id, c.nome cliente_nome, c.empresa, p.designer_id, d.nome designer_nome, p.marca_id, m.nome marca_nome
   FROM pedidos p
   JOIN usuarios c ON c.id = p.cliente_id
@@ -675,6 +676,52 @@ export function cancelarPedido(usuario: Usuario, pedidoId: number, erroPlataform
     else notificarPapel(["diretor"], `O cliente cancelou o pedido ${p.codigo}.`, linkEquipe(p.id));
   });
   return devolver;
+}
+
+/**
+ * Reativa um pedido aprovado ou cancelado (diretor ou admin, com motivo). Volta para a
+ * produção com o mesmo designer, se ele continua ativo; senão, para a triagem. Prazo
+ * novo a partir de hoje. Num cancelado, a equipe pode cobrar de novo os créditos devolvidos.
+ */
+export function reativarPedido(usuario: Usuario, pedidoId: number, dados: { motivo: string; cobrar: boolean }) {
+  const p = carregarParaAcao(pedidoId, usuario, "reativar");
+  const motivo = dados.motivo.trim().slice(0, 1000);
+  if (motivo.length < 5) throw new ErroNegocio("Explique por que o pedido está sendo reativado.");
+  const devolvidos = p.status === "cancelado" ? creditosDevolvidos(p.id) : 0;
+  const cobrar = dados.cobrar && devolvidos > 0 ? devolvidos : 0;
+  if (cobrar > saldo(p.cliente_id))
+    throw new ErroNegocio(`O cliente tem ${saldo(p.cliente_id)} créditos e a reativação cobraria ${cobrar}. Ajuste os créditos dele ou reative sem cobrar.`);
+  const designerAtivo = p.designer_id
+    ? Boolean(um("SELECT 1 FROM usuarios WHERE id = ? AND ativo = 1", p.designer_id))
+    : false;
+  const para: StatusPedido = designerAtivo ? "producao" : "triagem";
+  const dias = um<{ dias_uteis: number }>("SELECT dias_uteis FROM pedidos WHERE id = ?", p.id)?.dias_uteis ?? 1;
+  transacao(() => {
+    mudarStatus(p, para, {
+      reativacoes: p.reativacoes + 1,
+      entrega_prevista: paraSql(adicionarDiasUteis(new Date(), dias)),
+      ...(designerAtivo ? {} : { designer_id: null }),
+    });
+    if (cobrar > 0) lancar(p.cliente_id, -cobrar, "pedido", `Reativação ${p.codigo}`, { pedidoId: p.id });
+    registrarEvento(p.id, usuario.id, "reativado", p.status, para, { motivo, cobrado: cobrar });
+    notificar(p.cliente_id, `Seu pedido ${p.codigo} foi reativado e voltou para ${para === "producao" ? "produção" : "a fila"}.`, linkCliente(p.id), IMPORTANTE);
+    if (designerAtivo) notificar(p.designer_id!, `O pedido ${p.codigo} foi reativado e voltou para a sua fila: ${motivo}`, linkEquipe(p.id), IMPORTANTE);
+    else notificarPapel(["diretor"], `O pedido ${p.codigo} foi reativado e aguarda um designer na triagem.`, linkEquipe(p.id), IMPORTANTE);
+  });
+  return para;
+}
+
+/** Créditos devolvidos no último cancelamento do pedido (para cobrar de novo ao reativar). */
+export function creditosDevolvidos(pedidoId: number): number {
+  const e = um<{ detalhe: string }>(
+    "SELECT detalhe FROM eventos WHERE pedido_id = ? AND tipo = 'cancelado' ORDER BY id DESC LIMIT 1",
+    pedidoId,
+  );
+  try {
+    return Number(JSON.parse(e?.detalhe ?? "{}").devolvido) || 0;
+  } catch {
+    return 0;
+  }
 }
 
 export function comentar(

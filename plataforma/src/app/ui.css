@@ -300,6 +300,12 @@ textarea.txt {
   color: var(--danger);
 }
 
+/* Selo de pedido reativado (voltou de concluído ou cancelado). */
+.tag-reativado {
+  background: var(--key);
+  color: var(--key-ink);
+}
+
 .alerta-ok {
   background: color-mix(in srgb, var(--ok) 14%, transparent);
   color: var(--ok);
