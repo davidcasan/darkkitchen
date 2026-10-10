@@ -6,7 +6,9 @@ import { exigirUsuario } from "@/server/auth";
 import {
   aprovarQualidade,
   atribuirDesigner,
+  type Devolucao,
   cancelarPedido,
+  cancelarPorAdmin,
   concluirPorDiretor,
   enviarVersao,
   reativarPedido,
@@ -67,5 +69,15 @@ export async function reativarAction(_: Estado, fd: FormData): Promise<Estado> {
     () => reativarPedido(u, campoNumero(fd, "pedido"), { motivo: campo(fd, "motivo"), cobrar: campo(fd, "cobrar") === "1" }),
     paginaPedido(fd),
     "reativado",
+  );
+}
+
+export async function cancelarAdminAction(_: Estado, fd: FormData): Promise<Estado> {
+  const u = await equipe();
+  const devolucao = (["integral", "metade", "nenhuma"].includes(campo(fd, "devolucao")) ? campo(fd, "devolucao") : "integral") as Devolucao;
+  return rodarEIr(
+    () => cancelarPorAdmin(u, campoNumero(fd, "pedido"), { devolucao, motivo: campo(fd, "motivo") }),
+    paginaPedido(fd),
+    "cancelado_admin",
   );
 }

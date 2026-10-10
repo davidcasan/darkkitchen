@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import {
   aprovarQualidadeAction,
   atribuirAction,
+  cancelarAdminAction,
   cancelarEquipeAction,
   concluirAction,
   reativarAction,
@@ -50,7 +51,7 @@ function descreverEvento(e: Evento): string {
     case "cliente_rejeitou":
       return `Rejeição total da versão ${d.versao} (${d.motivo}): ${d.texto}`;
     case "cancelado":
-      return `Pedido cancelado; ${d.devolvido} créditos devolvidos${d.integral ? "" : " (parcial)"}`;
+      return `Pedido cancelado; ${d.devolvido} créditos devolvidos${d.integral ? "" : " (parcial)"}${d.motivo ? `: ${d.motivo}` : ""}`;
     case "concluido_equipe":
     case "concluido_gerente": // nome antigo do evento
       return `Concluído pela equipe com a versão ${d.versao}: ${d.motivo}`;
@@ -288,7 +289,45 @@ export default async function PedidoEquipe({ params, searchParams }: PageProps<"
     );
   }
 
-  if (pode("cancelar"))
+  if (u.papel === "admin" && pode("cancelar_admin")) {
+    // Admin: cancela em qualquer etapa e escolhe a devolução (padrão: tudo sem produção, metade com).
+    const padrao = p.versoes.length === 0 ? "integral" : "metade";
+    const opcoes: [string, string][] = [
+      ["integral", `Devolver tudo (${p.creditos} créditos)`],
+      ["metade", `Devolver metade (${Math.floor(p.creditos / 2)} créditos)`],
+      ["nenhuma", "Não devolver créditos"],
+    ];
+    acoes.push(
+      <section className="card" key="cancelar">
+        <h2>Cancelar pedido</h2>
+        <p className="muted small" style={{ marginBottom: 12 }}>
+          Como admin, você pode cancelar em qualquer etapa. O cliente e o designer são avisados.
+        </p>
+        <FormAcao action={cancelarAdminAction} confirmar="Cancelar este pedido? Ele sai da fila de produção.">
+          <input type="hidden" name="pedido" value={p.id} />
+          <div className="field">
+            <span className="label">Créditos do cliente</span>
+            <div className="stack" style={{ gap: 6 }}>
+              {opcoes.map(([v, rotulo]) => (
+                <label key={v} className="check">
+                  <input type="radio" name="devolucao" value={v} defaultChecked={v === padrao} />
+                  <span>{rotulo}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+          <div className="field">
+            <label className="label" htmlFor="motivo-cancelar">
+              Motivo
+            </label>
+            <textarea id="motivo-cancelar" name="motivo" className="txt" required minLength={5} placeholder="Ex.: cliente desistiu da campanha." />
+            <span className="hint">Fica no histórico e vai no aviso para o designer.</span>
+          </div>
+          <Enviar className="btn btn-danger">Cancelar pedido</Enviar>
+        </FormAcao>
+      </section>,
+    );
+  } else if (pode("cancelar"))
     acoes.push(
       <section className="card" key="cancelar">
         <h2>Cancelar pedido</h2>

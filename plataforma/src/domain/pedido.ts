@@ -58,7 +58,8 @@ export type Acao =
   | "cliente_rejeitar"
   | "concluir"
   | "cancelar"
-  | "reativar";
+  | "reativar"
+  | "cancelar_admin";
 
 interface RegraAcao {
   de: StatusPedido[];
@@ -78,6 +79,12 @@ export const ACOES: Record<Acao, RegraAcao> = {
   cancelar: { de: ["triagem"], para: "cancelado", papeis: ["cliente", "diretor", "admin"] },
   // Volta para a produção (com o mesmo designer) ou, sem designer ativo, para a triagem.
   reativar: { de: ["aprovado", "cancelado"], para: "producao", papeis: ["diretor", "admin"] },
+  // Só o admin: cancela em qualquer etapa, escolhendo quanto devolver.
+  cancelar_admin: {
+    de: ["triagem", "producao", "qualidade", "revisao_cliente", "ajustes", "aprovado"],
+    para: "cancelado",
+    papeis: ["admin"],
+  },
 };
 
 /** O admin pode executar qualquer ação; os demais, só as do seu papel. O status sempre precisa permitir. */

@@ -724,6 +724,36 @@ export function creditosDevolvidos(pedidoId: number): number {
   }
 }
 
+export type Devolucao = "integral" | "metade" | "nenhuma";
+
+/** Cancelamento pelo admin em qualquer etapa (até aprovado), com motivo e a devolução escolhida. */
+export function cancelarPorAdmin(usuario: Usuario, pedidoId: number, dados: { devolucao: Devolucao; motivo: string }) {
+  if (usuario.papel !== "admin") throw new ErroNegocio("Somente o administrador cancela pedidos fora da triagem.", 403);
+  const p = carregarParaAcao(pedidoId, usuario, "cancelar_admin");
+  const motivo = dados.motivo.trim().slice(0, 1000);
+  if (motivo.length < 5) throw new ErroNegocio("Explique por que o pedido está sendo cancelado.");
+  const devolver = dados.devolucao === "integral" ? p.creditos : dados.devolucao === "metade" ? Math.floor(p.creditos / 2) : 0;
+  transacao(() => {
+    mudarStatus(p, "cancelado");
+    if (devolver > 0)
+      lancar(p.cliente_id, devolver, "estorno", `Cancelamento ${p.codigo}${devolver < p.creditos ? " (parcial)" : ""}`, { pedidoId: p.id });
+    registrarEvento(p.id, usuario.id, "cancelado", p.status, "cancelado", {
+      devolvido: devolver,
+      integral: devolver === p.creditos,
+      motivo,
+    });
+    notificar(
+      p.cliente_id,
+      `O pedido ${p.codigo} foi cancelado pela equipe${devolver > 0 ? ` e ${devolver} créditos voltaram para você` : ""}.`,
+      linkCliente(p.id),
+      IMPORTANTE,
+    );
+    if (p.designer_id && p.designer_id !== usuario.id)
+      notificar(p.designer_id, `O pedido ${p.codigo} foi cancelado: ${motivo}`, linkEquipe(p.id), IMPORTANTE);
+  });
+  return devolver;
+}
+
 export function comentar(
   usuario: Usuario,
   pedidoId: number,
