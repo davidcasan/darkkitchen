@@ -82,8 +82,15 @@ Isso cria duas tarefas no Agendador de Tarefas do Windows:
 
 | Tarefa | O que faz |
 |---|---|
-| Dark Kitchen - Servidor | Sobe com o Windows (mesmo sem login) e reinicia se cair |
+| Dark Kitchen - Servidor | Roda a plataforma em segundo plano (mesmo sem login) e reinicia se cair. **Não sobe sozinha com o Windows** (decisão do dono): ligue pelo `iniciar-producao.bat`. Para subir com o Windows, instale com `-IniciarComWindows` |
 | Dark Kitchen - Backup | Todo dia às 3h: cópia do banco e dos arquivos para `BACKUP_DESTINO` |
+
+**Ligar e desligar** (na raiz do projeto, dois cliques; pedem permissão de administrador):
+`iniciar-producao.bat` liga a plataforma e o Caddy; `parar-producao.bat` desliga os dois.
+Pelo PowerShell (como Administrador):
+`Start-ScheduledTask "Dark Kitchen - Servidor"; Start-Service DarkKitchenCaddy` para ligar,
+e `powershell -ExecutionPolicy Bypass -File plataforma\scripts\parar.ps1; Stop-Service DarkKitchenCaddy`
+para desligar. **Depois de reiniciar o Windows, o site fica fora do ar até alguém ligar.**
 
 Teste em alguns segundos: <http://localhost:3000>. O servidor só atende nesta máquina
 (endereço 127.0.0.1); o acesso de fora é pelo Caddy (passo 7).
@@ -109,8 +116,9 @@ HTTPS sozinho (Let's Encrypt) e repassa para a plataforma (127.0.0.1:3000).
    - no painel da UOL Host: **registro A** `darkkitchen.art.br` e `www` → IP público, removendo
      o redirecionamento antigo (**não mexer** nos registros MX/SPF do e-mail).
 3. **Ligar**, só depois do passo 2 (senão o Let's Encrypt bloqueia por tentativas falhas):
-   `Set-Service DarkKitchenCaddy -StartupType Automatic; Start-Service DarkKitchenCaddy`.
-   Confira `C:\darkkitchen\caddy\logs` e abra <https://darkkitchen.art.br>.
+   `iniciar-producao.bat` (ou `Start-Service DarkKitchenCaddy`). O serviço do Caddy fica em
+   modo **manual**, como a plataforma. Confira `C:\darkkitchen\caddy\logs` e abra
+   <https://darkkitchen.art.br>.
 
 Nunca redirecione no roteador a porta do SSH nem a 3000.
 
