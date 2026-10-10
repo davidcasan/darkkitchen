@@ -14,7 +14,7 @@ import {
 } from "@/server/services/contas";
 import { aplicarPersonalizado, cancelarCobranca, confirmarPagamento } from "@/server/services/assinaturas";
 import { salvarConfigPix } from "@/server/services/pix";
-import { salvarPrecos } from "@/server/services/precos";
+import { definirPadraoPrecos, salvarPrecos } from "@/server/services/precos";
 import { usuarioPorId } from "@/server/services/usuarios";
 
 const admin = () => exigirUsuario(["admin"]);
@@ -149,4 +149,10 @@ export async function salvarPrecosAction(tabela: unknown): Promise<Estado> {
     resumo = salvarPrecos(u, tabela);
   });
   return r?.erro ? r : { ok: resumo === "Nada mudou." ? resumo : `Preços atualizados: ${resumo}.` };
+}
+
+export async function definirPadraoPrecosAction(): Promise<Estado> {
+  const u = await admin();
+  const r = await rodar(() => definirPadraoPrecos(u));
+  return r?.erro ? r : { ok: "Os preços atuais agora são o padrão. \"Restaurar padrão\" volta para eles." };
 }

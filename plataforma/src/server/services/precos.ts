@@ -9,10 +9,17 @@ import type { Usuario } from "../auth";
 // Todo o sistema lê daqui: site, cadastro, briefing, assinaturas, créditos e relatórios.
 
 const CHAVE = "precos";
+// Padrão definido pelo admin ("Definir padrão"): o que o "Restaurar padrão" traz de volta.
+const CHAVE_PADRAO = "precos_padrao";
 
 /** Preços em vigor. Campos ausentes no banco (ex.: depois de uma atualização do sistema) vêm do padrão. */
-export function precos(): TabelaPrecos {
-  const linha = um<{ valor: string }>("SELECT valor FROM configuracoes WHERE chave = ?", CHAVE);
+export const precos = (): TabelaPrecos => lerTabela(CHAVE);
+
+/** Padrão para o "Restaurar padrão": o definido pelo admin ou, sem ele, o do sistema. */
+export const padraoPrecos = (): TabelaPrecos => lerTabela(CHAVE_PADRAO);
+
+function lerTabela(chave: string): TabelaPrecos {
+  const linha = um<{ valor: string }>("SELECT valor FROM configuracoes WHERE chave = ?", chave);
   if (!linha) return PRECOS_PADRAO;
   try {
     const salvo = JSON.parse(linha.valor) as Partial<TabelaPrecos> & { adicionais?: { urgenciaPct?: number } };
@@ -123,6 +130,28 @@ export function salvarPrecos(admin: Usuario, raw: unknown): string {
     );
   });
   return resumo;
+}
+
+/** Torna os preços em vigor o novo padrão (volta com "Restaurar padrão"). */
+export function definirPadraoPrecos(admin: Usuario) {
+  if (admin.papel !== "admin") throw new ErroNegocio("Somente o administrador altera os preços.", 403);
+  const valor = JSON.stringify(precos());
+  transacao(() => {
+    executar(
+      `INSERT INTO configuracoes (chave, valor, atualizado_em, atualizado_por) VALUES (?, ?, datetime('now'), ?)
+       ON CONFLICT(chave) DO UPDATE SET valor = excluded.valor, atualizado_em = excluded.atualizado_em, atualizado_por = excluded.atualizado_por`,
+      CHAVE_PADRAO,
+      valor,
+      admin.id,
+    );
+    executar(
+      "INSERT INTO configuracoes_historico (chave, valor, autor_id, resumo) VALUES (?, ?, ?, ?)",
+      CHAVE,
+      valor,
+      admin.id,
+      "Preços atuais definidos como padrão",
+    );
+  });
 }
 
 export interface MudancaPrecos {

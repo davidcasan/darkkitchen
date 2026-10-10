@@ -2,10 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { salvarPrecosAction } from "@/app/actions/admin";
+import { definirPadraoPrecosAction, salvarPrecosAction } from "@/app/actions/admin";
 import { PECAS, formatarReais, type TipoPeca } from "@/domain/catalogo";
 import { type Custos, type FaixaHoras, custoDaFaixa } from "@/domain/custos";
-import { PRECOS_PADRAO, type Plano, type PrazoPeca, type TabelaPrecos, tabelaCreditos } from "@/domain/precos";
+import { type Plano, type PrazoPeca, type TabelaPrecos, tabelaCreditos } from "@/domain/precos";
 import styles from "./precos.module.css";
 
 const pct = (v: number | null) => (v === null || !Number.isFinite(v) ? "—" : `${Math.round(v * 100)}%`);
@@ -44,7 +44,15 @@ function Numero({
   );
 }
 
-export function EditorPrecos({ inicial, assinantes }: { inicial: TabelaPrecos; assinantes: Record<string, number> }) {
+export function EditorPrecos({
+  inicial,
+  padrao,
+  assinantes,
+}: {
+  inicial: TabelaPrecos;
+  padrao: TabelaPrecos;
+  assinantes: Record<string, number>;
+}) {
   const router = useRouter();
   const [t, setT] = useState<TabelaPrecos>(inicial);
   const [estado, setEstado] = useState<{ salvando: boolean; erro?: string; ok?: string }>({ salvando: false });
@@ -100,9 +108,18 @@ export function EditorPrecos({ inicial, assinantes }: { inicial: TabelaPrecos; a
   }
 
   const restaurar = () => {
-    if (!window.confirm("Voltar todos os valores para o padrão do sistema? Nada é salvo até você clicar em Salvar.")) return;
-    setT(PRECOS_PADRAO);
+    if (!window.confirm("Voltar todos os valores para o padrão? Nada é salvo até você clicar em Salvar.")) return;
+    setT(padrao);
   };
+
+  async function definirPadrao() {
+    if (!window.confirm("Usar os preços salvos agora como padrão? O \"Restaurar padrão\" passa a voltar para eles.")) return;
+    setEstado({ salvando: true });
+    const r = await definirPadraoPrecosAction();
+    setEstado(r?.erro ? { salvando: false, erro: r.erro } : { salvando: false, ok: r?.ok });
+    router.refresh();
+  }
+  const ehPadrao = JSON.stringify(inicial) === JSON.stringify(padrao);
 
   /** Atividades de referência para mostrar quanto cada plano rende. */
   const referencias: { rotulo: string; tipo: TipoPeca; faixa: number }[] = [
@@ -378,6 +395,15 @@ export function EditorPrecos({ inicial, assinantes }: { inicial: TabelaPrecos; a
         <span className="row">
           <button type="button" className="link small" onClick={restaurar}>
             Restaurar padrão
+          </button>
+          <button
+            type="button"
+            className="link small"
+            onClick={definirPadrao}
+            disabled={estado.salvando || alterado || ehPadrao}
+            title={alterado ? "Salve as alterações antes de defini-las como padrão." : ehPadrao ? "Os preços salvos já são o padrão." : undefined}
+          >
+            Definir padrão
           </button>
           <button type="button" className="btn btn-primary" onClick={salvar} disabled={estado.salvando || !alterado}>
             {estado.salvando ? "Salvando..." : "Salvar preços"}

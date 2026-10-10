@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { exigirUsuario } from "@/server/auth";
 import { formatarDataHora } from "@/server/datas";
-import { assinantesPorPlano, historicoPrecos, precos } from "@/server/services/precos";
+import { assinantesPorPlano, historicoPrecos, padraoPrecos, precos } from "@/server/services/precos";
 import { EditorPrecos } from "./EditorPrecos";
 
 export const metadata: Metadata = { title: "Preços" };
@@ -24,7 +24,7 @@ export default async function PrecosPage() {
         </div>
       </div>
 
-      <EditorPrecos inicial={precos()} assinantes={assinantesPorPlano()} />
+      <EditorPrecos inicial={precos()} padrao={padraoPrecos()} assinantes={assinantesPorPlano()} />
 
       <section className="card" style={{ marginTop: 16 }}>
         <h2>Histórico de alterações</h2>
