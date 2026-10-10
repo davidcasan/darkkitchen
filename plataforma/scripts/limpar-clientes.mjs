@@ -4,7 +4,9 @@
 //
 // Apaga: clientes; pedidos, versões, comentários e histórico deles; créditos, faturas,
 // assinaturas, formas de pagamento; marcas e arquivos (no disco também); conversas do
-// atendimento e imagens; notificações e e-mails na fila; sessões e bloqueios de login.
+// atendimento e imagens; notificações e e-mails na fila; sessões e bloqueios de login;
+// aceites dos Termos de Uso; mensagens do Telegram ligadas a esses clientes.
+// Nunca toca nas mídias do Quem somos (data/arquivos/perfis).
 //
 // Uso (na pasta plataforma, de preferência com o servidor parado):
 //   node scripts/limpar-clientes.mjs              só mostra o que seria apagado
@@ -84,6 +86,8 @@ console.log(`  ${String(numero("SELECT COUNT(*) n FROM usuarios WHERE papel != '
 console.log(`  ${String(numero("SELECT COUNT(*) n FROM configuracoes")).padStart(5)}  configurações (preços e planos, Pix, chave das estatísticas)`);
 console.log(`  ${String(numero("SELECT COUNT(*) n FROM configuracoes_historico")).padStart(5)}  registros do histórico de preços`);
 console.log(`  ${String(numero("SELECT COUNT(*) n FROM acessos_visitas")).padStart(5)}  visitas registradas (anônimas)`);
+console.log(`  ${String(numero("SELECT COUNT(*) n FROM perfis")).padStart(5)}  perfis do Quem somos (com foto e vídeos)`);
+console.log(`  ${String(numero("SELECT COUNT(*) n FROM telegram_destinos")).padStart(5)}  Telegram ligado (admins)`);
 
 if (!confirmar) {
   console.log("\nPara apagar de verdade: node scripts/limpar-clientes.mjs --confirmar");
@@ -118,6 +122,8 @@ try {
   apagar(`DELETE FROM marcas WHERE usuario_id IN (${inC})`);
   apagar(`DELETE FROM senha_tokens WHERE usuario_id IN (${inC})`);
   apagar(`DELETE FROM acessos_logins WHERE usuario_id IN (${inC})`);
+  apagar(`DELETE FROM termos_aceites WHERE usuario_id IN (${inC})`);
+  apagar(`DELETE FROM telegram_mensagens WHERE cliente_id IN (${inC})`);
   apagar(`DELETE FROM sessoes WHERE usuario_id IN (${inC})`);
   // Notificações: as dos clientes e as da equipe, que falam de pedidos e clientes apagados.
   apagar("DELETE FROM notificacoes");
@@ -148,11 +154,14 @@ const emUso = new Set([
   ...lista("SELECT caminho c FROM arquivos").map((r) => path.normalize(r.c)),
   ...lista("SELECT imagem_caminho c FROM atendimento_mensagens WHERE imagem_caminho IS NOT NULL").map((r) => path.normalize(r.c)),
 ]);
+// Mídias do Quem somos (foto e vídeos da equipe) não são de cliente: a pasta fica de fora.
+const PASTA_PERFIS = path.join(pastaArquivos, "perfis");
 function varrer(pasta) {
-  if (!fs.existsSync(pasta)) return;
+  if (!fs.existsSync(pasta) || path.resolve(pasta) === path.resolve(PASTA_PERFIS)) return;
   for (const item of fs.readdirSync(pasta, { withFileTypes: true })) {
     const arq = path.join(pasta, item.name);
     if (item.isDirectory()) {
+      if (path.resolve(arq) === path.resolve(PASTA_PERFIS)) continue;
       varrer(arq);
       if (!fs.readdirSync(arq).length) fs.rmdirSync(arq);
     } else if (!emUso.has(path.relative(pastaArquivos, arq))) {
