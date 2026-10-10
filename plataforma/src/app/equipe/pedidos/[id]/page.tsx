@@ -109,7 +109,7 @@ export default async function PedidoEquipe({ params, searchParams }: PageProps<"
               {designers.map((d) => (
                 <option key={d.id} value={d.id}>
                   {d.nome}
-                  {d.senior ? " (sênior)" : ""} · {d.ativos} {d.ativos === 1 ? "pedido ativo" : "pedidos ativos"}
+                  {d.papel === "admin" ? " (admin, sênior)" : d.senior ? " (sênior)" : ""} · {d.ativos} {d.ativos === 1 ? "pedido ativo" : "pedidos ativos"}
                 </option>
               ))}
             </select>

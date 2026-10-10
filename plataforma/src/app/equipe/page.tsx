@@ -25,8 +25,18 @@ function filasDo(u: Usuario): Fila[] {
         vazio: "Nada para produzir agora.",
       },
     ];
-  // Diretor de arte (e admin): triagem/atribuição e controle de qualidade.
+  // Diretor de arte (e admin): triagem/atribuição e controle de qualidade. O admin também
+  // produz como designer sênior, então vê primeiro a própria fila de produção.
   return [
+    ...(u.papel === "admin"
+      ? [
+          {
+            titulo: "Sua fila de produção",
+            pedidos: listarPedidosEquipe({ designerId: u.id, status: ["producao", "ajustes"] }),
+            vazio: "Nenhum pedido atribuído a você para produzir.",
+          },
+        ]
+      : []),
     {
       titulo: "Aguardando controle de qualidade",
       pedidos: listarPedidosEquipe({ status: ["qualidade"] }),
@@ -49,7 +59,9 @@ export default async function PainelEquipe() {
     ? listarPedidosEquipe({ status: ["producao", "ajustes", "qualidade"] }).filter((p) => p.tentativas_internas >= LIMITE_TENTATIVAS)
     : [];
   const meusEmAndamento =
-    u.papel === "designer" ? listarPedidosEquipe({ designerId: u.id, status: ["qualidade", "revisao_cliente"] }) : [];
+    u.papel === "designer" || u.papel === "admin"
+      ? listarPedidosEquipe({ designerId: u.id, status: ["qualidade", "revisao_cliente"] })
+      : [];
 
   const ativos: StatusPedido[] = ["triagem", "producao", "qualidade", "revisao_cliente", "ajustes"];
 

@@ -61,6 +61,9 @@ export function EditorPrecos({ inicial, assinantes }: { inicial: TabelaPrecos; a
     ? [
         { nome: "Formato extra (cada)", custo: c.horasFormatoExtra * c.valorHoraDesigner, creditos: tc.formatoExtra, repasse: false },
         { nome: "Arquivo aberto (.aep)", custo: c.horasArquivoAberto * c.valorHoraDesigner, creditos: tc.arquivoAberto, repasse: false },
+        { nome: "Só trilha", custo: c.horasTrilha * c.valorHoraDesigner, creditos: tc.trilha, repasse: false },
+        { nome: "Trilha e efeitos sonoros", custo: c.horasTrilhaEfeitos * c.valorHoraDesigner, creditos: tc.trilhaEfeitos, repasse: false },
+        { nome: "Legendas", custo: c.horasLegendas * c.valorHoraDesigner, creditos: tc.legendas, repasse: false },
         { nome: "Roteiro até 30s", custo: c.roteiro.ate30, creditos: tc.roteiro.ate30, repasse: true },
         { nome: "Roteiro até 90s", custo: c.roteiro.ate90, creditos: tc.roteiro.ate90, repasse: true },
         { nome: "Locução até 30s", custo: c.locucao.ate30, creditos: tc.locucao.ate30, repasse: true },
@@ -182,6 +185,14 @@ export function EditorPrecos({ inicial, assinantes }: { inicial: TabelaPrecos; a
                       </td>
                     </tr>
                   ))}
+                  <tr>
+                    <td>
+                      Sem som, sem legendas <small className="muted">(sem custo)</small>
+                    </td>
+                    <td className="num">—</td>
+                    <td className="num">—</td>
+                    <td className="num">0 cr</td>
+                  </tr>
                   <tr>
                     <td>Entrega urgente</td>
                     <td className="num">—</td>
@@ -349,6 +360,9 @@ export function EditorPrecos({ inicial, assinantes }: { inicial: TabelaPrecos; a
         <div className={styles.grade}>
           <Numero rotulo="Formato extra" sufixo="h de designer" passo={0.25} valor={c.horasFormatoExtra} onChange={(v) => setCusto("horasFormatoExtra", v)} />
           <Numero rotulo="Arquivo aberto (.aep)" sufixo="h de designer" passo={0.25} valor={c.horasArquivoAberto} onChange={(v) => setCusto("horasArquivoAberto", v)} />
+          <Numero rotulo="Só trilha" sufixo="h de designer" passo={0.25} valor={c.horasTrilha} onChange={(v) => setCusto("horasTrilha", v)} />
+          <Numero rotulo="Trilha e efeitos sonoros" sufixo="h de designer" passo={0.25} valor={c.horasTrilhaEfeitos} onChange={(v) => setCusto("horasTrilhaEfeitos", v)} />
+          <Numero rotulo="Legendas" sufixo="h de designer" passo={0.25} valor={c.horasLegendas} onChange={(v) => setCusto("horasLegendas", v)} />
           <Numero rotulo="Roteiro até 30s" sufixo="R$ (repasse)" valor={c.roteiro.ate30} onChange={(v) => setRoteiro("ate30", v)} />
           <Numero rotulo="Roteiro até 90s" sufixo="R$ (repasse)" valor={c.roteiro.ate90} onChange={(v) => setRoteiro("ate90", v)} />
           <Numero rotulo="Locução até 30s" sufixo="R$ (repasse)" valor={c.locucao.ate30} onChange={(v) => setLocucao("ate30", v)} />

@@ -365,7 +365,11 @@ const linkCliente = (id: number) => `/cliente/pedidos/${id}`;
 
 export function atribuirDesigner(usuario: Usuario, pedidoId: number, designerId: number) {
   const p = carregarParaAcao(pedidoId, usuario, "atribuir");
-  const d = um<{ id: number; nome: string }>("SELECT id, nome FROM usuarios WHERE id = ? AND papel = 'designer'", designerId);
+  // Admins também produzem (contam como designer sênior).
+  const d = um<{ id: number; nome: string }>(
+    "SELECT id, nome FROM usuarios WHERE id = ? AND papel IN ('designer', 'admin') AND ativo = 1",
+    designerId,
+  );
   if (!d) throw new ErroNegocio("Escolha um designer.");
   if (d.id === p.designer_id) throw new ErroNegocio(`${d.nome} já é o designer deste pedido.`);
   transacao(() => {

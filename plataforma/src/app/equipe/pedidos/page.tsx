@@ -13,7 +13,8 @@ export default async function PedidosEquipe({ searchParams }: PageProps<"/equipe
   const u = await exigirUsuario(EQUIPE);
   const sp = await searchParams;
   const status = ORDEM.includes(sp.status as StatusPedido) ? (sp.status as StatusPedido) : null;
-  const meus = sp.meus === "1" && u.papel === "designer";
+  const produz = u.papel === "designer" || u.papel === "admin"; // admin também recebe pedidos
+  const meus = sp.meus === "1" && produz;
   const pedidos = listarPedidosEquipe({
     status: status ? [status] : ORDEM.filter((s) => !["aprovado", "cancelado"].includes(s)),
     designerId: meus ? u.id : undefined,
@@ -48,7 +49,7 @@ export default async function PedidosEquipe({ searchParams }: PageProps<"/equipe
           </Link>
         ))}
       </nav>
-      {u.papel === "designer" && (
+      {produz && (
         <p style={{ marginBottom: 14 }}>
           <Link href={link(status, !meus)} className="chip" aria-current={meus ? "page" : undefined}>
             Só os meus

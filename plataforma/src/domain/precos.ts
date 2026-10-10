@@ -70,6 +70,9 @@ export interface TabelaCreditos {
   formatoExtra: number;
   roteiro: { ate30: number; ate90: number };
   arquivoAberto: number;
+  trilha: number;
+  trilhaEfeitos: number;
+  legendas: number;
   locucao: { ate30: number; ate60: number; ate90: number };
 }
 
@@ -91,6 +94,9 @@ export function tabelaCreditos(t: TabelaPrecos): TabelaCreditos {
     formatoExtra: horaDesigner(c.horasFormatoExtra),
     roteiro: { ate30: repasse(c.roteiro.ate30), ate90: repasse(c.roteiro.ate90) },
     arquivoAberto: horaDesigner(c.horasArquivoAberto),
+    trilha: horaDesigner(c.horasTrilha),
+    trilhaEfeitos: horaDesigner(c.horasTrilhaEfeitos),
+    legendas: horaDesigner(c.horasLegendas),
     locucao: { ate30: repasse(c.locucao.ate30), ate60: repasse(c.locucao.ate60), ate90: repasse(c.locucao.ate90) },
   };
 }
@@ -250,6 +256,9 @@ function validarCustos(raw: unknown, erros: string[]): Custos {
     horas,
     horasFormatoExtra: n(c.horasFormatoExtra, p.horasFormatoExtra, 100, "Horas por formato extra"),
     horasArquivoAberto: n(c.horasArquivoAberto, p.horasArquivoAberto, 100, "Horas do arquivo aberto"),
+    horasTrilha: n(c.horasTrilha, p.horasTrilha, 100, "Horas da trilha"),
+    horasTrilhaEfeitos: n(c.horasTrilhaEfeitos, p.horasTrilhaEfeitos, 100, "Horas da trilha com efeitos"),
+    horasLegendas: n(c.horasLegendas, p.horasLegendas, 100, "Horas das legendas"),
     roteiro: {
       ate30: n(c.roteiro?.ate30, p.roteiro.ate30, 100000, "Roteiro até 30s (R$)"),
       ate90: n(c.roteiro?.ate90, p.roteiro.ate90, 100000, "Roteiro até 90s (R$)"),

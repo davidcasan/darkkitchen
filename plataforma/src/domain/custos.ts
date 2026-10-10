@@ -22,6 +22,9 @@ export interface Custos {
   horas: Record<TipoPeca, FaixaHoras[]>;
   horasFormatoExtra: number; // por formato além do primeiro (designer)
   horasArquivoAberto: number; // organizar e entregar o .aep (designer)
+  horasTrilha: number; // escolher e editar a trilha (designer)
+  horasTrilhaEfeitos: number; // trilha com efeitos sonoros (designer), no lugar de horasTrilha
+  horasLegendas: number; // legendar a peça (designer)
   roteiro: { ate30: number; ate90: number }; // valor do roteirista por duração do vídeo, em R$ (repasse)
   locucao: { ate30: number; ate60: number; ate90: number }; // repasse ao locutor, em R$
   retrabalhoPct: number; // % das horas-base do designer, por rodada de ajuste ou reprovação
@@ -52,6 +55,9 @@ export const CUSTOS_PADRAO: Custos = {
   },
   horasFormatoExtra: 0.5,
   horasArquivoAberto: 0.5,
+  horasTrilha: 0.5,
+  horasTrilhaEfeitos: 1.5,
+  horasLegendas: 0.5,
   roteiro: { ate30: 140, ate90: 420 },
   locucao: { ate30: 340, ate60: 510, ate90: 680 },
   retrabalhoPct: 25,
@@ -83,6 +89,9 @@ export function custoPadrao(b: Briefing, c: Custos, rodadasRetrabalho = 0): Cust
   let horasDiretor = base.diretor;
   horasDesigner += Math.max(0, b.formatos.length - 1) * c.horasFormatoExtra;
   if (b.aberto) horasDesigner += c.horasArquivoAberto;
+  if (b.audio === "Só trilha") horasDesigner += c.horasTrilha;
+  if (b.audio === "Trilha e efeitos") horasDesigner += c.horasTrilhaEfeitos;
+  if (b.legendas === "Sim" && b.tipo !== "logo") horasDesigner += c.horasLegendas;
   horasDesigner += rodadasRetrabalho * base.designer * (c.retrabalhoPct / 100);
   horasDiretor += rodadasRetrabalho * c.retrabalhoHorasDiretor;
   // Repasses a terceiros: locutor e roteirista, com valor fixo por duração.

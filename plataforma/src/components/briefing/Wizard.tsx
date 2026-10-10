@@ -9,6 +9,8 @@ import {
   type Briefing,
   ETAPAS,
   LOCUCAO,
+  SO_TRILHA,
+  TRILHA_EFEITOS,
   OPCOES,
   briefingVazio,
   calcularCreditos,
@@ -262,6 +264,7 @@ export function Wizard({
   const { linhas, total } = calcularCreditos(b, precos);
   const dias = diasUteisDo(b, precos);
   const ad = creditosAdicionais(b, precos);
+  const crAudio = (o: string) => (o === LOCUCAO ? ad.locucao : o === SO_TRILHA ? ad.trilha : o === TRILHA_EFEITOS ? ad.trilhaEfeitos : 0);
   const precoPeca = peca ? precos.pecas[peca.id] : null;
   const falta = total - saldo;
 
@@ -544,7 +547,7 @@ export function Wizard({
                       set("audio", o);
                       if (o !== LOCUCAO) set("voz", null);
                     }}
-                    extra={o === LOCUCAO && ad.locucao ? `+${ad.locucao}` : undefined}
+                    extra={crAudio(o) ? `+${crAudio(o)}` : undefined}
                   >
                     {o}
                   </Chip>
@@ -555,7 +558,12 @@ export function Wizard({
               <Campo id="legendas" label="Legendas" erro="Diga se quer legendas.">
                 <div className="chips">
                   {(["Sim", "Não"] as const).map((o) => (
-                    <Chip key={o} on={b.legendas === o} onClick={() => set("legendas", o)}>
+                    <Chip
+                      key={o}
+                      on={b.legendas === o}
+                      onClick={() => set("legendas", o)}
+                      extra={o === "Sim" && ad.legendas ? `+${ad.legendas}` : undefined}
+                    >
                       {o}
                     </Chip>
                   ))}

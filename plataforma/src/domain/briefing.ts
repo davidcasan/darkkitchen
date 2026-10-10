@@ -68,6 +68,8 @@ export const OPCOES = {
 };
 
 export const LOCUCAO = "Com locução";
+export const SO_TRILHA = "Só trilha";
+export const TRILHA_EFEITOS = "Trilha e efeitos";
 
 export function briefingVazio(): Briefing {
   return {
@@ -109,7 +111,7 @@ export const pecaDo = (b: Pick<Briefing, "tipo">): Peca | undefined => PECAS.fin
 
 export const opcoesAudio = (b: Briefing): string[] => {
   if (b.tipo === "logo") return ["Sem som", "Efeito sonoro de assinatura"];
-  const base = ["Sem som", "Só trilha", "Trilha e efeitos"];
+  const base = ["Sem som", SO_TRILHA, TRILHA_EFEITOS];
   return pecaDo(b)?.aceitaLocucao ? [...base, LOCUCAO] : base;
 };
 
@@ -135,6 +137,10 @@ export function calcularCreditos(b: Briefing, t: TabelaPrecos): { linhas: LinhaC
   const extras = b.formatos.length - 1;
   if (extras > 0 && tc.formatoExtra)
     linhas.push({ descricao: `${extras} formato${extras > 1 ? "s" : ""} extra`, creditos: extras * tc.formatoExtra });
+  if (b.audio === SO_TRILHA && tc.trilha) linhas.push({ descricao: "Trilha sonora", creditos: tc.trilha });
+  if (b.audio === TRILHA_EFEITOS && tc.trilhaEfeitos)
+    linhas.push({ descricao: "Trilha e efeitos sonoros", creditos: tc.trilhaEfeitos });
+  if (b.legendas === "Sim" && b.tipo !== "logo" && tc.legendas) linhas.push({ descricao: "Legendas", creditos: tc.legendas });
   const locucao = creditosLocucao(tc, b.duracao);
   if (b.audio === LOCUCAO && locucao) linhas.push({ descricao: "Locução profissional", creditos: locucao });
   const roteiro = creditosRoteiro(tc, b.duracao);
@@ -157,6 +163,9 @@ export function creditosAdicionais(b: Briefing, t: TabelaPrecos) {
     locucao: creditosLocucao(tc, b.duracao),
     roteiro: creditosRoteiro(tc, b.duracao),
     arquivoAberto: tc.arquivoAberto,
+    trilha: tc.trilha,
+    trilhaEfeitos: tc.trilhaEfeitos,
+    legendas: tc.legendas,
     urgenciaPct: t.urgenciaPct,
   };
 }

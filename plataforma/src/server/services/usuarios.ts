@@ -88,11 +88,17 @@ Para ativar o plano, pague o Pix que está na sua área. Assim que confirmarmos 
 
 export const usuarioPorId = (id: number) => um<Usuario>(`SELECT ${CAMPOS} FROM usuarios WHERE id = ?`, id);
 
+/**
+ * Quem pode receber pedidos para produzir: os designers e os admins. O admin conta como
+ * designer sênior (decisão out/2026): recebe atribuição e trabalha os jobs como qualquer designer.
+ */
 export const listarDesigners = () =>
   varios<Usuario & { ativos: number }>(
-    `SELECT u.id, u.papel, u.nome, u.email, u.empresa, u.senior,
+    `SELECT u.id, u.papel, u.nome, u.email, u.empresa,
+      CASE WHEN u.papel = 'admin' THEN 1 ELSE u.senior END senior,
       (SELECT COUNT(*) FROM pedidos p WHERE p.designer_id = u.id AND p.status NOT IN ('aprovado','cancelado')) ativos
-     FROM usuarios u WHERE u.papel = 'designer' AND u.ativo = 1 ORDER BY u.senior DESC, u.nome`,
+     FROM usuarios u WHERE u.papel IN ('designer', 'admin') AND u.ativo = 1
+     ORDER BY CASE WHEN u.papel = 'admin' THEN 1 ELSE u.senior END DESC, u.papel = 'admin', u.nome`,
   );
 
 export function alterarSenha(usuarioId: number, atual: string, nova: string) {
