@@ -526,7 +526,7 @@ export function Wizard({
             <Campo id="duracao" label="Duração" hint={`Limite para ${peca?.nome.toLowerCase()}.`} erro="Escolha uma duração.">
               <div className="chips">
                 {peca?.duracoes.map((d) => (
-                  <Chip key={d} on={b.duracao === d} onClick={() => set("duracao", d)}>
+                  <Chip key={d} on={b.duracao === d} onClick={() => set("duracao", d)} extra={ad.duracoes[d] ? `${ad.duracoes[d]} cr` : undefined}>
                     {d} segundos
                   </Chip>
                 ))}

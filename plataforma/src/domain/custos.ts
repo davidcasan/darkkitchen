@@ -38,7 +38,12 @@ export const CUSTOS_PADRAO: Custos = {
   margemAlvoPct: 40,
   margemRepassePct: 15,
   horas: {
-    post: [{ ate: 10, designer: 3, diretor: 0.5 }],
+    // Uma faixa por duração do catálogo: quanto mais longa, mais horas.
+    post: [
+      { ate: 5, designer: 2, diretor: 0.3 },
+      { ate: 8, designer: 2.5, diretor: 0.4 },
+      { ate: 10, designer: 3, diretor: 0.5 },
+    ],
     curto: [
       { ate: 15, designer: 5, diretor: 0.75 },
       { ate: 30, designer: 8, diretor: 1 },
@@ -49,6 +54,7 @@ export const CUSTOS_PADRAO: Custos = {
       { ate: 90, designer: 34, diretor: 4 },
     ],
     logo: [
+      { ate: 3, designer: 4, diretor: 0.75 },
       { ate: 5, designer: 6, diretor: 1 },
       { ate: 8, designer: 9, diretor: 1.2 },
     ],

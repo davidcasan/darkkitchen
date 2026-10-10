@@ -132,7 +132,7 @@ export function calcularCreditos(b: Briefing, t: TabelaPrecos): { linhas: LinhaC
   const tc = tabelaCreditos(t);
   const faixa = faixaCreditos(tc, peca.id, b.duracao);
   const linhas: LinhaCredito[] = [
-    { descricao: b.duracao ? `${peca.nome} (até ${faixa.ate}s)` : peca.nome, creditos: faixa.creditos },
+    { descricao: b.duracao ? `${peca.nome} (${faixa.ate}s)` : peca.nome, creditos: faixa.creditos },
   ];
   const extras = b.formatos.length - 1;
   if (extras > 0 && tc.formatoExtra)
@@ -158,7 +158,10 @@ export function calcularCreditos(b: Briefing, t: TabelaPrecos): { linhas: LinhaC
 /** Créditos de cada adicional para a peça e duração do briefing (rótulos "+N" no formulário). */
 export function creditosAdicionais(b: Briefing, t: TabelaPrecos) {
   const tc = tabelaCreditos(t);
+  const peca = pecaDo(b);
   return {
+    // Créditos da peça em cada duração (quanto mais longa, mais cara).
+    duracoes: Object.fromEntries((peca?.duracoes ?? []).map((d) => [d, faixaCreditos(tc, peca!.id, d).creditos])) as Record<number, number>,
     formatoExtra: tc.formatoExtra,
     locucao: creditosLocucao(tc, b.duracao),
     roteiro: creditosRoteiro(tc, b.duracao),

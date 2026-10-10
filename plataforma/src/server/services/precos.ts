@@ -84,7 +84,7 @@ function resumirMudancas(antes: TabelaPrecos, depois: TabelaPrecos): string {
   for (const a of antes.planos) if (!depois.planos.some((d) => d.id === a.id)) m.push(`Plano ${a.nome} removido`);
   const ca = rotulosDeCusto(antes.custos);
   const cd = rotulosDeCusto(depois.custos);
-  for (const [rotulo, valor] of Object.entries(cd)) if (ca[rotulo] !== valor) m.push(`${rotulo}: ${ca[rotulo]} → ${valor}`);
+  for (const [rotulo, valor] of Object.entries(cd)) if (ca[rotulo] !== valor) m.push(`${rotulo}: ${ca[rotulo] ?? "—"} → ${valor}`);
   // Efeito nos créditos calculados de cada peça (só a menor faixa, para o resumo não ficar enorme).
   const ta = tabelaCreditos(antes);
   const td = tabelaCreditos(depois);

@@ -123,7 +123,7 @@ export function EditorPrecos({
 
   /** Atividades de referência para mostrar quanto cada plano rende. */
   const referencias: { rotulo: string; tipo: TipoPeca; faixa: number }[] = [
-    { rotulo: "posts", tipo: "post", faixa: 0 },
+    { rotulo: "posts de 10s", tipo: "post", faixa: 2 },
     { rotulo: "vídeos curtos de 30s", tipo: "curto", faixa: 1 },
     { rotulo: "explicativos de 60s", tipo: "explicativo", faixa: 1 },
   ];
@@ -146,7 +146,7 @@ export function EditorPrecos({
           <p className="alerta alerta-erro">Impostos + meta de margem precisam somar menos de 100% e o valor do crédito precisa ser maior que zero.</p>
         ) : (
           <>
-            <h3 className={styles.sub}>Créditos por peça</h3>
+            <h3 className={styles.sub}>Créditos por peça e duração</h3>
             <div style={{ overflowX: "auto" }}>
               <table className="extrato">
                 <thead>
@@ -163,7 +163,7 @@ export function EditorPrecos({
                     tc.pecas[p.id].map((f) => (
                       <tr key={`${p.id}-${f.ate}`}>
                         <td>
-                          {p.nome} <small className="muted">até {f.ate}s</small>
+                          {p.nome} <small className="muted">{f.ate}s</small>
                         </td>
                         <td className="num">{formatarReais(f.custo)}</td>
                         <td className="num">{formatarReais(f.custo / fator)}</td>
@@ -357,13 +357,16 @@ export function EditorPrecos({
           <Numero rotulo="Margem sobre repasses" sufixo="% (roteiro e locução)" valor={c.margemRepassePct} onChange={(v) => setCusto("margemRepassePct", v)} />
         </div>
 
-        <h3 className={styles.sub}>Horas por peça</h3>
+        <h3 className={styles.sub}>Horas por peça e duração</h3>
+        <p className="muted small" style={{ marginBottom: 10 }}>
+          Cada duração que o cliente pode escolher tem as suas horas. A mais longa precisa ter mais horas que a anterior.
+        </p>
         <div className={styles.tabelaHoras}>
           {PECAS.map((p) =>
             c.horas[p.id].map((f, i) => (
               <div key={`${p.id}-${f.ate}`} className={styles.faixa}>
                 <span className={styles.faixaNome}>
-                  <b>{p.nome}</b> <small className="muted">até {f.ate}s</small>
+                  <b>{p.nome}</b> <small className="muted">{f.ate}s</small>
                 </span>
                 <Numero rotulo="Designer" sufixo="h" passo={0.25} valor={f.designer} onChange={(v) => setFaixa(p.id, i, "designer", v)} />
                 <Numero rotulo="Diretor" sufixo="h" passo={0.25} valor={f.diretor} onChange={(v) => setFaixa(p.id, i, "diretor", v)} />

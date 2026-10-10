@@ -231,15 +231,19 @@ export function validarTabela(raw: unknown): { tabela: TabelaPrecos; erros: stri
   };
 }
 
-/** Confere as premissas de custo. As faixas de duração vêm do padrão; só as horas são editáveis. */
+/**
+ * Confere as premissas de custo. As faixas de duração vêm do padrão (uma por duração
+ * do catálogo); só as horas são editáveis. As horas salvas são casadas pela duração,
+ * então uma faixa nova entra com as horas do padrão sem bagunçar as já salvas.
+ */
 function validarCustos(raw: unknown, erros: string[]): Custos {
   const c = (raw && typeof raw === "object" ? raw : {}) as Partial<Custos>;
   const p = CUSTOS_PADRAO;
   const n = (v: unknown, padrao: number, max: number, nome: string) => decimal(v ?? padrao, 0, max, nome, erros);
   const horas = {} as Custos["horas"];
   for (const peca of PECAS) {
-    horas[peca.id] = p.horas[peca.id].map((f, i) => {
-      const x = c.horas?.[peca.id]?.[i];
+    horas[peca.id] = p.horas[peca.id].map((f) => {
+      const x = c.horas?.[peca.id]?.find((s) => s?.ate === f.ate);
       return {
         ate: f.ate,
         designer: n(x?.designer, f.designer, 500, `${peca.nome} até ${f.ate}s (horas de designer)`),
@@ -247,6 +251,12 @@ function validarCustos(raw: unknown, erros: string[]): Custos {
       };
     });
   }
+  for (const peca of PECAS)
+    horas[peca.id].forEach((f, i) => {
+      const ant = horas[peca.id][i - 1];
+      if (ant && f.designer + f.diretor <= ant.designer + ant.diretor)
+        erros.push(`${peca.nome}: a duração de ${f.ate}s precisa ter mais horas que a de ${ant.ate}s (quanto mais longa, mais cara).`);
+    });
   return {
     valorHoraDesigner: n(c.valorHoraDesigner, p.valorHoraDesigner, 10000, "Valor da hora do designer"),
     valorHoraDiretor: n(c.valorHoraDiretor, p.valorHoraDiretor, 10000, "Valor da hora do diretor"),
