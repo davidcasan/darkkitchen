@@ -106,6 +106,12 @@ export const TOURS = {
   ],
   "etapa-7": [
     { alvo: '[data-tour="prazo"]', titulo: "Prazo", texto: "O prazo padrão está incluso. O urgente entrega antes e custa mais créditos. O prazo começa a contar quando o pedido é enviado." },
+    {
+      alvo: campo("rodadas"),
+      titulo: "Rodadas de ajuste",
+      texto:
+        "Toda peça já inclui 1 rodada de ajuste. Se quiser mais chances de acertar, garanta rodadas extras agora; cada uma custa créditos, o mesmo que pedir depois.",
+    },
     { alvo: campo("aprovador"), titulo: "Quem aprova", texto: "Indique uma pessoa que decide. Aprovações em grupo costumam gerar pedidos de ajuste que se contradizem." },
   ],
   "etapa-8": [
@@ -119,7 +125,7 @@ export const TOURS = {
       titulo: "Comente no ponto exato",
       texto: "Pause o vídeo no momento que quer mudar e escreva o comentário: ele fica marcado com o tempo. Seja específico: \"trocar o texto da cena 2 por...\".",
     },
-    { alvo: '[data-tour="rodadas"]', titulo: "Rodadas de ajuste", texto: "Ajustes dentro do briefing usam as rodadas inclusas. Mudar a ideia original (outro roteiro ou formato) pode custar créditos; avisamos antes." },
+    { alvo: '[data-tour="rodadas"]', titulo: "Rodadas de ajuste", texto: "Sua peça tem 1 rodada de ajuste incluída, mais as que você garantiu no pedido. Acabaram? Dá para pedir outra rodada usando créditos. Mudar a ideia original (outro roteiro ou formato) pode custar créditos; avisamos antes." },
     { alvo: '[data-tour="aprovar"]', titulo: "Aprovar ou pedir ajustes", texto: "Gostou? Aprove e os arquivos finais ficam liberados. Senão, peça ajustes resumindo o que mudar." },
   ],
 } satisfies Record<string, PassoTour[]>;

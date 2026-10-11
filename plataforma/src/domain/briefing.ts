@@ -2,7 +2,15 @@
 // Código puro, usado tanto no formulário (navegador) quanto no servidor.
 
 import { PECAS, type Peca, type TipoPeca } from "./catalogo";
-import { type TabelaPrecos, creditosLocucao, creditosRoteiro, faixaCreditos, tabelaCreditos } from "./precos";
+import {
+  MAX_RODADAS_EXTRAS,
+  RODADAS_INCLUIDAS,
+  type TabelaPrecos,
+  creditosLocucao,
+  creditosRoteiro,
+  faixaCreditos,
+  tabelaCreditos,
+} from "./precos";
 
 export interface Referencia {
   url: string;
@@ -48,6 +56,7 @@ export interface Briefing {
   evitar: string;
   // Prazo
   prazo: "padrao" | "urgente";
+  rodadasExtras: number; // rodadas de ajuste garantidas além da incluída (0 a MAX_RODADAS_EXTRAS)
   aprovador: string;
   email: string;
 }
@@ -163,8 +172,15 @@ export function atualizarBriefing(salvo: Partial<Briefing> & { tom?: unknown }):
   const { tom, ...resto } = salvo;
   const b = { ...briefingVazio(), ...resto };
   if (!Array.isArray(salvo.tons)) b.tons = typeof tom === "string" && tom ? [tom] : [];
+  b.rodadasExtras = rodadasExtrasValidas(b.rodadasExtras);
   return b;
 }
+
+/** Rodadas extras garantidas no briefing: inteiro de 0 a MAX_RODADAS_EXTRAS. */
+export const rodadasExtrasValidas = (n: unknown) => Math.min(MAX_RODADAS_EXTRAS, Math.max(0, Math.floor(Number(n) || 0)));
+
+/** Rodadas de ajuste do pedido: a incluída mais as garantidas no briefing. */
+export const rodadasDoPedido = (b: Pick<Briefing, "rodadasExtras">) => RODADAS_INCLUIDAS + rodadasExtrasValidas(b.rodadasExtras);
 
 export const LOCUCAO = "Com locução";
 export const SO_TRILHA = "Só trilha";
@@ -206,6 +222,7 @@ export function briefingVazio(): Briefing {
     tomOutro: "",
     evitar: "",
     prazo: "padrao",
+    rodadasExtras: 0,
     aprovador: "",
     email: "",
   };
@@ -256,6 +273,13 @@ export function calcularCreditos(b: Briefing, t: TabelaPrecos): { linhas: LinhaC
     const u = Math.ceil((total * t.urgenciaPct) / 100);
     linhas.push({ descricao: "Entrega urgente", creditos: u });
     total += u;
+  }
+  // Rodadas de ajuste garantidas no briefing (fora da urgência: não são produção mais rápida).
+  const rodadasExtras = rodadasExtrasValidas(b.rodadasExtras);
+  const porRodada = faixa.revisaoExtra;
+  if (rodadasExtras > 0 && porRodada) {
+    linhas.push({ descricao: `${rodadasExtras} rodada${rodadasExtras > 1 ? "s" : ""} de ajuste extra`, creditos: rodadasExtras * porRodada });
+    total += rodadasExtras * porRodada;
   }
   return { linhas, total };
 }

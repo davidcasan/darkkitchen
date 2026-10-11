@@ -6,7 +6,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { criarMarcaNoBriefingAction, criarPedidoAction } from "@/app/actions/cliente";
 import { BotaoTour, TourAutomatico } from "@/components/app/Tour";
 import { type IdTour, tourDaEtapa } from "@/domain/tours";
-import { type TabelaPrecos, pecasComPrecos } from "@/domain/precos";
+import { MAX_RODADAS_EXTRAS, type TabelaPrecos, pecasComPrecos } from "@/domain/precos";
 import {
   type Briefing,
   ETAPAS,
@@ -34,6 +34,8 @@ import {
   limitePalavras,
   opcoesAudio,
   pecaDo,
+  custoRevisaoExtra,
+  rodadasDoPedido,
 } from "@/domain/briefing";
 import { enviarArquivo } from "@/components/app/upload";
 import styles from "./Wizard.module.css";
@@ -305,6 +307,8 @@ export function Wizard({
   );
   const crAudio = (o: string) => (o === LOCUCAO ? ad.locucao : o === SO_TRILHA ? ad.trilha : o === TRILHA_EFEITOS || o === EFEITO_SONORO ? ad.trilhaEfeitos : 0);
   const precoPeca = peca ? precos.pecas[peca.id] : null;
+  const porRodada = peca ? custoRevisaoExtra(peca.id, b.duracao, precos) : 0;
+  const rodadas = rodadasDoPedido(b);
   const falta = total - saldo;
 
   const set = <K extends keyof Briefing>(k: K, v: Briefing[K]) => {
@@ -1005,6 +1009,19 @@ export function Wizard({
                 </button>
               </div>
             </div>
+            <Campo
+              id="rodadas"
+              label="Rodadas de ajuste"
+              hint={`1 rodada já está incluída. Garantir rodadas agora evita surpresa depois: cada uma custa ${porRodada} créditos, o mesmo que pedir mais tarde.`}
+            >
+              <div className="chips">
+                {Array.from({ length: MAX_RODADAS_EXTRAS + 1 }, (_, n) => (
+                  <Chip key={n} on={(b.rodadasExtras ?? 0) === n} onClick={() => set("rodadasExtras", n)}>
+                    {n === 0 ? "Só a incluída" : `+${n} rodada${n > 1 ? "s" : ""} · ${n * porRodada} cr`}
+                  </Chip>
+                ))}
+              </div>
+            </Campo>
             <div className={styles.two}>
               <Campo id="aprovador" label="Quem aprova a peça" hint="A pessoa que dá a palavra final.">
                 <input className="txt" value={b.aprovador} onChange={(e) => set("aprovador", e.target.value)} />
@@ -1088,6 +1105,7 @@ export function Wizard({
             ])}
             {linha(6, [
               ["Prazo", `${dias} dias úteis${b.prazo === "urgente" ? " (urgente)" : ""}`],
+              ["Rodadas de ajuste", `${rodadas} (1 incluída${rodadas > 1 ? ` + ${rodadas - 1} garantida${rodadas > 2 ? "s" : ""}` : ""})`],
               ["Aprovação", `${b.aprovador} · ${b.email}`],
             ])}
           </div>
@@ -1210,7 +1228,10 @@ export function Wizard({
                   <strong>{dias} dias</strong>úteis de prazo
                 </div>
                 <div>
-                  <strong>{precoPeca?.revisoes} rodadas</strong>de ajuste
+                  <strong>
+                    {rodadas} rodada{rodadas > 1 ? "s" : ""}
+                  </strong>
+                  de ajuste
                 </div>
               </div>
             </>

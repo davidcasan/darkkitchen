@@ -152,10 +152,10 @@ export function EditorPrecos({
                 <thead>
                   <tr>
                     <th>Peça</th>
-                    <th className="num">Custo</th>
+                    <th className="num" title="Produção da peça + a rodada de ajuste incluída">Custo (com 1 rodada)</th>
                     <th className="num">Preço mínimo</th>
                     <th className="num">Créditos</th>
-                    <th className="num">Revisão extra</th>
+                    <th className="num">Rodada extra</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -184,7 +184,7 @@ export function EditorPrecos({
                 <thead>
                   <tr>
                     <th>Adicional</th>
-                    <th className="num">Custo</th>
+                    <th className="num" title="Produção da peça + a rodada de ajuste incluída">Custo (com 1 rodada)</th>
                     <th className="num">Preço mínimo</th>
                     <th className="num">Créditos</th>
                   </tr>
@@ -330,7 +330,7 @@ export function EditorPrecos({
                 <b>{p.nome}</b>
               </span>
               <Numero rotulo="Prazo" sufixo="dias úteis" valor={t.pecas[p.id].diasUteis} min={1} onChange={(v) => setPrazo(p.id, "diasUteis", v)} />
-              <Numero rotulo="Revisões incluídas" valor={t.pecas[p.id].revisoes} onChange={(v) => setPrazo(p.id, "revisoes", v)} />
+              <span className="small muted">1 rodada de ajuste incluída (fixo)</span>
               <span />
             </div>
           ))}

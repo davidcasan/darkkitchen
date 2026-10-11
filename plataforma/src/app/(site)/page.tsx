@@ -21,7 +21,7 @@ const PASSOS = [
   },
   {
     t: "Sai quente pra você",
-    d: "Revise comentando direto no vídeo, no segundo exato. As rodadas de ajuste já estão incluídas.",
+    d: "Revise comentando direto no vídeo, no segundo exato. Uma rodada de ajuste já vem incluída, e você pode garantir mais.",
   },
 ];
 
@@ -51,7 +51,7 @@ const DUVIDAS: { q: string; r: React.ReactNode }[] = [
   },
   {
     q: "E se eu não gostar da peça?",
-    r: "Você comenta direto no vídeo e a cozinha ajusta. Cada peça tem rodadas de revisão incluídas. Se o resultado estiver longe do pedido, conversamos, ajustamos o briefing e recomeçamos.",
+    r: "Você comenta direto no vídeo e a cozinha ajusta. Cada peça tem uma rodada de ajuste incluída, e você pode garantir rodadas extras com créditos. Se o resultado estiver longe do pedido, conversamos, ajustamos o briefing e recomeçamos.",
   },
   {
     q: "Preciso ter roteiro pronto?",

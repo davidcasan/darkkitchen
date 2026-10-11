@@ -12,6 +12,8 @@ import {
   ETAPAS,
   MAX_ESCOLHAS,
   atualizarBriefing,
+  rodadasDoPedido,
+  rodadasExtrasValidas,
 } from "@/domain/briefing";
 import {
   type Acao,
@@ -164,6 +166,7 @@ export function normalizarBriefing(raw: unknown): Briefing {
     tomOutro: texto(r.tomOutro, 300),
     evitar: texto(r.evitar, 500),
     prazo: r.prazo === "urgente" ? "urgente" : "padrao",
+    rodadasExtras: rodadasExtrasValidas(r.rodadasExtras),
     aprovador: texto(r.aprovador, 120),
     email: texto(r.email, 200),
   };
@@ -241,7 +244,7 @@ export function criarPedido(cliente: Usuario, raw: unknown): PedidoResumo {
       JSON.stringify(linhas),
       b.prazo === "urgente" ? 1 : 0,
       dias,
-      tabela.pecas[peca.id].revisoes,
+      rodadasDoPedido(b), // 1 incluída + as extras garantidas (já cobradas em "linhas")
       paraSql(adicionarDiasUteis(new Date(), dias)),
     ).id;
     const codigo = `DK-${1000 + id}`;

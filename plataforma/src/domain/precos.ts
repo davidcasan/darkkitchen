@@ -10,8 +10,14 @@ import { CUSTOS_PADRAO, type Custos, custoDaFaixa, faixaPara } from "./custos";
 /** Prazo padrão e rodadas de ajuste incluídas de cada tipo de peça. */
 export interface PrazoPeca {
   diasUteis: number;
-  revisoes: number;
+  revisoes: number; // sempre RODADAS_INCLUIDAS (out/2026); campo mantido por compatibilidade
 }
+
+// Rodadas de ajuste (decisão out/2026): toda peça inclui exatamente 1 rodada, cujo custo já
+// entra nos créditos da peça. Rodadas a mais custam créditos: o cliente pode garanti-las no
+// briefing (até MAX_RODADAS_EXTRAS) ou pagar na hora de pedir o ajuste, quando as incluídas acabam.
+export const RODADAS_INCLUIDAS = 1;
+export const MAX_RODADAS_EXTRAS = 3;
 
 export interface Plano {
   id: string;
@@ -34,10 +40,10 @@ export interface TabelaPrecos {
 export const PRECOS_PADRAO: TabelaPrecos = {
   valorCredito: 50,
   pecas: {
-    post: { diasUteis: 2, revisoes: 2 },
-    curto: { diasUteis: 3, revisoes: 2 },
-    explicativo: { diasUteis: 7, revisoes: 3 },
-    logo: { diasUteis: 4, revisoes: 2 },
+    post: { diasUteis: 2, revisoes: 1 },
+    curto: { diasUteis: 3, revisoes: 1 },
+    explicativo: { diasUteis: 7, revisoes: 1 },
+    logo: { diasUteis: 4, revisoes: 1 },
   },
   urgenciaPct: 50,
   planos: [
@@ -82,8 +88,9 @@ export function tabelaCreditos(t: TabelaPrecos): TabelaCreditos {
   const pecas = {} as TabelaCreditos["pecas"];
   for (const p of PECAS) {
     pecas[p.id] = c.horas[p.id].map((f) => {
-      const custo = custoDaFaixa(c, f);
       const retrabalho = f.designer * (c.retrabalhoPct / 100) * c.valorHoraDesigner + c.retrabalhoHorasDiretor * c.valorHoraDiretor;
+      // O custo da peça já inclui a rodada de ajuste obrigatória (RODADAS_INCLUIDAS).
+      const custo = custoDaFaixa(c, f) + RODADAS_INCLUIDAS * retrabalho;
       return { ate: f.ate, custo, creditos: Math.max(1, creditosPara(custo, t)), revisaoExtra: creditosPara(retrabalho, t) };
     });
   }
@@ -189,7 +196,7 @@ export function validarTabela(raw: unknown): { tabela: TabelaPrecos; erros: stri
     const x = (r.pecas?.[p.id] ?? PRECOS_PADRAO.pecas[p.id]) as Partial<PrazoPeca>;
     pecas[p.id] = {
       diasUteis: inteiro(x.diasUteis ?? PRECOS_PADRAO.pecas[p.id].diasUteis, 1, 60, `${p.nome} (prazo)`, erros),
-      revisoes: inteiro(x.revisoes ?? PRECOS_PADRAO.pecas[p.id].revisoes, 0, 10, `${p.nome} (revisões)`, erros),
+      revisoes: RODADAS_INCLUIDAS, // fixo: tabelas antigas com 2 ou 3 rodadas passam a 1
     };
   }
 

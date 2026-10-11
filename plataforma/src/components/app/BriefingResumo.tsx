@@ -1,4 +1,15 @@
-import { type Briefing, type LinhaCredito, LOCUCAO, contarPalavras, limitePalavras, objetivoTexto, pecaDo, revelacaoTexto, tonsTexto } from "@/domain/briefing";
+import {
+  type Briefing,
+  type LinhaCredito,
+  LOCUCAO,
+  contarPalavras,
+  limitePalavras,
+  objetivoTexto,
+  pecaDo,
+  revelacaoTexto,
+  rodadasDoPedido,
+  tonsTexto,
+} from "@/domain/briefing";
 import type { Arquivo } from "@/server/services/arquivos";
 import { formatarTamanho, urlArquivo } from "./upload";
 import styles from "./BriefingResumo.module.css";
@@ -69,6 +80,7 @@ export function BriefingResumo({
           ["Legendas", logo ? null : b.legendas],
           ["Arquivo aberto", b.aberto ? "Sim (.aep)" : "Não"],
           ["Prazo", b.prazo === "urgente" ? "Urgente" : "Padrão"],
+          ["Rodadas de ajuste", b.rodadasExtras ? `${rodadasDoPedido(b)} (1 incluída + ${b.rodadasExtras} garantida${b.rodadasExtras > 1 ? "s" : ""})` : "1 incluída"],
         ]}
       />
       <Secao
