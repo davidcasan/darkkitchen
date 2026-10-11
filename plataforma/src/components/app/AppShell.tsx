@@ -5,7 +5,7 @@ import { voltarAoAdminAction } from "@/app/actions/admin";
 import { sairAction } from "@/app/actions/conta";
 import { Marca } from "@/components/Marca";
 import { Icone } from "./Icone";
-import { type ItemNav, NavInferior, NavLateral } from "./NavArea";
+import { type GrupoNav, type ItemNav, NavInferior, NavLateral } from "./NavArea";
 import styles from "./AppShell.module.css";
 
 // Moldura das áreas logadas: menu lateral no computador; barra superior e
@@ -14,6 +14,7 @@ import styles from "./AppShell.module.css";
 export function AppShell({
   usuario,
   itens,
+  grupos,
   raiz,
   naoLidas,
   resumo,
@@ -22,6 +23,7 @@ export function AppShell({
 }: {
   usuario: Usuario;
   itens: ItemNav[];
+  grupos?: GrupoNav[]; // submenus do menu lateral
   raiz: string;
   naoLidas: number;
   resumo?: React.ReactNode;
@@ -48,7 +50,7 @@ export function AppShell({
           <Marca />
         </Link>
         <nav aria-label="Principal">
-          <NavLateral itens={itens} />
+          <NavLateral itens={itens} grupos={grupos} />
         </nav>
         {resumo && (
           <div className={styles.resumo} data-tour="saldo">

@@ -151,6 +151,11 @@
     padding: 0 10px;
   }
 
+  .lateral nav {
+    min-height: 0;
+    overflow-y: auto;
+  }
+
   .conteudo {
     padding: 32px 36px 56px;
   }
@@ -178,6 +183,64 @@
 .navLink:hover {
   background: var(--bg);
   color: var(--ink);
+}
+
+/* Submenus do menu lateral (admin). */
+.navGrupo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+}
+
+.navGrupo:hover {
+  background: var(--bg);
+  color: var(--ink);
+}
+
+.navGrupo[data-ativo="true"] {
+  color: var(--ink);
+}
+
+.navGrupo[data-ativo="true"] > svg {
+  color: var(--accent-ink);
+}
+
+.navSeta {
+  display: inline-flex;
+  margin-left: auto;
+  transition: transform 0.15s ease;
+}
+
+.navGrupo .selo + .navSeta {
+  margin-left: 6px;
+}
+
+.navGrupo[aria-expanded="true"] .navSeta {
+  transform: rotate(90deg);
+}
+
+.navSubLista {
+  list-style: none;
+  margin: 2px 0 6px 21px;
+  padding: 0 0 0 10px;
+  display: grid;
+  gap: 2px;
+  border-left: 1px solid var(--line);
+}
+
+.navSub {
+  padding: 8px 12px;
+  font-size: 14.5px;
 }
 
 .navLink[aria-current="page"] {
