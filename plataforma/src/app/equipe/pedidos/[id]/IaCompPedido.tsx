@@ -116,7 +116,7 @@ export function IaCompPedido({ pedidoId, admin }: { pedidoId: number; admin: boo
               placeholder="Opcional: o que quer nesta versão. Ex.: mais minimalista, fundo claro, mais lento."
             />
             <small className="muted">
-              Cada pedido gera uma criação totalmente nova (conceito, movimento e técnica diferentes das versões anteriores).
+              Cada pedido gera uma nova interpretação artística, sempre atendendo a todas as escolhas do cliente no briefing.
             </small>
             <div>
               <Enviar className="btn btn-primary btn-sm" enviando="Enviando...">

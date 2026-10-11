@@ -347,6 +347,8 @@ function briefingEmTexto(d: DadosPedido) {
 
 const SISTEMA = `Você apoia a equipe de um estúdio brasileiro de edição e motion graphics. A produção é feita por designers humanos; você prepara um ponto de partida interno para o designer do pedido, que vai usar, ajustar ou descartar.
 
+O briefing do cliente vem SEMPRE em primeiro lugar: cada escolha dele (tipo de peça, duração, proporções, como o logo aparece, estilos, tons, cores, referências, o que evitar, áudio, roteiro, textos obrigatórios) é obrigatória e precisa estar atendida e visível na proposta. Nunca ignore, troque ou "reinterprete para longe" uma escolha do cliente. A criatividade entra DEPOIS, na forma de atender a essas escolhas. Se duas escolhas parecerem conflitar, atenda às duas da melhor forma e explique nas observações; nunca descarte uma.
+
 A partir do briefing do cliente, proponha:
 - um conceito curto e até três linhas criativas;
 - as cenas, cobrindo a duração inteira, com início e fim em segundos, o texto que aparece na tela, a locução (vazia se a peça não tiver locução) e uma descrição do visual e do movimento;
@@ -354,6 +356,7 @@ A partir do briefing do cliente, proponha:
 - tipografia, ritmo de montagem, clima da trilha e observações práticas para o designer.
 
 Regras:
+- Em cada linha criativa, diga como ela atende às escolhas do cliente (estilos, tons, referências, como o logo aparece).
 - Se o cliente mandou o roteiro por cenas, mantenha o conteúdo dele e só distribua os tempos e ajuste a forma.
 - Textos de tela curtos. Locução com no máximo 1,5 palavra por segundo da cena.
 - Não invente preços, promoções, dados ou promessas que não estejam no briefing. Respeite o que o cliente pediu para evitar.
@@ -449,7 +452,8 @@ const LEIA_ME = `KIT IA COMP · Dark Kitchen Studio
 
 As sugestões são um ponto de partida interno: ajuste ou descarte à vontade.
 pedido.json tem os dados do pedido em texto; registro.json, o pedido exatamente como está salvo;
-versoes-anteriores.md, o que já foi criado (para não repetir: cada nova criação é uma ideia nova).
+briefing-do-cliente.md, as escolhas do cliente: OBRIGATÓRIAS em toda versão (conferir uma a uma);
+versoes-anteriores.md, o que já foi criado (a nova versão muda a interpretação artística, nunca o briefing).
 `;
 
 /** JSON só com ASCII (acentos como \\uXXXX), para o ExtendScript ler sem problema de codificação. */
@@ -491,6 +495,28 @@ function registroDoPedido(d: DadosPedido, assets: { id: number; nome: string }[]
 }
 
 /**
+ * As escolhas do cliente como lista obrigatória: toda criação (IA, Claude no chat ou designer)
+ * parte daqui e precisa atender a cada item; a interpretação artística vem depois.
+ */
+function briefingObrigatorio(d: DadosPedido) {
+  const itens = briefingEmTexto(d)
+    .split("\n")
+    .filter((l) => !l.startsWith("Pedido:"))
+    .map((l) => `- [ ] ${l}`);
+  return [
+    `# Briefing do cliente · ${d.codigo} · ${d.titulo}`,
+    "",
+    "Estas escolhas do cliente são OBRIGATÓRIAS e vêm SEMPRE em primeiro lugar, em todas as versões.",
+    "Nenhuma pode ser ignorada, trocada ou deixada de lado em nome de uma ideia nova. A criatividade entra depois: na forma de atender a cada item.",
+    "Se duas escolhas parecerem conflitar, atenda às duas da melhor forma e explique na especificação; nunca descarte uma.",
+    "A especificação de produção começa por esta lista, dizendo como cada item foi atendido.",
+    "",
+    ...itens,
+    "",
+  ].join("\n");
+}
+
+/**
  * O que já foi criado para o pedido (versão atual e anteriores: nota e especificação).
  * Cada nova criação pedida ao Claude tem de ser uma ideia totalmente nova: este arquivo é a
  * lista do que NÃO repetir (conceito, estrutura, movimento, técnica), nunca uma base.
@@ -504,7 +530,7 @@ function versoesAnterioresEmTexto(jobId: number) {
   const partes = [
     "# Versões já criadas para este pedido",
     "",
-    "NÃO repetir nada daqui: cada nova criação precisa de conceito, estrutura, movimento e técnica totalmente novos, partindo só do registro.json (o pedido do cliente). Use esta lista apenas para saber o que evitar.",
+    "As escolhas do cliente (briefing-do-cliente.md) são obrigatórias em TODAS as versões e vêm sempre em primeiro lugar. O que muda de uma versão para outra é só a interpretação artística: uma nova forma de atender ao mesmo briefing, sem repetir o conceito, a estrutura, o movimento e a técnica listados abaixo.",
   ];
   if (!lista.length) partes.push("", "(nenhuma versão anterior)");
   for (const { titulo, v, data } of lista)
@@ -553,6 +579,7 @@ function montarKit(jobId: number, d: DadosPedido, sugestoes: Sugestoes | null) {
     { nome: "LEIA-ME.txt", dados: Buffer.from(LEIA_ME, "utf8") },
     { nome: "pedido.json", dados: Buffer.from(JSON.stringify(pedido, null, 2), "utf8") },
     { nome: "registro.json", dados: Buffer.from(JSON.stringify(registroDoPedido(d, assets), null, 2), "utf8") },
+    { nome: "briefing-do-cliente.md", dados: Buffer.from(briefingObrigatorio(d), "utf8") },
     { nome: "versoes-anteriores.md", dados: Buffer.from(versoesAnterioresEmTexto(jobId), "utf8") },
     { nome: "pedido.jsxinc", dados: Buffer.from(`var PEDIDO = ${jsonAscii(pedido)};\n`, "utf8") },
     { nome: "montar-comp.jsx", dados: fs.readFileSync(SCRIPT_AE) },
