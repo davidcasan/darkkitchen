@@ -32,6 +32,7 @@ const ITENS_ADMIN: ItemNav[] = [
   { href: "/equipe/atendimento", rotulo: "Chats", icone: "chat", movel: true, grupo: "atendimento" },
   { href: "/equipe/pagamentos", rotulo: "Pagamentos", icone: "creditos", grupo: "financeiro" },
   { href: "/equipe/colaboradores", rotulo: "Colaboradores", icone: "pessoas", grupo: "financeiro" },
+  { href: "/equipe/clientes", rotulo: "Clientes", icone: "grafico", grupo: "financeiro" },
   { href: "/equipe/precos", rotulo: "Preços", icone: "creditos", grupo: "gerenciamento" },
   { href: "/equipe/quem-somos", rotulo: "Quem somos", icone: "pessoas", grupo: "gerenciamento" },
   { href: "/equipe/termos", rotulo: "Termos de uso", icone: "pedidos", grupo: "gerenciamento" },

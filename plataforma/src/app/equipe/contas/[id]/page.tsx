@@ -75,6 +75,11 @@ export default async function ContaDetalhe({ params, searchParams }: PageProps<"
         </div>
         <div className="row">
           {cliente && (
+            <Link href={`/equipe/clientes/${c.id}`} className="btn">
+              Perfil financeiro
+            </Link>
+          )}
+          {cliente && (
             <Link href={`/equipe/atendimento?cliente=${c.id}`} className="btn">
               Atendimento
             </Link>
