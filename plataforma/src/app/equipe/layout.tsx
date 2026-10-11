@@ -11,6 +11,7 @@ import { processarAprovacoesAutomaticas } from "@/server/services/pedidos";
 const ITENS: ItemNav[] = [
   { href: "/equipe", rotulo: "Painel", icone: "inicio", movel: true },
   { href: "/equipe/pedidos", rotulo: "Pedidos", icone: "fila", movel: true },
+  { href: "/equipe/ganhos", rotulo: "Meus ganhos", icone: "creditos", movel: true },
   { href: "/equipe/conta", rotulo: "Conta", icone: "conta", movel: true },
 ];
 
@@ -30,6 +31,7 @@ const ITENS_ADMIN: ItemNav[] = [
   { href: "/equipe/contas", rotulo: "Contas", icone: "pessoas", movel: true, grupo: "atendimento" },
   { href: "/equipe/atendimento", rotulo: "Chats", icone: "chat", movel: true, grupo: "atendimento" },
   { href: "/equipe/pagamentos", rotulo: "Pagamentos", icone: "creditos", grupo: "financeiro" },
+  { href: "/equipe/colaboradores", rotulo: "Colaboradores", icone: "pessoas", grupo: "financeiro" },
   { href: "/equipe/precos", rotulo: "Preços", icone: "creditos", grupo: "gerenciamento" },
   { href: "/equipe/quem-somos", rotulo: "Quem somos", icone: "pessoas", grupo: "gerenciamento" },
   { href: "/equipe/termos", rotulo: "Termos de uso", icone: "pedidos", grupo: "gerenciamento" },

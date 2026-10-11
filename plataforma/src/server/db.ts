@@ -318,6 +318,37 @@ CREATE TABLE IF NOT EXISTS ia_comp_versoes (
   criado_em TEXT NOT NULL,
   arquivado_em TEXT NOT NULL DEFAULT (datetime('now'))
 );
+-- Colaboradores (out/2026): como cada pessoa da equipe é paga (Financeiro > Colaboradores).
+-- forma: 'hora' (valor_hora; vazio = valor-hora padrão da tela Preços), 'peca' (valores_peca, JSON
+-- por tipo de peça), 'mensal' (valor_mensal fixo) ou 'nenhum' (só custo, ex.: o admin).
+CREATE TABLE IF NOT EXISTS colaboradores_pagamento (
+  usuario_id INTEGER PRIMARY KEY REFERENCES usuarios(id),
+  forma TEXT NOT NULL DEFAULT 'hora',
+  valor_hora REAL,
+  valor_mensal REAL,
+  valores_peca TEXT,
+  atualizado_em TEXT NOT NULL DEFAULT (datetime('now')),
+  atualizado_por INTEGER REFERENCES usuarios(id)
+);
+-- Fechamento do mês por colaborador: a apuração (horas previstas, pedidos, valor) fica
+-- congelada em "detalhe" (JSON) e depois é marcada como paga.
+CREATE TABLE IF NOT EXISTS colaboradores_fechamentos (
+  id INTEGER PRIMARY KEY,
+  mes TEXT NOT NULL,
+  usuario_id INTEGER NOT NULL REFERENCES usuarios(id),
+  forma TEXT NOT NULL,
+  horas_designer REAL NOT NULL,
+  horas_diretor REAL NOT NULL,
+  valor REAL NOT NULL,
+  detalhe TEXT NOT NULL,
+  fechado_em TEXT NOT NULL DEFAULT (datetime('now')),
+  fechado_por INTEGER REFERENCES usuarios(id),
+  pago_em TEXT,
+  pago_por INTEGER REFERENCES usuarios(id),
+  forma_pagamento TEXT,
+  observacao TEXT,
+  UNIQUE (mes, usuario_id)
+);
 -- Quem somos (out/2026): perfis de colaboradores-chave mostrados no site.
 -- Mídias em data/arquivos/perfis (só o nome do arquivo fica aqui); vídeos opcionais.
 CREATE TABLE IF NOT EXISTS perfis (

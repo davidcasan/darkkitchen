@@ -20,6 +20,16 @@ import { criarPerfil, moverPerfil, removerPerfil, salvarPerfil } from "@/server/
 import { desligarTelegram, linkParaLigar } from "@/server/services/telegram";
 import { salvarTermos } from "@/server/services/termos";
 import { cancelarPedidoAoClaude, gerarParaPedido, pedirAoClaude, salvarConfigIaComp } from "@/server/services/iaComp";
+import {
+  type FormaPagamento,
+  desfazerPagamento,
+  fecharMes,
+  marcarPago,
+  reabrirMes,
+  salvarFicha,
+  salvarRegras,
+} from "@/server/services/colaboradores";
+import { PECAS } from "@/domain/catalogo";
 
 const admin = () => exigirUsuario(["admin"]);
 
@@ -253,4 +263,73 @@ export async function pedirAoClaudeAction(_: Estado, fd: FormData): Promise<Esta
 export async function cancelarPedidoAoClaudeAction(_: Estado, fd: FormData): Promise<Estado> {
   const u = await admin();
   return rodar(() => cancelarPedidoAoClaude(u, campoNumero(fd, "pedido")), "Pedido ao Claude cancelado.");
+}
+
+// ---------- Financeiro > Colaboradores ----------
+
+/** Número digitado no formulário ("12,50" ou "12.50"); vazio = null. */
+const decimal = (fd: FormData, nome: string) => {
+  const bruto = campo(fd, nome).trim();
+  const s = bruto.includes(",") ? bruto.replace(/\./g, "").replace(",", ".") : bruto;
+  return s ? Number(s) : null;
+};
+
+export async function salvarFichaColaboradorAction(_: Estado, fd: FormData): Promise<Estado> {
+  const u = await admin();
+  const valoresPeca = Object.fromEntries(PECAS.map((p) => [p.id, decimal(fd, `peca_${p.id}`) ?? 0])) as Record<
+    (typeof PECAS)[number]["id"],
+    number
+  >;
+  return rodar(
+    () =>
+      salvarFicha(u, campoNumero(fd, "usuario"), {
+        forma: campo(fd, "forma") as FormaPagamento,
+        valorHora: decimal(fd, "valor_hora"),
+        valorMensal: decimal(fd, "valor_mensal"),
+        valoresPeca,
+      }),
+    "Forma de pagamento salva.",
+  );
+}
+
+export async function salvarRegrasColaboradoresAction(_: Estado, fd: FormData): Promise<Estado> {
+  const u = await admin();
+  return rodar(
+    () => salvarRegras(u, { pagarCancelados: campo(fd, "cancelados") === "1", pagarReprovacaoInterna: campo(fd, "reprovacao") === "1" }),
+    "Regras salvas.",
+  );
+}
+
+export async function fecharMesColaboradorAction(_: Estado, fd: FormData): Promise<Estado> {
+  const u = await admin();
+  const usuario = campoNumero(fd, "usuario") || null;
+  let n = 0;
+  const r = await rodar(() => {
+    n = fecharMes(u, campo(fd, "mes"), usuario);
+  });
+  if (r?.erro) return r;
+  return { ok: usuario ? "Mês fechado para o colaborador." : `Mês fechado para ${n} colaborador${n > 1 ? "es" : ""}.` };
+}
+
+export async function reabrirMesColaboradorAction(_: Estado, fd: FormData): Promise<Estado> {
+  const u = await admin();
+  return rodar(() => reabrirMes(u, campo(fd, "mes"), campoNumero(fd, "usuario")), "Mês reaberto: os números voltam a ser calculados.");
+}
+
+export async function pagarColaboradorAction(_: Estado, fd: FormData): Promise<Estado> {
+  const u = await admin();
+  return rodar(
+    () =>
+      marcarPago(u, campo(fd, "mes"), campoNumero(fd, "usuario"), {
+        data: campo(fd, "data"),
+        forma: campo(fd, "forma_pagamento"),
+        observacao: campo(fd, "observacao"),
+      }),
+    "Pagamento registrado.",
+  );
+}
+
+export async function desfazerPagamentoColaboradorAction(_: Estado, fd: FormData): Promise<Estado> {
+  const u = await admin();
+  return rodar(() => desfazerPagamento(u, campo(fd, "mes"), campoNumero(fd, "usuario")), "Pagamento desfeito.");
 }
