@@ -31,7 +31,7 @@ export default async function PerfilFinanceiroCliente({ params, searchParams }: 
   return (
     <>
       <Link href={`/equipe/clientes?p=${periodo}`} className="small">
-        ← Clientes
+        ← Usuários
       </Link>
       <div className="page-head" style={{ marginTop: 8 }}>
         <div>

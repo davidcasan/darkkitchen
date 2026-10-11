@@ -7,7 +7,7 @@ import { type CodigoPeriodo, intervalo } from "./relatorios";
 import { assinaturaDo, planoDaAssinatura } from "./assinaturas";
 import { precos } from "./precos";
 
-// Financeiro > Clientes (out/2026): o que cada cliente contrata, onde gasta os créditos, o perfil
+// Análise > Usuários (out/2026; rota /equipe/clientes): o que cada cliente contrata, onde gasta os créditos, o perfil
 // de uso e quão lucrativo ele é. Tudo estimado com a mesma base dos Relatórios:
 // - receita: faturas pagas no período;
 // - custo: custo padrão (horas previstas da tela Preços + repasses) dos pedidos concluídos no

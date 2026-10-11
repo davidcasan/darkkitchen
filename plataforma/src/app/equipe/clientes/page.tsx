@@ -6,9 +6,9 @@ import { clientesFinanceiro } from "@/server/services/clientesFinanceiro";
 import { type CodigoPeriodo, PERIODOS } from "@/server/services/relatorios";
 import { Etiquetas, pct } from "./Etiquetas";
 
-export const metadata: Metadata = { title: "Clientes" };
+export const metadata: Metadata = { title: "Usuários" };
 
-// Financeiro > Clientes: o que cada cliente contrata, como usa os créditos e quanto deixa de resultado.
+// Análise > Usuários: o que cada cliente contrata, como usa os créditos e quanto deixa de resultado.
 export default async function ClientesFinanceiro({ searchParams }: PageProps<"/equipe/clientes">) {
   await exigirUsuario(["admin"]);
   const { p } = await searchParams;
@@ -22,7 +22,7 @@ export default async function ClientesFinanceiro({ searchParams }: PageProps<"/e
     <>
       <div className="page-head">
         <div>
-          <h1>Clientes</h1>
+          <h1>Usuários</h1>
           <p>O que cada cliente contrata, onde gasta os créditos, o perfil de uso e o resultado estimado.</p>
         </div>
       </div>
