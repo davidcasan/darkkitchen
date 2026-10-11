@@ -8,6 +8,7 @@ import { ErroNegocio, PASTA_ARQUIVOS, executar, um, varios } from "../db";
 import type { Usuario } from "../auth";
 import { arquivosPorIds, caminhoAbsoluto } from "./arquivos";
 import { criarZip } from "../zip";
+import { SEM_EMAIL, notificar } from "./notificacoes";
 
 // IA Comp (out/2026): ao chegar um pedido, a IA (Claude) sugere conceito, cenas com tempos,
 // textos, paleta e trilha, e a plataforma monta um KIT para o After Effects (pedido.json,
@@ -68,6 +69,10 @@ export interface JobIaComp {
   origem: "ia" | "chat";
   nota: string | null;
   especificacao: string | null;
+  claude_status: "aguardando" | "criando" | null;
+  claude_instrucoes: string | null;
+  claude_pedido_em: string | null;
+  claude_pedido_por: number | null;
   criado_em: string;
   atualizado_em: string;
 }
@@ -586,11 +591,64 @@ export async function receberDaMaquina(jobId: number, tipo: "aep" | "previa", co
     fs.rmSync(temp, { force: true });
     throw e;
   }
-  if (tipo === "aep") mudar(jobId, "pronto", { maquina_desde: null });
+  if (tipo === "aep") {
+    mudar(jobId, "pronto", { maquina_desde: null });
+    // Criação pedida ao Claude no chat: sai da fila e quem pediu é avisado.
+    if (job.origem === "chat" && job.claude_status) {
+      executar("UPDATE ia_comp_jobs SET claude_status = NULL WHERE id = ?", jobId);
+      const p = um<{ id: number; codigo: string }>("SELECT id, codigo FROM pedidos WHERE id = ?", job.pedido_id);
+      if (p && job.claude_pedido_por)
+        notificar(job.claude_pedido_por, `IA Comp: o Claude terminou a criação do ${p.codigo}.`, `/equipe/pedidos/${p.id}`, SEM_EMAIL);
+    }
+  }
 }
 
 export function falhaDaMaquina(jobId: number, erro: string) {
   mudar(jobId, "erro", { erro: `Máquina operária: ${erro}`.slice(0, 500), maquina_desde: null });
+}
+
+// ---------- Fila do Claude no chat ----------
+
+/**
+ * Admin pede ao Claude (no chat, sem API) a criação do projeto do After para o pedido.
+ * Sem kit ainda, gera um (sem IA). O Claude vê o pedido pela fila com o token da máquina.
+ */
+export function pedirAoClaude(admin: Usuario, pedidoId: number, instrucoes: string) {
+  if (admin.papel !== "admin") throw new ErroNegocio("Somente o administrador pede criações ao Claude.", 403);
+  if (!um("SELECT 1 FROM pedidos WHERE id = ?", pedidoId)) throw new ErroNegocio("Pedido não encontrado.", 404);
+  let job = jobDoPedido(pedidoId);
+  if (!job) {
+    enfileirar(pedidoId, { ...configIaComp(), usarIA: false, modo: "kit" });
+    job = jobDoPedido(pedidoId)!;
+  }
+  if (job.claude_status === "criando") throw new ErroNegocio("O Claude já está criando este pedido.");
+  executar(
+    `UPDATE ia_comp_jobs SET claude_status = 'aguardando', claude_instrucoes = ?, claude_pedido_em = datetime('now'),
+       claude_pedido_por = ? WHERE id = ?`,
+    instrucoes.trim().slice(0, 4000) || null,
+    admin.id,
+    job.id,
+  );
+}
+
+export function cancelarPedidoAoClaude(admin: Usuario, pedidoId: number) {
+  if (admin.papel !== "admin") throw new ErroNegocio("Somente o administrador altera a fila do Claude.", 403);
+  executar("UPDATE ia_comp_jobs SET claude_status = NULL WHERE pedido_id = ? AND claude_status = 'aguardando'", pedidoId);
+}
+
+/** Fila para o Claude (token da máquina): pedidos aguardando ou em criação, mais antigos primeiro. */
+export function filaDoClaude() {
+  return varios<{ id: number; codigo: string; titulo: string; status: StatusJob; claude_status: string; claude_instrucoes: string | null; claude_pedido_em: string }>(
+    `SELECT j.id, p.codigo, p.titulo, j.status, j.claude_status, j.claude_instrucoes, j.claude_pedido_em
+     FROM ia_comp_jobs j JOIN pedidos p ON p.id = j.pedido_id
+     WHERE j.claude_status IS NOT NULL ORDER BY j.claude_pedido_em`,
+  ).map((j) => ({ ...j, kitPronto: fs.existsSync(arquivoDoJob(j.id, "kit")), kit: `/api/v1/ia-comp/${j.id}/arquivo/kit` }));
+}
+
+/** O Claude avisa que começou a criar (o pedido aparece como "Claude criando"). */
+export function claudeComecou(jobId: number) {
+  const r = executar("UPDATE ia_comp_jobs SET claude_status = 'criando' WHERE id = ? AND claude_status IS NOT NULL", jobId);
+  if (!r.alterados) throw new ErroNegocio("Este pedido não está na fila do Claude.", 409);
 }
 
 // ---------- Tela do admin ----------

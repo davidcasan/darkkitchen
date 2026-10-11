@@ -531,6 +531,10 @@ function migrar(d: DatabaseSync) {
   if (!colunas("ia_comp_jobs").includes("origem")) d.exec("ALTER TABLE ia_comp_jobs ADD COLUMN origem TEXT NOT NULL DEFAULT 'ia'");
   if (!colunas("ia_comp_jobs").includes("nota")) d.exec("ALTER TABLE ia_comp_jobs ADD COLUMN nota TEXT");
   // Especificação de produção do After (o "prompt melhorado": camadas, tempos, efeitos e decisões), em markdown.
+  // Fila do Claude no chat (out/2026): o admin pede a criação no pedido; o Claude, com o chat aberto,
+  // consulta a fila, cria no After e devolve. claude_status: 'aguardando' | 'criando' | NULL.
+  for (const [col, tipo] of [["claude_status", "TEXT"], ["claude_instrucoes", "TEXT"], ["claude_pedido_em", "TEXT"], ["claude_pedido_por", "INTEGER REFERENCES usuarios(id)"]])
+    if (!colunas("ia_comp_jobs").includes(col)) d.exec(`ALTER TABLE ia_comp_jobs ADD COLUMN ${col} ${tipo}`);
   for (const t of ["ia_comp_jobs", "ia_comp_versoes"])
     if (!colunas(t).includes("especificacao")) d.exec(`ALTER TABLE ${t} ADD COLUMN especificacao TEXT`);
   if (!colunas("pedidos").includes("reativacoes")) d.exec("ALTER TABLE pedidos ADD COLUMN reativacoes INTEGER NOT NULL DEFAULT 0");

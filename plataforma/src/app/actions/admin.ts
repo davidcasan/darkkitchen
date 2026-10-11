@@ -19,7 +19,7 @@ import { usuarioPorId } from "@/server/services/usuarios";
 import { criarPerfil, moverPerfil, removerPerfil, salvarPerfil } from "@/server/services/perfis";
 import { desligarTelegram, linkParaLigar } from "@/server/services/telegram";
 import { salvarTermos } from "@/server/services/termos";
-import { gerarParaPedido, salvarConfigIaComp } from "@/server/services/iaComp";
+import { cancelarPedidoAoClaude, gerarParaPedido, pedirAoClaude, salvarConfigIaComp } from "@/server/services/iaComp";
 
 const admin = () => exigirUsuario(["admin"]);
 
@@ -240,4 +240,17 @@ export async function salvarIaCompAction(_: Estado, fd: FormData): Promise<Estad
 export async function gerarIaCompAction(_: Estado, fd: FormData): Promise<Estado> {
   const u = await admin();
   return rodar(() => gerarParaPedido(u, campoNumero(fd, "pedido")), "Na fila. Em até 1 minuto começa a gerar; atualize a página.");
+}
+
+export async function pedirAoClaudeAction(_: Estado, fd: FormData): Promise<Estado> {
+  const u = await admin();
+  return rodar(
+    () => pedirAoClaude(u, campoNumero(fd, "pedido"), campo(fd, "instrucoes")),
+    "Pedido enviado à fila do Claude. Ele cria quando o chat estiver aberto; você recebe um aviso quando ficar pronto.",
+  );
+}
+
+export async function cancelarPedidoAoClaudeAction(_: Estado, fd: FormData): Promise<Estado> {
+  const u = await admin();
+  return rodar(() => cancelarPedidoAoClaude(u, campoNumero(fd, "pedido")), "Pedido ao Claude cancelado.");
 }

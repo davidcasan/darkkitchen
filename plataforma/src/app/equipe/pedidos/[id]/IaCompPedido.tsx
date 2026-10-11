@@ -1,5 +1,5 @@
 import fs from "node:fs";
-import { gerarIaCompAction } from "@/app/actions/admin";
+import { cancelarPedidoAoClaudeAction, gerarIaCompAction, pedirAoClaudeAction } from "@/app/actions/admin";
 import { Enviar, FormAcao } from "@/components/app/FormAcao";
 import { Markdown } from "@/components/Markdown";
 import { formatarDataHora } from "@/server/datas";
@@ -45,6 +45,24 @@ export function IaCompPedido({ pedidoId, admin }: { pedidoId: number; admin: boo
         {job ? ` ${origemTexto(job.origem, job.modelo)} · atualizada em ${formatarDataHora(job.atualizado_em)}.` : ""}
         {andamento ? " Atualize a página em instantes." : ""}
       </p>
+      {job?.claude_status && (
+        <div className="alerta alerta-aviso small" style={{ marginBottom: 12 }}>
+          {job.claude_status === "criando"
+            ? "O Claude está criando este projeto no After."
+            : `Aguardando o Claude (pedido em ${formatarDataHora(job.claude_pedido_em!)}). Ele cria quando o chat estiver aberto.`}
+          {job.claude_instrucoes && <div style={{ whiteSpace: "pre-line", marginTop: 6 }}>Instruções: {job.claude_instrucoes}</div>}
+          {admin && job.claude_status === "aguardando" && (
+            <FormAcao action={cancelarPedidoAoClaudeAction} confirmar="Cancelar o pedido ao Claude?">
+              <input type="hidden" name="pedido" value={pedidoId} />
+              <div style={{ marginTop: 8 }}>
+                <Enviar className="btn btn-sm" enviando="Cancelando...">
+                  Cancelar pedido ao Claude
+                </Enviar>
+              </div>
+            </FormAcao>
+          )}
+        </div>
+      )}
       {job?.nota && <p className="small" style={{ whiteSpace: "pre-line", marginBottom: 12 }}>{job.nota}</p>}
       {job?.erro && <p className={`alerta ${job.status === "erro" ? "alerta-erro" : "alerta-aviso"} small`}>{job.erro}</p>}
 
@@ -83,6 +101,29 @@ export function IaCompPedido({ pedidoId, admin }: { pedidoId: number; admin: boo
         </details>
       )}
 
+      {admin && !job?.claude_status && (
+        <FormAcao action={pedirAoClaudeAction} confirmar="Pedir a criação ao Claude? Ele cria quando o chat estiver aberto (sem custo de API).">
+          <input type="hidden" name="pedido" value={pedidoId} />
+          <div className="stack" style={{ gap: 8, marginTop: 16, borderTop: "1px solid var(--line)", paddingTop: 12 }}>
+            <label className="label" htmlFor={`instrucoes-${pedidoId}`}>
+              Pedir criação ao Claude (chat)
+            </label>
+            <textarea
+              id={`instrucoes-${pedidoId}`}
+              name="instrucoes"
+              rows={3}
+              maxLength={4000}
+              placeholder="Opcional: o que quer nesta versão. Ex.: usar a linha Tipografia que cresce, mais lento, fundo claro."
+            />
+            <div>
+              <Enviar className="btn btn-primary btn-sm" enviando="Enviando...">
+                Pedir criação ao Claude
+              </Enviar>
+            </div>
+          </div>
+        </FormAcao>
+      )}
+
       {admin && (
         <FormAcao
           action={gerarIaCompAction}
@@ -95,7 +136,7 @@ export function IaCompPedido({ pedidoId, admin }: { pedidoId: number; admin: boo
           <input type="hidden" name="pedido" value={pedidoId} />
           <div style={{ marginTop: 12 }}>
             <Enviar className="btn btn-sm" enviando="Colocando na fila...">
-              {job ? "Gerar de novo" : "Gerar sugestões e kit"}
+              {cfg.usarIA ? (job ? "Gerar de novo" : "Gerar sugestões e kit") : job ? "Gerar kit de novo (sem IA)" : "Gerar kit (sem IA)"}
             </Enviar>
             <small className="muted" style={{ marginLeft: 10 }}>
               Modo atual: {cfg.modo === "operaria" ? "máquina operária" : "kit"} · IA {cfg.usarIA ? "ligada" : "desligada"}
