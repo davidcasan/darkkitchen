@@ -530,6 +530,9 @@ function migrar(d: DatabaseSync) {
   // IA Comp: de onde veio a versão atual ("ia" = gerada pelo site; "chat" = feita pelo Claude no chat) e nota.
   if (!colunas("ia_comp_jobs").includes("origem")) d.exec("ALTER TABLE ia_comp_jobs ADD COLUMN origem TEXT NOT NULL DEFAULT 'ia'");
   if (!colunas("ia_comp_jobs").includes("nota")) d.exec("ALTER TABLE ia_comp_jobs ADD COLUMN nota TEXT");
+  // Especificação de produção do After (o "prompt melhorado": camadas, tempos, efeitos e decisões), em markdown.
+  for (const t of ["ia_comp_jobs", "ia_comp_versoes"])
+    if (!colunas(t).includes("especificacao")) d.exec(`ALTER TABLE ${t} ADD COLUMN especificacao TEXT`);
   if (!colunas("pedidos").includes("reativacoes")) d.exec("ALTER TABLE pedidos ADD COLUMN reativacoes INTEGER NOT NULL DEFAULT 0");
   // Créditos passam a expirar: o extrato ganha o tipo "expiracao". O SQLite não altera
   // a regra (CHECK) de uma tabela, então ela é recriada com os mesmos lançamentos.

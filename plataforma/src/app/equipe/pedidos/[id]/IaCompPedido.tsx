@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import { gerarIaCompAction } from "@/app/actions/admin";
 import { Enviar, FormAcao } from "@/components/app/FormAcao";
+import { Markdown } from "@/components/Markdown";
 import { formatarDataHora } from "@/server/datas";
 import {
   ROTULO_STATUS,
@@ -48,6 +49,7 @@ export function IaCompPedido({ pedidoId, admin }: { pedidoId: number; admin: boo
       {job?.erro && <p className={`alerta ${job.status === "erro" ? "alerta-erro" : "alerta-aviso"} small`}>{job.erro}</p>}
 
       {job && <Arquivos jobId={job.id} marca={job.atualizado_em} />}
+      {job?.especificacao && <Especificacao texto={job.especificacao} />}
       {s && <QuadroSugestoes s={s} />}
 
       {job && versoes.length > 0 && (
@@ -65,6 +67,7 @@ export function IaCompPedido({ pedidoId, admin }: { pedidoId: number; admin: boo
                   </p>
                   {v.nota && <p className="small muted" style={{ whiteSpace: "pre-line", marginBottom: 8 }}>{v.nota}</p>}
                   <Arquivos jobId={job.id} versao={v.id} marca={v.arquivado_em} pequena />
+                  {v.especificacao && <Especificacao texto={v.especificacao} />}
                   {sv && (
                     <details>
                       <summary className="small" style={{ cursor: "pointer" }}>Ver sugestões desta versão</summary>
@@ -134,6 +137,19 @@ function Arquivos({ jobId, versao, marca, pequena }: { jobId: number; versao?: n
         />
       )}
     </>
+  );
+}
+
+function Especificacao({ texto }: { texto: string }) {
+  return (
+    <details style={{ marginBottom: 12 }}>
+      <summary style={{ cursor: "pointer" }}>
+        <b>Especificação de produção (After)</b>
+      </summary>
+      <div className="small" style={{ marginTop: 8 }}>
+        <Markdown texto={texto} />
+      </div>
+    </details>
   );
 }
 

@@ -6,9 +6,9 @@ import { maquinaAutorizada, novaVersaoManual } from "@/server/services/iaComp";
 export async function POST(req: Request, ctx: RouteContext<"/api/v1/ia-comp/[id]/nova-versao">) {
   try {
     if (!maquinaAutorizada(req)) return falha("Não autorizado.", 401);
-    const corpo = (await req.json().catch(() => ({}))) as { nota?: string };
+    const corpo = (await req.json().catch(() => ({}))) as { nota?: string; especificacao?: string };
     const { id } = await ctx.params;
-    novaVersaoManual(Number(id), String(corpo.nota ?? ""));
+    novaVersaoManual(Number(id), String(corpo.nota ?? ""), String(corpo.especificacao ?? ""));
     return ok({ iniciada: true });
   } catch (e) {
     return tratarErro(e);

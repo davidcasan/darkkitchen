@@ -67,6 +67,7 @@ export interface JobIaComp {
   maquina_desde: string | null;
   origem: "ia" | "chat";
   nota: string | null;
+  especificacao: string | null;
   criado_em: string;
   atualizado_em: string;
 }
@@ -76,6 +77,7 @@ export interface VersaoIaComp {
   job_id: number;
   origem: "ia" | "chat";
   nota: string | null;
+  especificacao: string | null;
   sugestoes: string | null;
   modelo: string | null;
   tokens_entrada: number;
@@ -141,9 +143,9 @@ function arquivarVersaoAtual(job: JobIaComp) {
   const tipos = (Object.keys(NOME_ARQUIVO) as TipoArquivoIaComp[]).filter((t) => fs.existsSync(arquivoDoJob(job.id, t)));
   if (!tipos.length && !job.sugestoes) return null;
   const versaoId = executar(
-    `INSERT INTO ia_comp_versoes (job_id, origem, nota, sugestoes, modelo, tokens_entrada, tokens_saida, criado_em)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    job.id, job.origem, job.nota, job.sugestoes, job.modelo, job.tokens_entrada, job.tokens_saida, job.atualizado_em,
+    `INSERT INTO ia_comp_versoes (job_id, origem, nota, especificacao, sugestoes, modelo, tokens_entrada, tokens_saida, criado_em)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    job.id, job.origem, job.nota, job.especificacao, job.sugestoes, job.modelo, job.tokens_entrada, job.tokens_saida, job.atualizado_em,
   ).id;
   fs.mkdirSync(pastaDaVersao(job.id, versaoId), { recursive: true });
   for (const t of tipos) fs.renameSync(arquivoDoJob(job.id, t), arquivoDaVersao(job.id, versaoId, t));
@@ -158,7 +160,7 @@ function enfileirar(pedidoId: number, c: ConfigIaComp) {
   arquivarVersaoAtual(antigo);
   executar(
     `UPDATE ia_comp_jobs SET status = 'pendente', modo = ?, usar_ia = ?, sugestoes = NULL, modelo = NULL, tokens_entrada = 0,
-       tokens_saida = 0, erro = NULL, maquina_desde = NULL, origem = 'ia', nota = NULL, criado_em = datetime('now'),
+       tokens_saida = 0, erro = NULL, maquina_desde = NULL, origem = 'ia', nota = NULL, especificacao = NULL, criado_em = datetime('now'),
        atualizado_em = datetime('now') WHERE id = ?`,
     c.modo, c.usarIA ? 1 : 0, antigo.id,
   );
@@ -170,7 +172,7 @@ function enfileirar(pedidoId: number, c: ConfigIaComp) {
  * mantém as sugestões e o kit (são a base usada) e deixa o job esperando a composição e a
  * prévia, enviadas pelas mesmas rotas da máquina operária (scripts/ia-comp-enviar.mjs).
  */
-export function novaVersaoManual(jobId: number, nota: string) {
+export function novaVersaoManual(jobId: number, nota: string, especificacao = "") {
   const job = um<JobIaComp>("SELECT * FROM ia_comp_jobs WHERE id = ?", jobId);
   if (!job) throw new ErroNegocio("Trabalho não encontrado.", 404);
   if (EM_ANDAMENTO.includes(job.status)) throw new ErroNegocio("A versão atual ainda está sendo gerada. Aguarde terminar.", 409);
@@ -180,6 +182,7 @@ export function novaVersaoManual(jobId: number, nota: string) {
   mudar(jobId, "na_maquina", {
     origem: "chat",
     nota: nota.trim().slice(0, 2000) || null,
+    especificacao: especificacao.trim().slice(0, 100_000) || null,
     modelo: "Claude (chat)",
     tokens_entrada: 0,
     tokens_saida: 0,
@@ -440,11 +443,46 @@ const LEIA_ME = `KIT IA COMP · Dark Kitchen Studio
    - a paleta e um guia (camada guia, não renderiza) com o briefing e as sugestões.
 
 As sugestões são um ponto de partida interno: ajuste ou descarte à vontade.
-pedido.json tem todos os dados do pedido em texto.
+pedido.json tem os dados do pedido em texto; registro.json, o pedido exatamente como está salvo.
 `;
 
 /** JSON só com ASCII (acentos como \\uXXXX), para o ExtendScript ler sem problema de codificação. */
 const jsonAscii = (v: unknown) => JSON.stringify(v, null, 1).replace(/[\u007f-￿]/g, (c) => "\\u" + c.charCodeAt(0).toString(16).padStart(4, "0"));
+
+/**
+ * O pedido exatamente como está salvo (todos os campos do briefing, marca, arquivos e o que
+ * foi cobrado), para quem cria a peça (designer ou Claude no chat) partir do registro íntegro.
+ * Sem dados pessoais do cliente além do nome.
+ */
+function registroDoPedido(d: DadosPedido, assets: { id: number; nome: string }[]) {
+  const json = (v: unknown) => {
+    if (typeof v !== "string" || !v) return v ?? null;
+    try {
+      return JSON.parse(v);
+    } catch {
+      return v;
+    }
+  };
+  const p = um<Record<string, unknown>>(
+    "SELECT p.*, u.nome AS cliente_nome FROM pedidos p JOIN usuarios u ON u.id = p.cliente_id WHERE p.id = ?",
+    d.id,
+  )!;
+  const marca = p.marca_id ? um<Record<string, unknown>>("SELECT * FROM marcas WHERE id = ?", Number(p.marca_id)) : null;
+  return {
+    pedido: { ...p, briefing: undefined, creditos_detalhe: json(p.creditos_detalhe) },
+    briefing: json(p.briefing),
+    briefing_atualizado: d.b,
+    marca: marca ? { ...marca, cores: json(marca.cores) } : null,
+    arquivos: d.arquivos.map((a) => ({
+      id: a.id,
+      categoria: a.categoria,
+      nome: a.nome,
+      mime: a.mime,
+      tamanho: a.tamanho,
+      no_kit: assets.find((x) => x.id === a.id) ? `assets/${assets.find((x) => x.id === a.id)!.nome}` : null,
+    })),
+  };
+}
 
 function montarKit(jobId: number, d: DadosPedido, sugestoes: Sugestoes | null) {
   if (!fs.existsSync(SCRIPT_AE)) throw new ErroNegocio("Script do After (ia-comp/montar-comp.jsx) não encontrado no servidor.");
@@ -455,7 +493,7 @@ function montarKit(jobId: number, d: DadosPedido, sugestoes: Sugestoes | null) {
       let nome = `${a.categoria}-${path.basename(a.nome).replace(/[^\w.\-]+/g, "_")}`;
       while (usados.has(nome)) nome = `${crypto.randomBytes(2).toString("hex")}-${nome}`;
       usados.add(nome);
-      return { nome, categoria: a.categoria, caminho: a.caminho };
+      return { id: a.id, nome, categoria: a.categoria, caminho: a.caminho };
     });
   const b = d.b;
   const duracao = b.duracao || Math.max(10, ...(sugestoes?.cenas ?? []).map((c) => c.fim));
@@ -486,6 +524,7 @@ function montarKit(jobId: number, d: DadosPedido, sugestoes: Sugestoes | null) {
   const entradas = [
     { nome: "LEIA-ME.txt", dados: Buffer.from(LEIA_ME, "utf8") },
     { nome: "pedido.json", dados: Buffer.from(JSON.stringify(pedido, null, 2), "utf8") },
+    { nome: "registro.json", dados: Buffer.from(JSON.stringify(registroDoPedido(d, assets), null, 2), "utf8") },
     { nome: "pedido.jsxinc", dados: Buffer.from(`var PEDIDO = ${jsonAscii(pedido)};\n`, "utf8") },
     { nome: "montar-comp.jsx", dados: fs.readFileSync(SCRIPT_AE) },
     ...assets.map((a) => ({ nome: `assets/${a.nome}`, dados: fs.readFileSync(a.caminho) })),
