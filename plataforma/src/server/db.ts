@@ -304,6 +304,20 @@ CREATE TABLE IF NOT EXISTS ia_comp_jobs (
   criado_em TEXT NOT NULL DEFAULT (datetime('now')),
   atualizado_em TEXT NOT NULL DEFAULT (datetime('now'))
 );
+-- Versões anteriores da IA Comp (out/2026): ao gerar de novo, a versão atual do job é guardada
+-- aqui (com sugestões e gasto) e os arquivos vão para data/arquivos/ia-comp/<job_id>/versoes/<id>/.
+CREATE TABLE IF NOT EXISTS ia_comp_versoes (
+  id INTEGER PRIMARY KEY,
+  job_id INTEGER NOT NULL REFERENCES ia_comp_jobs(id) ON DELETE CASCADE,
+  origem TEXT NOT NULL DEFAULT 'ia',
+  nota TEXT,
+  sugestoes TEXT,
+  modelo TEXT,
+  tokens_entrada INTEGER NOT NULL DEFAULT 0,
+  tokens_saida INTEGER NOT NULL DEFAULT 0,
+  criado_em TEXT NOT NULL,
+  arquivado_em TEXT NOT NULL DEFAULT (datetime('now'))
+);
 -- Quem somos (out/2026): perfis de colaboradores-chave mostrados no site.
 -- Mídias em data/arquivos/perfis (só o nome do arquivo fica aqui); vídeos opcionais.
 CREATE TABLE IF NOT EXISTS perfis (
@@ -513,6 +527,9 @@ function migrar(d: DatabaseSync) {
   for (const col of ["titulo_16x9", "titulo_9x16"])
     if (!colunas("perfis").includes(col)) d.exec(`ALTER TABLE perfis ADD COLUMN ${col} TEXT NOT NULL DEFAULT ''`);
   // Reativação de pedido concluído ou cancelado (out/2026): quantas vezes, para o selo "Reativado".
+  // IA Comp: de onde veio a versão atual ("ia" = gerada pelo site; "chat" = feita pelo Claude no chat) e nota.
+  if (!colunas("ia_comp_jobs").includes("origem")) d.exec("ALTER TABLE ia_comp_jobs ADD COLUMN origem TEXT NOT NULL DEFAULT 'ia'");
+  if (!colunas("ia_comp_jobs").includes("nota")) d.exec("ALTER TABLE ia_comp_jobs ADD COLUMN nota TEXT");
   if (!colunas("pedidos").includes("reativacoes")) d.exec("ALTER TABLE pedidos ADD COLUMN reativacoes INTEGER NOT NULL DEFAULT 0");
   // Créditos passam a expirar: o extrato ganha o tipo "expiracao". O SQLite não altera
   // a regra (CHECK) de uma tabela, então ela é recriada com os mesmos lançamentos.

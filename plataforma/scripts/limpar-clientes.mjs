@@ -124,6 +124,7 @@ try {
   apagar(`DELETE FROM acessos_logins WHERE usuario_id IN (${inC})`);
   apagar(`DELETE FROM termos_aceites WHERE usuario_id IN (${inC})`);
   apagar(`DELETE FROM telegram_mensagens WHERE cliente_id IN (${inC})`);
+  apagar(`DELETE FROM ia_comp_versoes WHERE job_id IN (SELECT id FROM ia_comp_jobs WHERE pedido_id IN (${inP}))`);
   apagar(`DELETE FROM ia_comp_jobs WHERE pedido_id IN (${inP})`); // os arquivos (data/arquivos/ia-comp) saem na varredura abaixo
   apagar(`DELETE FROM sessoes WHERE usuario_id IN (${inC})`);
   // Notificações: as dos clientes e as da equipe, que falam de pedidos e clientes apagados.

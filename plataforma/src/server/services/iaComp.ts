@@ -65,9 +65,26 @@ export interface JobIaComp {
   tokens_saida: number;
   erro: string | null;
   maquina_desde: string | null;
+  origem: "ia" | "chat";
+  nota: string | null;
   criado_em: string;
   atualizado_em: string;
 }
+
+export interface VersaoIaComp {
+  id: number;
+  job_id: number;
+  origem: "ia" | "chat";
+  nota: string | null;
+  sugestoes: string | null;
+  modelo: string | null;
+  tokens_entrada: number;
+  tokens_saida: number;
+  criado_em: string;
+  arquivado_em: string;
+}
+export type TipoArquivoIaComp = "kit" | "aep" | "previa";
+const NOME_ARQUIVO: Record<TipoArquivoIaComp, string> = { kit: "kit.zip", aep: "comp.zip", previa: "previa.png" };
 
 // ---------- Configuração (admin) ----------
 
@@ -99,10 +116,16 @@ export const tokenMaquinaConfigurado = () => Boolean(process.env.IA_COMP_TOKEN_M
 
 export const jobDoPedido = (pedidoId: number) => um<JobIaComp>("SELECT * FROM ia_comp_jobs WHERE pedido_id = ?", pedidoId);
 export const pastaDoJob = (id: number) => path.join(PASTA_IA, String(id));
-export const arquivoDoJob = (id: number, tipo: "kit" | "aep" | "previa") =>
-  path.join(pastaDoJob(id), tipo === "kit" ? "kit.zip" : tipo === "aep" ? "comp.zip" : "previa.png");
+export const arquivoDoJob = (id: number, tipo: TipoArquivoIaComp) => path.join(pastaDoJob(id), NOME_ARQUIVO[tipo]);
+const pastaDaVersao = (jobId: number, versaoId: number) => path.join(pastaDoJob(jobId), "versoes", String(versaoId));
+export const arquivoDaVersao = (jobId: number, versaoId: number, tipo: TipoArquivoIaComp) =>
+  path.join(pastaDaVersao(jobId, versaoId), NOME_ARQUIVO[tipo]);
 
-export function sugestoesDo(job: JobIaComp): Sugestoes | null {
+/** Versões anteriores do job, da mais nova para a mais antiga. */
+export const versoesDoJob = (jobId: number) =>
+  varios<VersaoIaComp>("SELECT * FROM ia_comp_versoes WHERE job_id = ? ORDER BY id DESC", jobId);
+
+export function sugestoesDo(job: { sugestoes: string | null }): Sugestoes | null {
   if (!job.sugestoes) return null;
   try {
     return JSON.parse(job.sugestoes) as Sugestoes;
@@ -111,11 +134,58 @@ export function sugestoesDo(job: JobIaComp): Sugestoes | null {
   }
 }
 
+const EM_ANDAMENTO: StatusJob[] = ["gerando", "na_maquina"];
+
+/** Guarda a versão atual do job (sugestões, gasto e arquivos) antes de ela ser substituída. */
+function arquivarVersaoAtual(job: JobIaComp) {
+  const tipos = (Object.keys(NOME_ARQUIVO) as TipoArquivoIaComp[]).filter((t) => fs.existsSync(arquivoDoJob(job.id, t)));
+  if (!tipos.length && !job.sugestoes) return null;
+  const versaoId = executar(
+    `INSERT INTO ia_comp_versoes (job_id, origem, nota, sugestoes, modelo, tokens_entrada, tokens_saida, criado_em)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    job.id, job.origem, job.nota, job.sugestoes, job.modelo, job.tokens_entrada, job.tokens_saida, job.atualizado_em,
+  ).id;
+  fs.mkdirSync(pastaDaVersao(job.id, versaoId), { recursive: true });
+  for (const t of tipos) fs.renameSync(arquivoDoJob(job.id, t), arquivoDaVersao(job.id, versaoId, t));
+  return versaoId;
+}
+
 function enfileirar(pedidoId: number, c: ConfigIaComp) {
   const antigo = jobDoPedido(pedidoId);
-  if (antigo) fs.rmSync(pastaDoJob(antigo.id), { recursive: true, force: true });
-  executar("DELETE FROM ia_comp_jobs WHERE pedido_id = ?", pedidoId);
-  return executar("INSERT INTO ia_comp_jobs (pedido_id, status, modo, usar_ia) VALUES (?, 'pendente', ?, ?)", pedidoId, c.modo, c.usarIA ? 1 : 0).id;
+  if (!antigo)
+    return executar("INSERT INTO ia_comp_jobs (pedido_id, status, modo, usar_ia) VALUES (?, 'pendente', ?, ?)", pedidoId, c.modo, c.usarIA ? 1 : 0).id;
+  if (EM_ANDAMENTO.includes(antigo.status)) throw new ErroNegocio("A versão atual ainda está sendo gerada. Aguarde terminar.");
+  arquivarVersaoAtual(antigo);
+  executar(
+    `UPDATE ia_comp_jobs SET status = 'pendente', modo = ?, usar_ia = ?, sugestoes = NULL, modelo = NULL, tokens_entrada = 0,
+       tokens_saida = 0, erro = NULL, maquina_desde = NULL, origem = 'ia', nota = NULL, criado_em = datetime('now'),
+       atualizado_em = datetime('now') WHERE id = ?`,
+    c.modo, c.usarIA ? 1 : 0, antigo.id,
+  );
+  return antigo.id;
+}
+
+/**
+ * Versão feita fora do site (pelo Claude no chat, sem gastar a API): guarda a versão atual,
+ * mantém as sugestões e o kit (são a base usada) e deixa o job esperando a composição e a
+ * prévia, enviadas pelas mesmas rotas da máquina operária (scripts/ia-comp-enviar.mjs).
+ */
+export function novaVersaoManual(jobId: number, nota: string) {
+  const job = um<JobIaComp>("SELECT * FROM ia_comp_jobs WHERE id = ?", jobId);
+  if (!job) throw new ErroNegocio("Trabalho não encontrado.", 404);
+  if (EM_ANDAMENTO.includes(job.status)) throw new ErroNegocio("A versão atual ainda está sendo gerada. Aguarde terminar.", 409);
+  const versaoId = arquivarVersaoAtual(job);
+  const kitAntigo = versaoId ? arquivoDaVersao(jobId, versaoId, "kit") : null;
+  if (kitAntigo && fs.existsSync(kitAntigo)) fs.copyFileSync(kitAntigo, arquivoDoJob(jobId, "kit"));
+  mudar(jobId, "na_maquina", {
+    origem: "chat",
+    nota: nota.trim().slice(0, 2000) || null,
+    modelo: "Claude (chat)",
+    tokens_entrada: 0,
+    tokens_saida: 0,
+    erro: null,
+    maquina_desde: new Date().toISOString().replace("T", " ").slice(0, 19),
+  });
 }
 
 /** Chamado quando um pedido é criado: só entra na fila se a IA Comp estiver ligada. */
@@ -487,8 +557,11 @@ export function falhaDaMaquina(jobId: number, erro: string) {
 // ---------- Tela do admin ----------
 
 export function resumoIaComp() {
+  // O gasto soma a versão atual de cada job e as versões anteriores guardadas.
   const t = um<{ n: number; entrada: number; saida: number }>(
-    "SELECT COUNT(*) n, COALESCE(SUM(tokens_entrada), 0) entrada, COALESCE(SUM(tokens_saida), 0) saida FROM ia_comp_jobs",
+    `SELECT (SELECT COUNT(*) FROM ia_comp_jobs) n,
+       (SELECT COALESCE(SUM(tokens_entrada), 0) FROM ia_comp_jobs) + (SELECT COALESCE(SUM(tokens_entrada), 0) FROM ia_comp_versoes) entrada,
+       (SELECT COALESCE(SUM(tokens_saida), 0) FROM ia_comp_jobs) + (SELECT COALESCE(SUM(tokens_saida), 0) FROM ia_comp_versoes) saida`,
   )!;
   const custo = (t.entrada * PRECO_MTOK.entrada + t.saida * PRECO_MTOK.saida) / 1_000_000;
   const recentes = varios<JobIaComp & { codigo: string; titulo: string }>(
