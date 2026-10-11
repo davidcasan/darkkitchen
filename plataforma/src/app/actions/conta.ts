@@ -96,6 +96,12 @@ export async function redefinirSenhaAction(_: Estado, fd: FormData): Promise<Est
   redirect("/entrar?ok=senha");
 }
 
+/** O cliente concluiu ou pulou o tutorial do primeiro acesso: não abre mais sozinho. */
+export async function marcarTutorialVistoAction() {
+  const u = await exigirUsuario(["cliente"]);
+  executar("UPDATE usuarios SET tutorial_visto_em = datetime('now') WHERE id = ? AND tutorial_visto_em IS NULL", u.id);
+}
+
 export async function preferenciaEmailAction(_: Estado, fd: FormData): Promise<Estado> {
   const u = await exigirUsuario();
   const p = campo(fd, "email_avisos") as PreferenciaEmail;

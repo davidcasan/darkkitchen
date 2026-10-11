@@ -27,9 +27,14 @@ export default async function PainelCliente({ searchParams }: PageProps<"/client
           <h1>Olá, {u.nome.split(" ")[0]}</h1>
           <p>{u.empresa ? `Painel da ${u.empresa}` : "Seu painel de pedidos"}</p>
         </div>
-        <Link href="/cliente/pedidos/novo" className="btn btn-primary">
-          Novo pedido
-        </Link>
+        <div className="row">
+          <Link href="/cliente/tutorial" className="btn">
+            Como funciona
+          </Link>
+          <Link href="/cliente/pedidos/novo" className="btn btn-primary">
+            Novo pedido
+          </Link>
+        </div>
       </div>
 
       {bemvindo && (

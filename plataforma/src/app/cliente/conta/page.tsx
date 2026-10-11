@@ -54,9 +54,14 @@ export default async function ContaCliente({ searchParams }: PageProps<"/cliente
             {u.nome} · {u.email}
           </p>
         </div>
-        <Link href="/cliente/marcas" className="btn">
-          Minhas marcas
-        </Link>
+        <div className="row">
+          <Link href="/cliente/tutorial" className="btn">
+            Ver o tutorial
+          </Link>
+          <Link href="/cliente/marcas" className="btn">
+            Minhas marcas
+          </Link>
+        </div>
       </div>
 
       <Confirmacao texto={ok === "pago" ? "Pagamento aprovado. Seu plano está em dia e os créditos do novo período entraram no saldo." : null} />

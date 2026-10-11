@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { criarMarcaNoBriefingAction, criarPedidoAction } from "@/app/actions/cliente";
+import { BotaoDicas } from "@/components/app/Tutorial";
 import { type TabelaPrecos, pecasComPrecos } from "@/domain/precos";
 import {
   type Briefing,
@@ -1142,6 +1143,7 @@ export function Wizard({
         <section className={styles.panel} ref={painel} aria-live="polite">
           <h1>{titulo}</h1>
           <p className={styles.lead}>{lead}</p>
+          <BotaoDicas etapa={etapa} />
           {renderEtapa()}
           {erroGeral && (
             <p className="alerta alerta-erro" role="alert">

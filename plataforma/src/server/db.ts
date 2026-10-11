@@ -520,6 +520,8 @@ function migrar(d: DatabaseSync) {
     if (!colMsg.includes(nome)) d.exec(`ALTER TABLE atendimento_mensagens ADD COLUMN ${nome} ${tipo}`);
   // CPF ou CNPJ de quem contrata (out/2026): só letras e números; um por conta.
   if (!colunas("usuarios").includes("documento")) d.exec("ALTER TABLE usuarios ADD COLUMN documento TEXT");
+  // Tutorial do cliente (out/2026): quando foi visto (concluído ou pulado); NULL = abre no próximo acesso.
+  if (!colunas("usuarios").includes("tutorial_visto_em")) d.exec("ALTER TABLE usuarios ADD COLUMN tutorial_visto_em TEXT");
   d.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_usuarios_documento ON usuarios(documento) WHERE documento IS NOT NULL");
   // Registro de acesso (Marco Civil, art. 15): IP de cada login, guardado por pelo menos 6 meses.
   if (!colunas("acessos_logins").includes("ip")) d.exec("ALTER TABLE acessos_logins ADD COLUMN ip TEXT");
