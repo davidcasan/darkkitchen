@@ -50,7 +50,11 @@ export function AppShell({
         <nav aria-label="Principal">
           <NavLateral itens={itens} />
         </nav>
-        {resumo && <div className={styles.resumo}>{resumo}</div>}
+        {resumo && (
+          <div className={styles.resumo} data-tour="saldo">
+            {resumo}
+          </div>
+        )}
         <div className={styles.perfil}>
           <div>
             <b>{usuario.nome}</b>
@@ -69,8 +73,12 @@ export function AppShell({
           <Marca />
         </Link>
         <div className={styles.topoAcoes}>
-          {resumo && <div className={styles.topoResumo}>{resumo}</div>}
-          <Link href={raiz + "#novidades"} className={styles.sino} aria-label={`Notificações: ${naoLidas} novas`}>
+          {resumo && (
+            <div className={styles.topoResumo} data-tour="saldo">
+              {resumo}
+            </div>
+          )}
+          <Link href={raiz + "#novidades"} className={styles.sino} data-tour="sino" aria-label={`Notificações: ${naoLidas} novas`}>
             <Icone nome="sino" />
             {naoLidas > 0 && <span>{naoLidas > 9 ? "9+" : naoLidas}</span>}
           </Link>

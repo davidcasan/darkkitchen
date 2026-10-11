@@ -3,7 +3,8 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { type Estado, campo, rodar } from "@/server/acao";
-import { areaDo, encerrarSessaoWeb, exigirUsuario, iniciarSessaoWeb } from "@/server/auth";
+import { adminOriginal, areaDo, encerrarSessaoWeb, exigirUsuario, iniciarSessaoWeb } from "@/server/auth";
+import { marcarTourVisto, reiniciarTours } from "@/server/services/tours";
 import { ErroNegocio, executar } from "@/server/db";
 import { PLANO_PERSONALIZADO } from "@/domain/precos";
 import { alterarSenha, autenticar, cadastrarCliente } from "@/server/services/usuarios";
@@ -96,10 +97,16 @@ export async function redefinirSenhaAction(_: Estado, fd: FormData): Promise<Est
   redirect("/entrar?ok=senha");
 }
 
-/** O cliente concluiu ou pulou o tutorial do primeiro acesso: não abre mais sozinho. */
-export async function marcarTutorialVistoAction() {
+/** O cliente concluiu ou pulou um tour guiado: ele não abre mais sozinho. */
+export async function marcarTourVistoAction(id: string) {
   const u = await exigirUsuario(["cliente"]);
-  executar("UPDATE usuarios SET tutorial_visto_em = datetime('now') WHERE id = ? AND tutorial_visto_em IS NULL", u.id);
+  if (await adminOriginal()) return; // o admin "acessando como" não marca pelo cliente
+  marcarTourVisto(u.id, id);
+}
+
+export async function reiniciarToursAction(): Promise<Estado> {
+  const u = await exigirUsuario(["cliente"]);
+  return rodar(() => reiniciarTours(u.id), "Pronto. Os tours vão aparecer de novo em cada página.");
 }
 
 export async function preferenciaEmailAction(_: Estado, fd: FormData): Promise<Estado> {

@@ -7,7 +7,7 @@ import styles from "./Notificacoes.module.css";
 export function Notificacoes({ itens }: { itens: Notificacao[] }) {
   const naoLidas = itens.filter((n) => !n.lida).length;
   return (
-    <section className="card" id="novidades">
+    <section className="card" id="novidades" data-tour="novidades">
       <div className="row-between" style={{ marginBottom: 10 }}>
         <h2 className="card-title" style={{ margin: 0 }}>
           Novidades {naoLidas > 0 && <span className="badge" data-tom="acao">{naoLidas} novas</span>}

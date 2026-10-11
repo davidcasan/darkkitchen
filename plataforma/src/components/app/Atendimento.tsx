@@ -514,7 +514,7 @@ export function BotaoAtendimento({ visao }: { visao: Visao }) {
           />
         </div>
       ) : (
-        <button type="button" className={styles.botao} onClick={() => setAberto(chaveAlvo)}>
+        <button type="button" className={styles.botao} data-tour="atendimento" onClick={() => setAberto(chaveAlvo)}>
           <Icone nome="chat" tamanho={20} />
           <span>{alvo.pedidoId ? "Atendimento deste pedido" : "Atendimento"}</span>
           {naoLidas > 0 && <span className={styles.selo}>{naoLidas > 9 ? "9+" : naoLidas}</span>}

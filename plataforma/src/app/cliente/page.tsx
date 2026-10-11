@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ListaPedidos } from "@/components/app/ListaPedidos";
+import { BotaoTour, TourAutomatico } from "@/components/app/Tour";
+import { adminOriginal } from "@/server/auth";
+import { toursVistos } from "@/server/services/tours";
 import { Notificacoes } from "@/components/app/Notificacoes";
 import { exigirUsuario } from "@/server/auth";
 import { formatarData } from "@/server/datas";
@@ -28,9 +31,7 @@ export default async function PainelCliente({ searchParams }: PageProps<"/client
           <p>{u.empresa ? `Painel da ${u.empresa}` : "Seu painel de pedidos"}</p>
         </div>
         <div className="row">
-          <Link href="/cliente/tutorial" className="btn">
-            Como funciona
-          </Link>
+          <BotaoTour id="painel" />
           <Link href="/cliente/pedidos/novo" className="btn btn-primary">
             Novo pedido
           </Link>
@@ -93,6 +94,7 @@ export default async function PainelCliente({ searchParams }: PageProps<"/client
           </section>
         </div>
         <Notificacoes itens={listarNotificacoes(u.id, 8)} />
+        <TourAutomatico id="painel" visto={Boolean(await adminOriginal()) || toursVistos(u.id).includes("painel")} />
       </div>
     </>
   );

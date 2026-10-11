@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Wizard, type MarcaWizard } from "@/components/briefing/Wizard";
-import { exigirUsuario } from "@/server/auth";
+import { adminOriginal, exigirUsuario } from "@/server/auth";
+import { toursVistos } from "@/server/services/tours";
 import { saldo } from "@/server/services/creditos";
 import { listarMarcas } from "@/server/services/marcas";
 import { precos } from "@/server/services/precos";
@@ -16,5 +17,15 @@ export default async function NovoPedido() {
     arquivos: m.arquivos.map((a) => ({ id: a.id, nome: a.nome, categoria: a.categoria as "logo" | "manual" })),
   }));
 
-  return <Wizard saldo={saldo(u.id)} precos={precos()} marcas={marcas} aprovador={u.nome} email={u.email} />;
+  return (
+    <Wizard
+      saldo={saldo(u.id)}
+      precos={precos()}
+      marcas={marcas}
+      aprovador={u.nome}
+      email={u.email}
+      toursVistos={toursVistos(u.id)}
+      toursAutomaticos={!(await adminOriginal())}
+    />
+  );
 }

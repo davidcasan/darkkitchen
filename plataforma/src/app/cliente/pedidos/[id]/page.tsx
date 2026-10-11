@@ -10,7 +10,9 @@ import { VersaoPlayer } from "@/components/app/VersaoPlayer";
 import { formatarTamanho, urlArquivo } from "@/components/app/upload";
 import { mensagemDe } from "@/domain/mensagens";
 import { LINHA_CLIENTE, MOTIVOS_REJEICAO } from "@/domain/pedido";
-import { exigirUsuario } from "@/server/auth";
+import { adminOriginal, exigirUsuario } from "@/server/auth";
+import { BotaoTour, TourAutomatico } from "@/components/app/Tour";
+import { toursVistos } from "@/server/services/tours";
 import { formatarData, formatarDataHora, paraSql } from "@/server/datas";
 import { ErroNegocio } from "@/server/db";
 import { arquivosPorIds } from "@/server/services/arquivos";
@@ -98,7 +100,7 @@ export default async function PedidoCliente({ params, searchParams }: PageProps<
           <span>{p.status === "aprovado" ? "Concluído" : "Entrega prevista"}</span>
           <b style={{ fontSize: 20 }}>{p.status === "aprovado" ? formatarData(p.atualizado_em) : formatarData(p.entrega_prevista)}</b>
         </div>
-        <div className="kpi">
+        <div className="kpi" data-tour="rodadas">
           <span>Rodadas de ajuste</span>
           <b style={{ fontSize: 20 }}>
             {p.revisoes_usadas} de {p.revisoes_incluidas}
@@ -114,7 +116,11 @@ export default async function PedidoCliente({ params, searchParams }: PageProps<
         <div className="stack">
           {p.status === "revisao_cliente" && (
             <section className="card" style={{ borderColor: "var(--key)" }}>
-              <h2>Sua revisão</h2>
+              <div className="row-between">
+                <h2>Sua revisão</h2>
+                <BotaoTour id="pedido-revisao" rotulo="Ver o tour da revisão" />
+              </div>
+              <TourAutomatico id="pedido-revisao" visto={Boolean(await adminOriginal()) || toursVistos(u.id).includes("pedido-revisao")} />
               <p className="muted small" style={{ marginBottom: 14 }}>
                 Assista à versão abaixo. Comente direto no vídeo, no segundo exato, e depois aprove ou peça ajustes.
               </p>
@@ -123,7 +129,7 @@ export default async function PedidoCliente({ params, searchParams }: PageProps<
                   Revise até <b>{formatarData(paraSql(prazoRevisao))}</b>. Sem resposta até lá, a peça é aprovada automaticamente.
                 </p>
               )}
-              <div className={styles.acoes}>
+              <div className={styles.acoes} data-tour="aprovar">
                 <FormAcao action={aprovarAction} confirmar="Aprovar a peça? Depois de aprovada, os arquivos finais ficam liberados.">
                   <input type="hidden" name="pedido" value={p.id} />
                   <Enviar>Aprovar peça</Enviar>
@@ -216,7 +222,7 @@ export default async function PedidoCliente({ params, searchParams }: PageProps<
             </section>
           )}
 
-          <section className="card">
+          <section className="card" data-tour="player">
             <h2>Versões e comentários</h2>
             <VersaoPlayer
               pedidoId={p.id}

@@ -138,7 +138,7 @@ export function VersaoPlayer({
       </ul>
 
       {podeComentar && (
-        <form action={acao} className={styles.form}>
+        <form action={acao} className={styles.form} data-tour="comentar">
           <input type="hidden" name="pedido" value={pedidoId} />
           <input type="hidden" name="versao" value={versao?.id ?? ""} />
           <input type="hidden" name="tempo" value={versao && ehVideo && marcar ? tempo.toFixed(2) : ""} />

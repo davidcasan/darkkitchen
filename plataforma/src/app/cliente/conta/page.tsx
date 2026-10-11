@@ -9,7 +9,7 @@ import {
   renovacaoAction,
   trocarPlanoAction,
 } from "@/app/actions/cliente";
-import { alterarSenhaAction, sairAction } from "@/app/actions/conta";
+import { alterarSenhaAction, reiniciarToursAction, sairAction } from "@/app/actions/conta";
 import { Confirmacao } from "@/components/app/Confirmacao";
 import { Enviar, FormAcao } from "@/components/app/FormAcao";
 import { formatarReais } from "@/domain/catalogo";
@@ -55,9 +55,11 @@ export default async function ContaCliente({ searchParams }: PageProps<"/cliente
           </p>
         </div>
         <div className="row">
-          <Link href="/cliente/tutorial" className="btn">
-            Ver o tutorial
-          </Link>
+          <FormAcao action={reiniciarToursAction}>
+            <Enviar className="btn" enviando="...">
+              Mostrar os tours de novo
+            </Enviar>
+          </FormAcao>
           <Link href="/cliente/marcas" className="btn">
             Minhas marcas
           </Link>

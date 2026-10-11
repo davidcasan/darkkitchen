@@ -37,6 +37,7 @@ export function NavLateral({ itens }: { itens: ItemNav[] }) {
         <li key={i.href}>
           <Link
             href={i.href}
+            data-tour={`nav:${i.href}`}
             className={styles.navLink}
             data-destaque={i.destaque ?? false}
             aria-current={i.href === atual ? "page" : undefined}
@@ -61,6 +62,7 @@ export function NavInferior({ itens }: { itens: ItemNav[] }) {
           <Link
             key={i.href}
             href={i.href}
+            data-tour={`nav:${i.href}`}
             data-destaque={i.destaque ?? false}
             aria-current={i.href === atual ? "page" : undefined}
           >

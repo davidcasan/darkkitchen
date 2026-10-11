@@ -6,8 +6,6 @@ import Link from "next/link";
 import { formatarData } from "@/server/datas";
 import { assinaturaDo, cobrancasPixDo, fimDaCarencia, processarAssinaturas } from "@/server/services/assinaturas";
 import { AreaPendente } from "./AreaPendente";
-import { TutorialPrimeiroAcesso } from "@/components/app/Tutorial";
-import { um } from "@/server/db";
 import { saldo } from "@/server/services/creditos";
 import { contarNaoLidas } from "@/server/services/notificacoes";
 import { processarAprovacoesAutomaticas } from "@/server/services/pedidos";
@@ -22,7 +20,6 @@ const ITENS: ItemNav[] = [
   { href: "/cliente/creditos", rotulo: "Créditos", icone: "creditos", movel: true },
   { href: "/cliente/marcas", rotulo: "Marcas", icone: "marca" },
   { href: "/cliente/conta", rotulo: "Conta", icone: "conta", movel: true },
-  { href: "/cliente/tutorial", rotulo: "Tutorial", icone: "ajuda" },
 ];
 
 export default async function ClienteLayout({ children }: LayoutProps<"/cliente">) {
@@ -41,9 +38,6 @@ export default async function ClienteLayout({ children }: LayoutProps<"/cliente"
   const emCarencia = assinatura?.status === "ativa" && assinatura.inadimplente_desde ? assinatura : null;
   const pixAberto = !contaPendente && cobrancasPixDo(usuario.id).length > 0;
   const comoAdmin = (await adminOriginal())?.nome;
-  // Tutorial no primeiro acesso (não abre para o admin que está "acessando como").
-  const mostrarTutorial =
-    !contaPendente && !comoAdmin && !um<{ v: string | null }>("SELECT tutorial_visto_em v FROM usuarios WHERE id = ?", usuario.id)?.v;
   return (
     <AppShell
       usuario={usuario}
@@ -76,7 +70,6 @@ export default async function ClienteLayout({ children }: LayoutProps<"/cliente"
           )}
           {children}
           <BotaoAtendimento visao="cliente" />
-          {mostrarTutorial && <TutorialPrimeiroAcesso />}
         </>
       )}
     </AppShell>

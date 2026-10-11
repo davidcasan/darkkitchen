@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { createContext, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { criarMarcaNoBriefingAction, criarPedidoAction } from "@/app/actions/cliente";
-import { BotaoDicas } from "@/components/app/Tutorial";
+import { BotaoTour, TourAutomatico } from "@/components/app/Tour";
+import { type IdTour, tourDaEtapa } from "@/domain/tours";
 import { type TabelaPrecos, pecasComPrecos } from "@/domain/precos";
 import {
   type Briefing,
@@ -215,14 +216,21 @@ export function Wizard({
   marcas: marcasIniciais,
   aprovador,
   email,
+  toursVistos,
+  toursAutomaticos,
 }: {
   saldo: number;
   precos: TabelaPrecos;
   marcas: MarcaWizard[];
   aprovador: string;
   email: string;
+  toursVistos: IdTour[];
+  toursAutomaticos: boolean; // false para o admin "acessando como"
 }) {
   const router = useRouter();
+  // Tours de cada etapa: abrem sozinhos na primeira vez em que o cliente chega nela.
+  const [vistos, setVistos] = useState(() => new Set<IdTour>(toursVistos));
+  const aoVerTour = useCallback((id: IdTour) => setVistos((v) => new Set(v).add(id)), []);
   const inicial = useMemo<Briefing>(() => {
     const b = { ...briefingVazio(), aprovador, email };
     // Com uma só marca, ela já vem escolhida (o cliente ainda pode trocar ou criar outra).
@@ -975,7 +983,7 @@ export function Wizard({
         const urg = prazoUrgente(precoPeca?.diasUteis ?? 2);
         return (
           <>
-            <div className="field">
+            <div className="field" data-tour="prazo">
               <span className="label">Quando você precisa</span>
               <div className={styles.deadline}>
                 <button type="button" className={styles.type} aria-pressed={b.prazo === "padrao"} onClick={() => set("prazo", "padrao")}>
@@ -1035,7 +1043,7 @@ export function Wizard({
         );
         const arquivosNomes = [...b.arquivos.logo, ...b.arquivos.manual, ...b.arquivos.fotos].map((id) => nomes[id] ?? `#${id}`);
         return (
-          <div className={styles.review}>
+          <div className={styles.review} data-tour="revisao">
             {linha(0, [["Peça", peca?.nome]])}
             {linha(
               1,
@@ -1095,7 +1103,7 @@ export function Wizard({
   return (
     <ErrosCtx.Provider value={erros}>
     <div className={styles.wizard}>
-      <nav className={styles.timeline} aria-label="Etapas do pedido">
+      <nav className={styles.timeline} aria-label="Etapas do pedido" data-tour="etapas">
         <div className={styles.track}>
           <div className={styles.fill} style={{ width: `calc(${etapa / 7} * (100% - 100% / 8))` }} />
           {ETAPAS.map((s, i) => {
@@ -1141,9 +1149,12 @@ export function Wizard({
 
       <div className={styles.wrap}>
         <section className={styles.panel} ref={painel} aria-live="polite">
-          <h1>{titulo}</h1>
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+            <h1>{titulo}</h1>
+            <BotaoTour id={tourDaEtapa(etapa)} rotulo="Ver o tour desta etapa" />
+          </div>
           <p className={styles.lead}>{lead}</p>
-          <BotaoDicas etapa={etapa} />
+          <TourAutomatico key={etapa} id={tourDaEtapa(etapa)} visto={!toursAutomaticos || vistos.has(tourDaEtapa(etapa))} aoVer={aoVerTour} />
           {renderEtapa()}
           {erroGeral && (
             <p className="alerta alerta-erro" role="alert">
@@ -1158,13 +1169,13 @@ export function Wizard({
             ) : (
               <span />
             )}
-            <button type="button" className="btn btn-primary" onClick={continuar} disabled={bloqueado}>
+            <button type="button" className="btn btn-primary" onClick={continuar} disabled={bloqueado} data-tour={etapa === 7 ? "enviar" : undefined}>
               {botaoPrincipal}
             </button>
           </div>
         </section>
 
-        <aside className={styles.side} aria-label="Resumo do pedido">
+        <aside className={styles.side} aria-label="Resumo do pedido" data-tour="resumo">
           <h2>Seu pedido</h2>
           {!peca ? (
             <p className="muted small">Escolha o tipo de peça para ver os créditos e o prazo.</p>
@@ -1207,7 +1218,7 @@ export function Wizard({
         </aside>
       </div>
 
-      <div className={styles.mbar}>
+      <div className={styles.mbar} data-tour="resumo-movel">
         <div className={styles.sum}>
           {peca ? (
             <>
@@ -1223,7 +1234,7 @@ export function Wizard({
             Voltar
           </button>
         )}
-        <button type="button" className="btn btn-primary" onClick={continuar} disabled={bloqueado}>
+        <button type="button" className="btn btn-primary" onClick={continuar} disabled={bloqueado} data-tour={etapa === 7 ? "enviar" : undefined}>
           {etapa === 7 ? (enviando ? "Enviando..." : "Enviar") : "Continuar"}
         </button>
       </div>
