@@ -6,8 +6,8 @@ import { servirArquivo } from "@/server/servirArquivo";
 import { arquivoDoJob, maquinaAutorizada } from "@/server/services/iaComp";
 import { um } from "@/server/db";
 
-// Arquivos da IA Comp (kit.zip, comp.aep, previa.png): só a equipe, ou a máquina operária (kit).
-const TIPOS = { kit: ["application/zip", "zip"], aep: ["application/octet-stream", "aep"], previa: ["image/png", "png"] } as const;
+// Arquivos da IA Comp (kit.zip, comp.zip = .aep + assets, previa.png): só a equipe, ou a máquina operária (kit).
+const TIPOS = { kit: ["application/zip", "zip"], aep: ["application/zip", "zip"], previa: ["image/png", "png"] } as const;
 
 export async function GET(req: Request, ctx: RouteContext<"/api/v1/ia-comp/[id]/arquivo/[tipo]">) {
   const { id, tipo } = await ctx.params;
@@ -26,7 +26,7 @@ export async function GET(req: Request, ctx: RouteContext<"/api/v1/ia-comp/[id]/
   const stat = fs.statSync(caminho);
   return servirArquivo(req, caminho, {
     mime: TIPOS[t][0],
-    nome: `${job.codigo}-ia-comp.${TIPOS[t][1]}`,
+    nome: `${job.codigo}-${t === "aep" ? "composicao" : "ia-comp"}.${TIPOS[t][1]}`,
     inline: t === "previa",
     etag: `"iacomp-${job.id}-${t}-${stat.mtimeMs}"`,
     cache: "private, no-cache",

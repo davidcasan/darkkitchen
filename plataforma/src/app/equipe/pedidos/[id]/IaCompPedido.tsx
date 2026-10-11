@@ -38,7 +38,7 @@ export function IaCompPedido({ pedidoId, admin }: { pedidoId: number; admin: boo
         <div className="row" style={{ marginBottom: 12, flexWrap: "wrap" }}>
           {tem("aep") && (
             <a className="btn btn-primary btn-sm" href={url("aep")}>
-              Baixar composição (.aep)
+              Baixar composição (.aep + mídias, .zip)
             </a>
           )}
           {tem("kit") && (

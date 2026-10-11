@@ -2,7 +2,7 @@
 // Roda num computador com After Effects instalado. A cada 20 s pergunta ao site se há
 // pedido esperando; se houver, baixa o kit, abre o After (a janela aparece por alguns
 // segundos: o modo sem interface "-noui" não roda scripts no After 2026), monta a composição
-// com o montar-comp.jsx do kit, salva o .aep e uma prévia, fecha o After e devolve tudo ao site. Só trabalha com o After FECHADO (não mexe no projeto de ninguém).
+// com o montar-comp.jsx do kit, salva o .aep e uma prévia, fecha o After e devolve ao site um .zip com o .aep e as mídias. Só trabalha com o After FECHADO (não mexe no projeto de ninguém).
 //
 // Configuração em plataforma/.env.local:
 //   IA_COMP_SERVIDOR=https://darkkitchen.art.br   (sem ele, usa APP_URL)
@@ -45,6 +45,7 @@ function acharAfterFx() {
   return null;
 }
 const AFTERFX = acharAfterFx();
+const TAR = path.join(process.env.SystemRoot || "C:/Windows", "System32", "tar.exe"); // o tar do Windows (bsdtar) lê e cria .zip
 
 const hora = () => new Date().toLocaleTimeString("pt-BR");
 const log = (m) => console.log(`[${hora()}] ${m}`);
@@ -85,7 +86,7 @@ async function processar(job) {
   if (!r.ok) throw new Error(`não consegui baixar o kit (${r.status})`);
   const zip = path.join(dir, "kit.zip");
   fs.writeFileSync(zip, Buffer.from(await r.arrayBuffer()));
-  execFileSync(path.join(process.env.SystemRoot || "C:/Windows", "System32", "tar.exe"), ["-xf", zip, "-C", dir]); // o tar do Windows (bsdtar) abre .zip
+  execFileSync(TAR, ["-xf", zip, "-C", dir]);
 
   const barra = (p) => p.replace(/\\/g, "/");
   const aep = path.join(dir, `${job.codigo}.aep`), previa = path.join(dir, "previa.png");
@@ -116,8 +117,13 @@ async function processar(job) {
 
   if (fs.existsSync(erro)) throw new Error(fs.readFileSync(erro, "utf8").trim());
   if (!fs.existsSync(fim) || !fs.existsSync(aep)) throw new Error("o After não terminou a montagem em 10 minutos");
+  // O .aep vai num .zip junto com a pasta assets/: extraído em qualquer lugar, o After acha as
+  // mídias pelo caminho relativo (a pasta de trabalho é apagada depois).
+  const pacote = path.join(dir, "composicao.zip");
+  const conteudo = [path.basename(aep), ...(fs.existsSync(path.join(dir, "assets")) ? ["assets"] : [])];
+  execFileSync(TAR, ["-a", "-cf", pacote, "-C", dir, ...conteudo]);
   if (fs.existsSync(previa)) await enviar(job.id, "previa", previa);
-  await enviar(job.id, "aep", aep);
+  await enviar(job.id, "aep", pacote);
   log(`${job.codigo}: pronto, .aep enviado ao site.`);
   fs.rmSync(dir, { recursive: true, force: true });
 }

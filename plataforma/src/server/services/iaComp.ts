@@ -100,7 +100,7 @@ export const tokenMaquinaConfigurado = () => Boolean(process.env.IA_COMP_TOKEN_M
 export const jobDoPedido = (pedidoId: number) => um<JobIaComp>("SELECT * FROM ia_comp_jobs WHERE pedido_id = ?", pedidoId);
 export const pastaDoJob = (id: number) => path.join(PASTA_IA, String(id));
 export const arquivoDoJob = (id: number, tipo: "kit" | "aep" | "previa") =>
-  path.join(pastaDoJob(id), tipo === "kit" ? "kit.zip" : tipo === "aep" ? "comp.aep" : "previa.png");
+  path.join(pastaDoJob(id), tipo === "kit" ? "kit.zip" : tipo === "aep" ? "comp.zip" : "previa.png");
 
 export function sugestoesDo(job: JobIaComp): Sugestoes | null {
   if (!job.sugestoes) return null;
@@ -454,7 +454,7 @@ export function proximoParaMaquina() {
   return { id: job.id, codigo: job.codigo };
 }
 
-/** Grava o .aep ou a prévia enviados pela máquina (corpo da requisição em fluxo). */
+/** Grava a composição (.zip com o .aep e a pasta assets/) ou a prévia enviadas pela máquina (corpo em fluxo). */
 export async function receberDaMaquina(jobId: number, tipo: "aep" | "previa", corpo: ReadableStream<Uint8Array> | null) {
   const job = um<JobIaComp>("SELECT * FROM ia_comp_jobs WHERE id = ?", jobId);
   if (!job || job.status !== "na_maquina") throw new ErroNegocio("Este trabalho não está com a máquina.", 409);
