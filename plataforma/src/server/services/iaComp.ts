@@ -622,6 +622,8 @@ export function pedirAoClaude(admin: Usuario, pedidoId: number, instrucoes: stri
     job = jobDoPedido(pedidoId)!;
   }
   if (job.claude_status === "criando") throw new ErroNegocio("O Claude já está criando este pedido.");
+  // Kit sempre refeito com o registro atual do pedido (kits antigos não têm o registro.json).
+  if (job.status === "pronto" || job.status === "erro") montarKit(job.id, dadosDoPedido(pedidoId), sugestoesDo(job));
   executar(
     `UPDATE ia_comp_jobs SET claude_status = 'aguardando', claude_instrucoes = ?, claude_pedido_em = datetime('now'),
        claude_pedido_por = ? WHERE id = ?`,
