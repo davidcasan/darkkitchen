@@ -113,8 +113,11 @@ export function IaCompPedido({ pedidoId, admin }: { pedidoId: number; admin: boo
               name="instrucoes"
               rows={3}
               maxLength={4000}
-              placeholder="Opcional: o que quer nesta versão. Ex.: usar a linha Tipografia que cresce, mais lento, fundo claro."
+              placeholder="Opcional: o que quer nesta versão. Ex.: mais minimalista, fundo claro, mais lento."
             />
+            <small className="muted">
+              Cada pedido gera uma criação totalmente nova (conceito, movimento e técnica diferentes das versões anteriores).
+            </small>
             <div>
               <Enviar className="btn btn-primary btn-sm" enviando="Enviando...">
                 Pedir criação ao Claude

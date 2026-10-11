@@ -448,7 +448,8 @@ const LEIA_ME = `KIT IA COMP · Dark Kitchen Studio
    - a paleta e um guia (camada guia, não renderiza) com o briefing e as sugestões.
 
 As sugestões são um ponto de partida interno: ajuste ou descarte à vontade.
-pedido.json tem os dados do pedido em texto; registro.json, o pedido exatamente como está salvo.
+pedido.json tem os dados do pedido em texto; registro.json, o pedido exatamente como está salvo;
+versoes-anteriores.md, o que já foi criado (para não repetir: cada nova criação é uma ideia nova).
 `;
 
 /** JSON só com ASCII (acentos como \\uXXXX), para o ExtendScript ler sem problema de codificação. */
@@ -487,6 +488,28 @@ function registroDoPedido(d: DadosPedido, assets: { id: number; nome: string }[]
       no_kit: assets.find((x) => x.id === a.id) ? `assets/${assets.find((x) => x.id === a.id)!.nome}` : null,
     })),
   };
+}
+
+/**
+ * O que já foi criado para o pedido (versão atual e anteriores: nota e especificação).
+ * Cada nova criação pedida ao Claude tem de ser uma ideia totalmente nova: este arquivo é a
+ * lista do que NÃO repetir (conceito, estrutura, movimento, técnica), nunca uma base.
+ */
+function versoesAnterioresEmTexto(jobId: number) {
+  const atual = um<JobIaComp>("SELECT * FROM ia_comp_jobs WHERE id = ?", jobId);
+  const lista = [
+    ...(atual && (atual.nota || atual.especificacao) ? [{ titulo: "Versão atual", v: atual, data: atual.atualizado_em }] : []),
+    ...versoesDoJob(jobId).map((v, i, todas) => ({ titulo: `Versão anterior ${todas.length - i}`, v, data: v.criado_em })),
+  ];
+  const partes = [
+    "# Versões já criadas para este pedido",
+    "",
+    "NÃO repetir nada daqui: cada nova criação precisa de conceito, estrutura, movimento e técnica totalmente novos, partindo só do registro.json (o pedido do cliente). Use esta lista apenas para saber o que evitar.",
+  ];
+  if (!lista.length) partes.push("", "(nenhuma versão anterior)");
+  for (const { titulo, v, data } of lista)
+    partes.push("", `## ${titulo} · ${v.origem === "chat" ? "feita pelo Claude no chat" : "gerada pelo site"} · ${data}`, "", v.nota || "(sem nota)", "", v.especificacao || "(sem especificação)");
+  return partes.join("\n") + "\n";
 }
 
 function montarKit(jobId: number, d: DadosPedido, sugestoes: Sugestoes | null) {
@@ -530,6 +553,7 @@ function montarKit(jobId: number, d: DadosPedido, sugestoes: Sugestoes | null) {
     { nome: "LEIA-ME.txt", dados: Buffer.from(LEIA_ME, "utf8") },
     { nome: "pedido.json", dados: Buffer.from(JSON.stringify(pedido, null, 2), "utf8") },
     { nome: "registro.json", dados: Buffer.from(JSON.stringify(registroDoPedido(d, assets), null, 2), "utf8") },
+    { nome: "versoes-anteriores.md", dados: Buffer.from(versoesAnterioresEmTexto(jobId), "utf8") },
     { nome: "pedido.jsxinc", dados: Buffer.from(`var PEDIDO = ${jsonAscii(pedido)};\n`, "utf8") },
     { nome: "montar-comp.jsx", dados: fs.readFileSync(SCRIPT_AE) },
     ...assets.map((a) => ({ nome: `assets/${a.nome}`, dados: fs.readFileSync(a.caminho) })),
