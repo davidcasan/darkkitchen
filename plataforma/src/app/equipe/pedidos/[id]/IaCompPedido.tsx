@@ -104,25 +104,25 @@ export function IaCompPedido({ pedidoId, admin }: { pedidoId: number; admin: boo
       {admin && !job?.claude_status && (
         <FormAcao action={pedirAoClaudeAction} confirmar="Pedir a criação ao Claude? Ele cria quando o chat estiver aberto (sem custo de API).">
           <input type="hidden" name="pedido" value={pedidoId} />
-          <div className="stack" style={{ gap: 8, marginTop: 16, borderTop: "1px solid var(--line)", paddingTop: 12 }}>
-            <label className="label" htmlFor={`instrucoes-${pedidoId}`}>
-              Pedir criação ao Claude (chat)
-            </label>
-            <textarea
-              id={`instrucoes-${pedidoId}`}
-              name="instrucoes"
-              rows={3}
-              maxLength={4000}
-              placeholder="Opcional: o que quer nesta versão. Ex.: mais minimalista, fundo claro, mais lento."
-            />
-            <small className="muted">
-              Cada pedido gera uma nova interpretação artística, sempre atendendo a todas as escolhas do cliente no briefing.
-            </small>
-            <div>
-              <Enviar className="btn btn-primary btn-sm" enviando="Enviando...">
-                Pedir criação ao Claude
-              </Enviar>
+          <div style={{ marginTop: 16, borderTop: "1px solid var(--line)", paddingTop: 12 }}>
+            <div className="field">
+              <label className="label" htmlFor={`instrucoes-${pedidoId}`}>
+                Pedir criação ao Claude (chat) <span className="opt">(opcional)</span>
+              </label>
+              <textarea
+                id={`instrucoes-${pedidoId}`}
+                name="instrucoes"
+                className="txt"
+                maxLength={4000}
+                placeholder="O que quer nesta versão. Ex.: mais minimalista, fundo claro, mais lento."
+              />
+              <span className="hint">
+                Cada pedido gera uma nova interpretação artística, sempre atendendo a todas as escolhas do cliente no briefing.
+              </span>
             </div>
+            <Enviar className="btn btn-primary btn-sm" enviando="Enviando...">
+              Pedir criação ao Claude
+            </Enviar>
           </div>
         </FormAcao>
       )}
