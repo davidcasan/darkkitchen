@@ -5,7 +5,7 @@ import { type Briefing, briefingVazio } from "@/domain/briefing";
 import { executar, um } from "./db";
 import { hashSenha } from "./senha";
 import type { Usuario } from "./auth";
-import { salvarArquivo } from "./services/arquivos";
+import { envioDeFile, salvarArquivo } from "./services/arquivos";
 import {
   aprovarQualidade,
   atribuirDesigner,
@@ -26,7 +26,7 @@ export const SENHA_TESTE = "quadro123";
 const PASTA_SEED = path.join(process.cwd(), "seed");
 
 function arquivoLocal(nome: string, tipo: string) {
-  return new File([fs.readFileSync(path.join(PASTA_SEED, nome))], nome, { type: tipo });
+  return envioDeFile(new File([fs.readFileSync(path.join(PASTA_SEED, nome))], nome, { type: tipo }));
 }
 
 function equipe(papel: string, nome: string, email: string, senior = 0): Usuario {
@@ -71,7 +71,7 @@ export async function popularSeVazio() {
   const logo = await salvarArquivo(marina, arquivoLocal("logo-verao-moda.svg", "image/svg+xml"), "logo", null, marcaId);
   const marca = {
     marcaId,
-    arquivos: { logo: [logo.id], manual: [], fotos: [] },
+    arquivos: { logo: [logo.id], manual: [], fotos: [], videos: [] },
     cores: ["#4B3BFF", "#FFD23F", "#191C2E"],
     visual: "padrao" as const,
   };

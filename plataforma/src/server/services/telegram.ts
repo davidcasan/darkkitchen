@@ -18,6 +18,9 @@ import { usuarioPorId } from "./usuarios";
 
 const token = () => process.env.TELEGRAM_BOT_TOKEN?.trim() ?? "";
 export const telegramAtivo = () => Boolean(token());
+// Limites do bot para enviar arquivos (sendPhoto e sendDocument).
+const LIMITE_FOTO = 10 * 1024 * 1024;
+const LIMITE_DOCUMENTO = 50 * 1024 * 1024;
 
 interface Mensagem {
   message_id: number;
@@ -132,14 +135,20 @@ export async function encaminharMensagem(mensagemId: number, exceto?: string) {
   for (const d of destinos) {
     try {
       let enviada: Mensagem;
-      if (m.imagem_caminho) {
+      const caminhoImagem = m.imagem_caminho ? path.join(PASTA_ARQUIVOS, m.imagem_caminho) : null;
+      const tamanho = caminhoImagem && fs.existsSync(caminhoImagem) ? fs.statSync(caminhoImagem).size : 0;
+      if (caminhoImagem && tamanho > LIMITE_DOCUMENTO) {
+        // O bot do Telegram só envia arquivos de até 50 MB: vai o aviso, a imagem fica na plataforma.
+        enviada = await enviarTexto(d.chat_id, `${cabeca}\n\n${corpo ? `${corpo}\n\n` : ""}🖼 Imagem grande demais para o Telegram: veja na plataforma.`.slice(0, 4000));
+      } else if (caminhoImagem) {
         const fd = new FormData();
         fd.append("chat_id", d.chat_id);
         fd.append("parse_mode", "HTML");
         // Legenda de foto tem limite de 1024 caracteres.
         fd.append("caption", `${cabeca}${corpo ? `\n\n${corpo}` : ""}`.slice(0, 1000));
-        const bytes = fs.readFileSync(path.join(PASTA_ARQUIVOS, m.imagem_caminho));
-        const foto = m.imagem_mime === "image/png" || m.imagem_mime === "image/jpeg";
+        const bytes = fs.readFileSync(caminhoImagem);
+        // Foto só até 10 MB; acima disso vai como documento.
+        const foto = (m.imagem_mime === "image/png" || m.imagem_mime === "image/jpeg") && tamanho <= LIMITE_FOTO;
         fd.append(foto ? "photo" : "document", new Blob([bytes], { type: m.imagem_mime ?? "" }), m.imagem_nome ?? "imagem");
         enviada = await api<Mensagem>(foto ? "sendPhoto" : "sendDocument", fd);
       } else {

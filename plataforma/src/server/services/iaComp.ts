@@ -289,7 +289,7 @@ function dadosDoPedido(pedidoId: number): DadosPedido {
   try {
     if (m?.cores) cores = JSON.parse(m.cores) as string[];
   } catch {}
-  const arquivos = arquivosPorIds([...b.arquivos.logo, ...b.arquivos.manual, ...b.arquivos.fotos]).map((a) => ({
+  const arquivos = arquivosPorIds([...b.arquivos.logo, ...b.arquivos.manual, ...b.arquivos.fotos, ...b.arquivos.videos]).map((a) => ({
     id: a.id,
     categoria: a.categoria,
     nome: a.nome,
@@ -538,11 +538,15 @@ function versoesAnterioresEmTexto(jobId: number) {
   return partes.join("\n") + "\n";
 }
 
+const LIMITE_ASSET_KIT = 300 * 1024 * 1024;
+
 function montarKit(jobId: number, d: DadosPedido, sugestoes: Sugestoes | null) {
   if (!fs.existsSync(SCRIPT_AE)) throw new ErroNegocio("Script do After (ia-comp/montar-comp.jsx) não encontrado no servidor.");
   const usados = new Set<string>();
+  // O zip é montado em memória: arquivos muito grandes (vídeos do cliente, sem limite de
+  // tamanho) ficam fora do kit; continuam no registro.json e para baixar no pedido.
   const assets = d.arquivos
-    .filter((a) => fs.existsSync(a.caminho))
+    .filter((a) => fs.existsSync(a.caminho) && a.tamanho <= LIMITE_ASSET_KIT)
     .map((a) => {
       let nome = `${a.categoria}-${path.basename(a.nome).replace(/[^\w.\-]+/g, "_")}`;
       while (usados.has(nome)) nome = `${crypto.randomBytes(2).toString("hex")}-${nome}`;

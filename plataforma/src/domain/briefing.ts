@@ -45,7 +45,7 @@ export interface Briefing {
   slogan: string; // só logo
   // Marca: o pedido pertence a uma das marcas do cliente (ids de arquivos enviados)
   marcaId: number | null;
-  arquivos: { logo: number[]; manual: number[]; fotos: number[] };
+  arquivos: { logo: number[]; manual: number[]; fotos: number[]; videos: number[] };
   cores: string[];
   visual: "padrao" | "especial" | null;
   // Estilo
@@ -173,6 +173,7 @@ export function atualizarBriefing(salvo: Partial<Briefing> & { tom?: unknown }):
   const b = { ...briefingVazio(), ...resto };
   if (!Array.isArray(salvo.tons)) b.tons = typeof tom === "string" && tom ? [tom] : [];
   b.rodadasExtras = rodadasExtrasValidas(b.rodadasExtras);
+  b.arquivos = { ...briefingVazio().arquivos, ...b.arquivos }; // "videos" entrou em out/2026
   return b;
 }
 
@@ -213,7 +214,7 @@ export function briefingVazio(): Briefing {
     revelacaoOutro: "",
     slogan: "",
     marcaId: null,
-    arquivos: { logo: [], manual: [], fotos: [] },
+    arquivos: { logo: [], manual: [], fotos: [], videos: [] },
     cores: ["#4B3BFF", "#FFD23F"],
     visual: null,
     estilo: [],

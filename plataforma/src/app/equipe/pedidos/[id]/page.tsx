@@ -79,7 +79,7 @@ export default async function PedidoEquipe({ params, searchParams }: PageProps<"
     throw e;
   }
   const b = p.briefing;
-  const arquivos = arquivosPorIds([...b.arquivos.logo, ...b.arquivos.manual, ...b.arquivos.fotos]);
+  const arquivos = arquivosPorIds([...b.arquivos.logo, ...b.arquivos.manual, ...b.arquivos.fotos, ...b.arquivos.videos]);
   const marca = p.marca_id ? um<{ observacoes: string }>("SELECT observacoes FROM marcas WHERE id = ?", p.marca_id) : undefined;
   const pode = (a: Parameters<typeof podeExecutar>[0]) => podeExecutar(a, p.status as StatusPedido, u.papel);
   const ehResponsavel = u.papel === "admin" || p.designer_id === u.id;

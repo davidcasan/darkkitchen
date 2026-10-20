@@ -12,11 +12,10 @@ import { IMPORTANTE, notificar, notificarPapel } from "./notificacoes";
 //   de um pedido, como créditos adicionais).
 // - Ninguém edita mensagens (o banco recusa). Só o admin apaga uma mensagem ou a
 //   conversa inteira; cada exclusão fica registrada em atendimento_exclusoes.
-// - Mensagens podem levar uma imagem PNG, JPG ou BMP de até 2 MB.
+// - Mensagens podem levar uma imagem PNG, JPG ou BMP (sem limite de tamanho, out/2026).
 // - Do lado da equipe, só o admin participa.
 
 export const LIMITE_TEXTO = 4000;
-export const LIMITE_IMAGEM_MB = 2;
 
 /** Formatos aceitos, conferidos pelos primeiros bytes do arquivo (não só pela extensão). */
 const FORMATOS: { mime: string; ext: string; assinatura: number[] }[] = [
@@ -154,8 +153,6 @@ export const idsDaConversa = (c: Conversa) =>
 /** Confere e grava a imagem anexada. Devolve os dados para a mensagem. */
 async function guardarImagem(arquivo: File) {
   if (arquivo.size === 0) throw new ErroNegocio("A imagem está vazia.");
-  if (arquivo.size > LIMITE_IMAGEM_MB * 1024 * 1024)
-    throw new ErroNegocio(`A imagem passa do limite de ${LIMITE_IMAGEM_MB} MB.`);
   const bytes = Buffer.from(await arquivo.arrayBuffer());
   const formato = FORMATOS.find((f) => f.assinatura.every((b, i) => bytes[i] === b));
   if (!formato) throw new ErroNegocio("Envie uma imagem PNG, JPG ou BMP.");

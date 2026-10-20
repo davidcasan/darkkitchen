@@ -47,7 +47,6 @@ const horario = (s: string) =>
     minute: "2-digit",
   });
 
-const LIMITE_IMAGEM_MB = 2;
 const TIPOS_IMAGEM = ["image/png", "image/jpeg", "image/bmp"];
 const urlImagem = (mensagemId: number) => `/api/v1/atendimento/imagem/${mensagemId}`;
 
@@ -55,7 +54,6 @@ const urlImagem = (mensagemId: number) => `/api/v1/atendimento/imagem/${mensagem
 function problemaNaImagem(f: File) {
   const tipoOk = TIPOS_IMAGEM.includes(f.type) || /\.(png|jpe?g|bmp)$/i.test(f.name);
   if (!tipoOk) return "Envie uma imagem PNG, JPG ou BMP.";
-  if (f.size > LIMITE_IMAGEM_MB * 1024 * 1024) return `A imagem passa do limite de ${LIMITE_IMAGEM_MB} MB.`;
   return null;
 }
 
@@ -394,8 +392,8 @@ export function PainelAtendimento({
             type="button"
             className={styles.clipe}
             onClick={() => seletor.current?.click()}
-            aria-label="Anexar imagem (PNG, JPG ou BMP, até 2 MB)"
-            title="Anexar imagem (PNG, JPG ou BMP, até 2 MB)"
+            aria-label="Anexar imagem (PNG, JPG ou BMP)"
+            title="Anexar imagem (PNG, JPG ou BMP)"
           >
             <Icone nome="clipe" tamanho={20} />
           </button>
@@ -436,8 +434,8 @@ export function PainelAtendimento({
         </div>
         <small className={styles.nota}>
           {ehAdmin
-            ? "Imagens PNG, JPG ou BMP até 2 MB. ✓ enviada · ✓✓ lida. Só o admin apaga mensagens."
-            : "Imagens PNG, JPG ou BMP até 2 MB. As conversas ficam salvas. ✓ enviada · ✓✓ lida"}
+            ? "Imagens PNG, JPG ou BMP. ✓ enviada · ✓✓ lida. Só o admin apaga mensagens."
+            : "Imagens PNG, JPG ou BMP. As conversas ficam salvas. ✓ enviada · ✓✓ lida"}
         </small>
       </form>
     </section>

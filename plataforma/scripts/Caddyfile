@@ -15,10 +15,8 @@
 darkkitchen.art.br {
 	encode zstd gzip
 
-	# Uploads de vídeo grandes (entregas de até 2 GB).
-	request_body {
-		max_size 2GB
-	}
+	# Uploads sem limite de tamanho (vídeos do cliente, out/2026): sem "request_body max_size"
+	# o Caddy não limita o corpo; a plataforma grava os envios em fluxo, direto no disco.
 
 	reverse_proxy 127.0.0.1:3000 {
 		# Ninguém de fora pode "inventar" o próprio IP: estes cabeçalhos só valem vindos

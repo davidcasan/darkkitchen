@@ -90,6 +90,12 @@ export const TOURS = {
         "Envie o PDF do manual e os arquivos das fontes da marca (.otf ou .ttf). Sem a fonte original, usamos a mais parecida. Não tem os arquivos? Escreva o nome exato das fontes nas observações da marca (menu Marcas).",
     },
     { alvo: campo("fotos"), titulo: "Fotos e imagens", texto: "Em alta resolução, sem marca d'água e com direito de uso. Fotos de produto com fundo limpo rendem as melhores animações." },
+    {
+      alvo: campo("videos"),
+      titulo: "Vídeos",
+      texto:
+        "Gravações do produto, da equipe ou do espaço, ou trechos de vídeos da marca que devem aparecer na peça. Envie o arquivo original, na maior qualidade que tiver: não há limite de tamanho, e uma barra mostra o andamento do envio.",
+    },
     { alvo: campo("cores"), titulo: "Cores", texto: "Use os códigos exatos da marca (ex.: #861169), que estão no manual ou com o seu designer." },
     { alvo: campo("visual"), titulo: "Visual desta peça", texto: "Seguir o padrão da marca ou criar um visual especial de campanha." },
   ],

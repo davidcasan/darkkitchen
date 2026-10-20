@@ -155,7 +155,7 @@ export function normalizarBriefing(raw: unknown): Briefing {
     revelacaoOutro: texto(r.revelacaoOutro, 500),
     slogan: texto(r.slogan, 200),
     marcaId: Number.isInteger(Number(r.marcaId)) && Number(r.marcaId) > 0 ? Number(r.marcaId) : null,
-    arquivos: { logo: ids(arq.logo), manual: ids(arq.manual), fotos: ids(arq.fotos) },
+    arquivos: { logo: ids(arq.logo), manual: ids(arq.manual), fotos: ids(arq.fotos), videos: ids(arq.videos) },
     cores: lista(r.cores, 5).filter((c) => /^#[0-9a-f]{6}$/i.test(c)),
     visual: r.visual === "padrao" || r.visual === "especial" ? r.visual : null,
     estilo: lista(r.estilo, MAX_ESCOLHAS),
@@ -212,7 +212,7 @@ export function criarPedido(cliente: Usuario, raw: unknown): PedidoResumo {
     );
     if (ok.length !== new Set(daMarca).size) throw new ErroNegocio("O logo ou o manual escolhido não é desta marca.");
   }
-  const todos = [...b.arquivos.logo, ...b.arquivos.manual, ...b.arquivos.fotos];
+  const todos = [...b.arquivos.logo, ...b.arquivos.manual, ...b.arquivos.fotos, ...b.arquivos.videos];
   if (todos.length) {
     const meus = varios<{ id: number }>(
       `SELECT id FROM arquivos WHERE dono_id = ? AND id IN (${todos.map(() => "?").join(",")})`,
@@ -249,12 +249,9 @@ export function criarPedido(cliente: Usuario, raw: unknown): PedidoResumo {
     ).id;
     const codigo = `DK-${1000 + id}`;
     executar("UPDATE pedidos SET codigo = ? WHERE id = ?", codigo, id);
-    if (b.arquivos.fotos.length)
-      executar(
-        `UPDATE arquivos SET pedido_id = ? WHERE id IN (${b.arquivos.fotos.map(() => "?").join(",")})`,
-        id,
-        ...b.arquivos.fotos,
-      );
+    const doPedido = [...b.arquivos.fotos, ...b.arquivos.videos];
+    if (doPedido.length)
+      executar(`UPDATE arquivos SET pedido_id = ? WHERE id IN (${doPedido.map(() => "?").join(",")})`, id, ...doPedido);
     executar(
       "UPDATE marcas SET cores = ?, atualizado_em = datetime('now') WHERE id = ?",
       JSON.stringify(b.cores),

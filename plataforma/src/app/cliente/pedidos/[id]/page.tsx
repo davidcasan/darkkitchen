@@ -50,7 +50,7 @@ export default async function PedidoCliente({ params, searchParams }: PageProps<
   }
 
   const b = p.briefing;
-  const arquivos = arquivosPorIds([...b.arquivos.logo, ...b.arquivos.manual, ...b.arquivos.fotos]);
+  const arquivos = arquivosPorIds([...b.arquivos.logo, ...b.arquivos.manual, ...b.arquivos.fotos, ...b.arquivos.videos]);
   const custoAjuste = custoProximoAjuste(p, b.duracao);
   const prazoRevisao = prazoAprovacaoAutomatica(p.id);
   const etapaAtual = LINHA_CLIENTE.findIndex((e) => e.status.includes(p.status));

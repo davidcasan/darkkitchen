@@ -17,7 +17,7 @@ import {
 //          ainda existem (o admin pode apagar). Com ?contar=1 só devolve quantas não foram
 //          lidas, sem marcar.
 // POST   → JSON { texto, pedido?, cliente? } ou multipart (texto, pedido, cliente, imagem)
-//          para enviar com imagem PNG/JPG/BMP de até 2 MB. Ninguém edita mensagens.
+//          para enviar com imagem PNG/JPG/BMP. Ninguém edita mensagens.
 // DELETE → só admin: ?mensagem=ID apaga uma mensagem; ?pedido/?cliente com ?conversa=1
 //          apaga a conversa inteira.
 

@@ -112,7 +112,7 @@ CREATE TABLE IF NOT EXISTS arquivos (
   dono_id INTEGER NOT NULL REFERENCES usuarios(id),
   pedido_id INTEGER REFERENCES pedidos(id),
   versao_id INTEGER REFERENCES versoes(id),
-  categoria TEXT NOT NULL CHECK (categoria IN ('logo','manual','foto','versao','entrega','anexo')),
+  categoria TEXT NOT NULL CHECK (categoria IN ('logo','manual','foto','video','versao','entrega','anexo')),
   nome TEXT NOT NULL,
   caminho TEXT NOT NULL,
   mime TEXT NOT NULL,
@@ -527,6 +527,13 @@ function migrar(d: DatabaseSync) {
   };
   ampliarCheck("assinaturas", "CHECK (status IN ('ativa','cancelada'))", "CHECK (status IN ('ativa','cancelada','pendente'))");
   ampliarCheck("faturas", "CHECK (status IN ('paga','pendente','falhou'))", "CHECK (status IN ('paga','pendente','falhou','cancelada'))");
+  // Vídeos enviados pelo cliente no briefing (out/2026): categoria nova "video".
+  ampliarCheck(
+    "arquivos",
+    "CHECK (categoria IN ('logo','manual','foto','versao','entrega','anexo'))",
+    "CHECK (categoria IN ('logo','manual','foto','video','versao','entrega','anexo'))",
+  );
+  d.exec("CREATE INDEX IF NOT EXISTS idx_arquivos_marca ON arquivos(marca_id)");
   const colFatura = colunas("faturas");
   for (const [nome, tipo] of [
     ["pix_payload", "TEXT"], // código Pix copia e cola (o QR Code é gerado dele)

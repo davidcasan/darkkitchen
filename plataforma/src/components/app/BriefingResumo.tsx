@@ -132,6 +132,7 @@ export function BriefingResumo({
           ["Logo", <ListaArquivos key="l" ids={b.arquivos.logo} arquivos={mapa} />],
           ["Manual e fontes", b.arquivos.manual.length ? <ListaArquivos key="m" ids={b.arquivos.manual} arquivos={mapa} /> : null],
           ["Fotos", b.arquivos.fotos.length ? <ListaArquivos key="f" ids={b.arquivos.fotos} arquivos={mapa} /> : null],
+          ["Vídeos", b.arquivos.videos.length ? <ListaArquivos key="v" ids={b.arquivos.videos} arquivos={mapa} /> : null],
           [
             "Cores",
             <span key="c" className="row">

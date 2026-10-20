@@ -130,6 +130,10 @@ function ArquivosMarca({
   );
 }
 
+type CategoriaUpload = "logo" | "manual" | "foto" | "video";
+const ehDaMarca = (c: CategoriaUpload) => c === "logo" || c === "manual";
+const CHAVE_UPLOAD = { logo: "logo", manual: "manual", foto: "fotos", video: "videos" } as const;
+
 function Upload({
   categoria,
   titulo,
@@ -137,15 +141,17 @@ function Upload({
   accept,
   multiplo,
   enviando,
+  progresso,
   onArquivos,
 }: {
-  categoria: "logo" | "manual" | "foto";
+  categoria: CategoriaUpload;
   titulo: string;
   sub: string;
   accept?: string;
   multiplo?: boolean;
   enviando: string | null;
-  onArquivos: (lista: FileList | null, categoria: "logo" | "manual" | "foto") => void;
+  progresso: string;
+  onArquivos: (lista: FileList | null, categoria: CategoriaUpload) => void;
 }) {
   return (
     <label className="drop">
@@ -153,7 +159,7 @@ function Upload({
         ↑
       </span>
       <span>
-        <b>{enviando === categoria ? "Enviando..." : titulo}</b>
+        <b>{enviando === categoria ? `Enviando${progresso}...` : titulo}</b>
         <br />
         <span className="opt">{sub}</span>
       </span>
@@ -251,6 +257,7 @@ export function Wizard({
   const [criandoMarca, setCriandoMarca] = useState(false);
   const marcaAtual = marcas.find((m) => m.id === b.marcaId);
   const [enviandoArquivo, setEnviandoArquivo] = useState<string | null>(null);
+  const [progresso, setProgresso] = useState("");
   const [erroGeral, setErroGeral] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [descartado, setDescartado] = useState(false);
@@ -397,20 +404,24 @@ export function Wizard({
     escolherMarca(nova);
   }
 
-  async function subir(lista: FileList | null, categoria: "logo" | "manual" | "foto") {
+  async function subir(lista: FileList | null, categoria: CategoriaUpload) {
     if (!lista?.length) return;
     const marcaId = b.marcaId;
-    if (categoria !== "foto" && !marcaId) return setErroGeral("Escolha a marca antes de enviar o logo ou o manual.");
+    if (ehDaMarca(categoria) && !marcaId) return setErroGeral("Escolha a marca antes de enviar o logo ou o manual.");
     setEnviandoArquivo(categoria);
     setErroGeral(null);
+    const arquivos = Array.from(lista);
     try {
-      for (const f of Array.from(lista)) {
-        const a = await enviarArquivo(f, categoria, categoria === "foto" ? null : marcaId);
+      for (const [i, f] of arquivos.entries()) {
+        // Ex.: " 2/3 · 45%" (vídeos grandes demoram; o cliente acompanha o envio).
+        const ordem = arquivos.length > 1 ? ` ${i + 1}/${arquivos.length} ·` : "";
+        setProgresso(`${ordem} 0%`);
+        const a = await enviarArquivo(f, categoria, ehDaMarca(categoria) ? marcaId : null, (p) => setProgresso(`${ordem} ${p}%`));
         setNomes((n) => ({ ...n, [a.id]: a.nome }));
-        const chave = categoria === "foto" ? "fotos" : categoria;
+        const chave = CHAVE_UPLOAD[categoria];
         setB((x) => ({ ...x, arquivos: { ...x.arquivos, [chave]: [...x.arquivos[chave], a.id] } }));
         // Logo e manual passam a fazer parte da marca, para os próximos pedidos.
-        if (categoria !== "foto")
+        if (ehDaMarca(categoria))
           setMarcas((ms) =>
             ms.map((m) => (m.id === marcaId ? { ...m, arquivos: [{ id: a.id, nome: a.nome, categoria }, ...m.arquivos] } : m)),
           );
@@ -420,10 +431,11 @@ export function Wizard({
       setErroGeral(e instanceof Error ? e.message : "Falha no envio do arquivo.");
     } finally {
       setEnviandoArquivo(null);
+      setProgresso("");
     }
   }
 
-  const alternarArquivo = (chave: "logo" | "manual" | "fotos", id: number) => {
+  const alternarArquivo = (chave: "logo" | "manual" | "fotos" | "videos", id: number) => {
     setB((x) => {
       const atual = x.arquivos[chave];
       return {
@@ -434,7 +446,7 @@ export function Wizard({
     setErros((e) => e.filter((x) => x !== chave));
   };
 
-  const upload = { enviando: enviandoArquivo, onArquivos: subir };
+  const upload = { enviando: enviandoArquivo, progresso, onArquivos: subir };
   const doPerfil = (categoria: "logo" | "manual") => ({
     itens: (marcaAtual?.arquivos ?? []).filter((a) => a.categoria === categoria),
     selecionados: b.arquivos[categoria],
@@ -860,9 +872,33 @@ export function Wizard({
                     ))}
                   </div>
                 )}
-                <Upload categoria="foto" titulo="Enviar imagens" sub="JPG ou PNG, quantas precisar" accept="image/*" multiplo {...upload} />
+                <Upload categoria="foto" titulo="Enviar imagens" sub="JPG ou PNG, quantas precisar, sem limite de tamanho" accept="image/*" multiplo {...upload} />
               </Campo>
             )}
+            <Campo
+              id="videos"
+              label="Vídeos para usar na peça"
+              opcional
+              hint="Gravações do produto, da equipe ou do espaço, trechos de vídeos da marca ou uma vinheta antiga. Diga no roteiro onde cada um entra. Para referências de estilo, use a etapa Estilo."
+            >
+              {b.arquivos.videos.length > 0 && (
+                <div className="chips" style={{ marginBottom: 8 }}>
+                  {b.arquivos.videos.map((id) => (
+                    <Chip key={id} on onClick={() => alternarArquivo("videos", id)}>
+                      {nomes[id] ?? `Arquivo ${id}`} ×
+                    </Chip>
+                  ))}
+                </div>
+              )}
+              <Upload
+                categoria="video"
+                titulo="Enviar vídeos"
+                sub="MP4, MOV ou outro formato, na maior qualidade que tiver, sem limite de tamanho"
+                accept="video/*,.mp4,.mov,.m4v,.avi,.mkv,.webm,.mxf"
+                multiplo
+                {...upload}
+              />
+            </Campo>
             <Campo id="cores" label="Cores da marca" hint="Clique na amostra para escolher.">
               <div className={styles.colors}>
                 {b.cores.map((c, i) => (
@@ -1058,7 +1094,7 @@ export function Wizard({
             </button>
           </div>
         );
-        const arquivosNomes = [...b.arquivos.logo, ...b.arquivos.manual, ...b.arquivos.fotos].map((id) => nomes[id] ?? `#${id}`);
+        const arquivosNomes = [...b.arquivos.logo, ...b.arquivos.manual, ...b.arquivos.fotos, ...b.arquivos.videos].map((id) => nomes[id] ?? `#${id}`);
         return (
           <div className={styles.review} data-tour="revisao">
             {linha(0, [["Peça", peca?.nome]])}

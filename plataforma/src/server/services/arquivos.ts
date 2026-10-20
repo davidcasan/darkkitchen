@@ -9,7 +9,7 @@ import type { Usuario } from "../auth";
 // Arquivos ficam em disco (data/arquivos). No servidor online, trocar por um
 // armazenamento de objetos (S3, R2) mudando só salvar() e caminhoAbsoluto().
 
-export type Categoria = "logo" | "manual" | "foto" | "versao" | "entrega" | "anexo";
+export type Categoria = "logo" | "manual" | "foto" | "video" | "versao" | "entrega" | "anexo";
 
 export interface Arquivo {
   id: number;
@@ -25,25 +25,33 @@ export interface Arquivo {
   criado_em: string;
 }
 
-const LIMITE_MB: Record<Categoria, number> = {
-  logo: 50,
-  manual: 100,
-  foto: 50,
+// Limite só nos envios da equipe. O que o cliente envia (logo, manual, fotos, vídeos)
+// não tem limite de tamanho (decisão out/2026); por isso o envio é gravado em fluxo.
+const LIMITE_MB: Partial<Record<Categoria, number>> = {
   versao: 500,
   entrega: 2000,
-  anexo: 100,
 };
 
-const CATEGORIAS_CLIENTE: Categoria[] = ["logo", "manual", "foto", "anexo"];
+const CATEGORIAS: Categoria[] = ["logo", "manual", "foto", "video", "versao", "entrega", "anexo"];
+const CATEGORIAS_CLIENTE: Categoria[] = ["logo", "manual", "foto", "video", "anexo"];
+
+/** Arquivo recebido: o File de um formulário (multipart) ou o corpo da requisição em fluxo. */
+export interface Envio {
+  nome: string;
+  mime: string;
+  corpo: ReadableStream<Uint8Array> | null;
+}
+
+export const envioDeFile = (f: File): Envio => ({ nome: f.name, mime: f.type, corpo: f.stream() });
 
 export async function salvarArquivo(
   usuario: Usuario,
-  arquivo: File,
+  arquivo: Envio,
   categoria: Categoria,
   pedidoId?: number | null,
   marcaId?: number | null,
 ): Promise<Arquivo> {
-  if (!LIMITE_MB[categoria]) throw new ErroNegocio("Categoria de arquivo inválida.");
+  if (!CATEGORIAS.includes(categoria)) throw new ErroNegocio("Categoria de arquivo inválida.");
   // Logo e manual pertencem a uma marca do próprio cliente.
   const ehDaMarca = categoria === "logo" || categoria === "manual";
   if (ehDaMarca && !marcaId) throw new ErroNegocio("Escolha a marca deste arquivo.");
@@ -51,17 +59,32 @@ export async function salvarArquivo(
     throw new ErroNegocio("Marca não encontrada.", 404);
   if (!ehEquipe(usuario.papel) && !CATEGORIAS_CLIENTE.includes(categoria))
     throw new ErroNegocio("Você não pode enviar esse tipo de arquivo.", 403);
-  if (arquivo.size === 0) throw new ErroNegocio("O arquivo está vazio.");
-  if (arquivo.size > LIMITE_MB[categoria] * 1024 * 1024)
-    throw new ErroNegocio(`O arquivo passa do limite de ${LIMITE_MB[categoria]} MB.`);
+  if (!arquivo.corpo) throw new ErroNegocio("Nenhum arquivo enviado.");
 
-  const ext = path.extname(arquivo.name).toLowerCase().replace(/[^.a-z0-9]/g, "").slice(0, 10);
+  const ext = path.extname(arquivo.nome).toLowerCase().replace(/[^.a-z0-9]/g, "").slice(0, 10);
   const relativo = path.join(new Date().toISOString().slice(0, 7), `${crypto.randomUUID()}${ext}`);
   const destino = path.join(PASTA_ARQUIVOS, relativo);
   fs.mkdirSync(path.dirname(destino), { recursive: true });
-  fs.writeFileSync(destino, Buffer.from(await arquivo.arrayBuffer()));
 
-  const nome = path.basename(arquivo.name).slice(0, 180) || "arquivo";
+  // Grava em fluxo (arquivos grandes não passam pela memória); no erro, apaga o que já foi gravado.
+  const limiteMb = LIMITE_MB[categoria];
+  const saida = fs.createWriteStream(destino);
+  let tamanho = 0;
+  try {
+    for await (const pedaco of arquivo.corpo as unknown as AsyncIterable<Uint8Array>) {
+      tamanho += pedaco.length;
+      if (limiteMb && tamanho > limiteMb * 1024 * 1024) throw new ErroNegocio(`O arquivo passa do limite de ${limiteMb} MB.`);
+      if (!saida.write(pedaco)) await new Promise<void>((r) => saida.once("drain", () => r()));
+    }
+    await new Promise<void>((ok, erro) => saida.end((e?: Error | null) => (e ? erro(e) : ok())));
+    if (tamanho === 0) throw new ErroNegocio("O arquivo está vazio.");
+  } catch (e) {
+    saida.destroy();
+    fs.rmSync(destino, { force: true });
+    throw e;
+  }
+
+  const nome = path.basename(arquivo.nome).slice(0, 180) || "arquivo";
   const id = executar(
     "INSERT INTO arquivos (dono_id, pedido_id, marca_id, categoria, nome, caminho, mime, tamanho) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
     usuario.id,
@@ -70,8 +93,8 @@ export async function salvarArquivo(
     categoria,
     nome,
     relativo,
-    arquivo.type || "application/octet-stream",
-    arquivo.size,
+    arquivo.mime || "application/octet-stream",
+    tamanho,
   ).id;
   return um<Arquivo>("SELECT * FROM arquivos WHERE id = ?", id)!;
 }
