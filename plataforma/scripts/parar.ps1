@@ -8,11 +8,11 @@
 Stop-ScheduledTask -TaskName "Dark Kitchen - Servidor" -ErrorAction SilentlyContinue
 $lacos = Get-CimInstance Win32_Process | Where-Object { $_.Name -eq "powershell.exe" -and $_.CommandLine -match "producao\.ps1" }
 foreach ($l in $lacos) { & taskkill.exe /PID $l.ProcessId /T /F | Out-Null }
-Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue |
+Get-NetTCPConnection -LocalPort 3666 -State Listen -ErrorAction SilentlyContinue |
   ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }
 Start-Sleep -Seconds 2
-if (Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue) {
-  Write-Host "Atencao: ainda ha algo na porta 3000."
+if (Get-NetTCPConnection -LocalPort 3666 -State Listen -ErrorAction SilentlyContinue) {
+  Write-Host "Atencao: ainda ha algo na porta 3666."
 } else {
   Write-Host "Servidor parado."
 }

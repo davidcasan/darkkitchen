@@ -1,8 +1,8 @@
 # Dark Kitchen Studio - Caddy (HTTPS e porta de entrada da internet).
-# No servidor fica em C:\darkkitchen\caddy\Caddyfile. O Caddy recebe as visitas nas portas
+# No servidor fica em C:\CASACASERVER\darkkitchen\caddy\Caddyfile. O Caddy recebe as visitas nas portas
 # 80/443, gera e renova sozinho o certificado HTTPS (Let's Encrypt) e repassa para a
-# plataforma, que só escuta na própria máquina (127.0.0.1:3000).
-# Depois de mudar: C:\darkkitchen\caddy\caddy.exe validate --config C:\darkkitchen\caddy\Caddyfile
+# plataforma, que só escuta na própria máquina (127.0.0.1:3666).
+# Depois de mudar: C:\CASACASERVER\darkkitchen\caddy\caddy.exe validate --config C:\CASACASERVER\darkkitchen\caddy\Caddyfile
 # e reiniciar o serviço: Restart-Service DarkKitchenCaddy
 
 {
@@ -18,7 +18,7 @@ darkkitchen.art.br {
 	# Uploads sem limite de tamanho (vídeos do cliente, out/2026): sem "request_body max_size"
 	# o Caddy não limita o corpo; a plataforma grava os envios em fluxo, direto no disco.
 
-	reverse_proxy 127.0.0.1:3000 {
+	reverse_proxy 127.0.0.1:3666 {
 		# Ninguém de fora pode "inventar" o próprio IP: estes cabeçalhos só valem vindos
 		# de um proxy confiável (o IP real vai em X-Forwarded-For, preenchido pelo Caddy).
 		header_up -Cf-Connecting-Ip

@@ -30,4 +30,4 @@ finally {
   Write-Host "5/5 Subindo o servidor..."
   Start-ScheduledTask -TaskName "Dark Kitchen - Servidor"
 }
-Write-Host "Pronto. Confira em alguns segundos: http://localhost:3000"
+Write-Host "Pronto. Confira em alguns segundos: http://localhost:3666"

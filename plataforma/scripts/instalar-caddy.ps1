@@ -1,5 +1,5 @@
 # Dark Kitchen Studio - registra o Caddy (HTTPS) como servico do Windows. Rodar UMA vez,
-# como Administrador, com o caddy.exe e o Caddyfile ja em C:\darkkitchen\caddy.
+# como Administrador, com o caddy.exe e o Caddyfile ja em C:\CASACASERVER\darkkitchen\caddy.
 #   powershell -ExecutionPolicy Bypass -File scripts\instalar-caddy.ps1
 # O servico fica MANUAL e parado: ligue quando o dominio e o roteador estiverem prontos com
 #   Set-Service DarkKitchenCaddy -StartupType Automatic; Start-Service DarkKitchenCaddy
@@ -7,7 +7,7 @@
 
 #Requires -RunAsAdministrator
 $ErrorActionPreference = "Stop"
-$pasta = "C:\darkkitchen\caddy"
+$pasta = "C:\CASACASERVER\darkkitchen\caddy"
 $caddy = Join-Path $pasta "caddy.exe"
 $config = Join-Path $pasta "Caddyfile"
 if (-not (Test-Path $caddy)) { throw "Falta $caddy" }

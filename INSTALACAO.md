@@ -24,14 +24,14 @@ Feche e abra o PowerShell de novo. Confira: `node -v` deve mostrar `v24.x`.
 ## 2. Projeto
 
 ```powershell
-mkdir C:\darkkitchen\bkp
-git clone https://github.com/davidcasan/darkkitchen.git C:\darkkitchen\projeto
-cd C:\darkkitchen\projeto\plataforma
+mkdir C:\CASACASERVER\darkkitchen\bkp
+git clone https://github.com/davidcasan/darkkitchen.git C:\CASACASERVER\darkkitchen\projeto
+cd C:\CASACASERVER\darkkitchen\projeto\plataforma
 npm ci
 ```
 
-(No servidor atual: projeto em `C:\darkkitchen\projeto`, backup em `C:\darkkitchen\bkp`,
-Caddy em `C:\darkkitchen\caddy`.)
+(No servidor atual: projeto em `C:\CASACASERVER\darkkitchen\projeto`, backup em `C:\CASACASERVER\darkkitchen\bkp`,
+Caddy em `C:\CASACASERVER\darkkitchen\caddy`.)
 
 (Se a máquina não tiver o disco E:, use outro caminho; o resto funciona igual.)
 
@@ -92,7 +92,7 @@ Pelo PowerShell (como Administrador):
 e `powershell -ExecutionPolicy Bypass -File plataforma\scripts\parar.ps1; Stop-Service DarkKitchenCaddy`
 para desligar. **Depois de reiniciar o Windows, o site fica fora do ar até alguém ligar.**
 
-Teste em alguns segundos: <http://localhost:3000>. O servidor só atende nesta máquina
+Teste em alguns segundos: <http://localhost:3666>. O servidor só atende nesta máquina
 (endereço 127.0.0.1); o acesso de fora é pelo Caddy (passo 7).
 
 Registro (log) do servidor: `plataforma\logs\servidor-AAAA-MM-DD.log`.
@@ -100,12 +100,12 @@ Registro (log) do servidor: `plataforma\logs\servidor-AAAA-MM-DD.log`.
 ## 7. Endereço na internet (conexão direta + Caddy)
 
 Decisão de out/2026: **sem Cloudflare**. O domínio aponta direto para o IP público da casa, e o
-**Caddy** (em `C:\darkkitchen\caddy`) recebe as visitas nas portas 80/443, gera e renova o
-HTTPS sozinho (Let's Encrypt) e repassa para a plataforma (127.0.0.1:3000).
+**Caddy** (em `C:\CASACASERVER\darkkitchen\caddy`) recebe as visitas nas portas 80/443, gera e renova o
+HTTPS sozinho (Let's Encrypt) e repassa para a plataforma (127.0.0.1:3666).
 
 1. **Caddy:** baixe o `caddy.exe` (Windows amd64) em
    <https://github.com/caddyserver/caddy/releases>, confira o SHA-512 com o `checksums.txt` e
-   coloque em `C:\darkkitchen\caddy\`. Copie `plataforma\scripts\Caddyfile` para a mesma pasta.
+   coloque em `C:\CASACASERVER\darkkitchen\caddy\`. Copie `plataforma\scripts\Caddyfile` para a mesma pasta.
    Como Administrador: `powershell -ExecutionPolicy Bypass -File scripts\instalar-caddy.ps1`
    (serviço "Dark Kitchen - Caddy (HTTPS)", conta LocalService, **manual e parado**; firewall
    das portas 80/443 só para o Caddy).
@@ -117,10 +117,10 @@ HTTPS sozinho (Let's Encrypt) e repassa para a plataforma (127.0.0.1:3000).
      o redirecionamento antigo (**não mexer** nos registros MX/SPF do e-mail).
 3. **Ligar**, só depois do passo 2 (senão o Let's Encrypt bloqueia por tentativas falhas):
    `iniciar-producao.bat` (ou `Start-Service DarkKitchenCaddy`). O serviço do Caddy fica em
-   modo **manual**, como a plataforma. Confira `C:\darkkitchen\caddy\logs` e abra
+   modo **manual**, como a plataforma. Confira `C:\CASACASERVER\darkkitchen\caddy\logs` e abra
    <https://darkkitchen.art.br>.
 
-Nunca redirecione no roteador a porta do SSH nem a 3000.
+Nunca redirecione no roteador a porta do SSH nem a 3666.
 
 ## 8. Atualizar para uma versão nova
 

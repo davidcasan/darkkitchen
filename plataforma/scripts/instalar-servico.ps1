@@ -45,5 +45,5 @@ Register-ScheduledTask -TaskName "Dark Kitchen - Backup" -Action $backup -Trigge
 Start-ScheduledTask -TaskName "Dark Kitchen - Servidor"
 Write-Host "Pronto. Servidor iniciado e backup diario agendado (3h)."
 if (-not $IniciarComWindows) { Write-Host "Ao reiniciar o Windows, ligue de novo pelo iniciar-producao.bat." }
-Write-Host "Teste em alguns segundos: http://localhost:3000"
+Write-Host "Teste em alguns segundos: http://localhost:3666"
 Write-Host "Registro (log) do servidor: $raiz\logs"
